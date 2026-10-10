@@ -6,4 +6,14 @@ Already here
       opentelemetry-exporter-otlp 0.30.0, opentelemetry-instrumentation-all 0.76.0,
       opentelemetry-sdk 1.8.0
 
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (already here)
+      already exports OTLP; setup points the exporter at Packrat
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
 Nothing was changed. Nothing was sent.

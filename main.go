@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/host"
 	"github.com/packratlabs/packrat-cli/internal/rails"
 	"github.com/packratlabs/packrat-cli/internal/report"
 )
@@ -26,9 +27,9 @@ Usage:
 
   path     directory to audit (default: the current directory)
   --json   print the JSON document instead of the table
-  --host   also probe this machine (not built yet; has no effect)
+  --host   also probe this machine for a Datadog Agent; it opens one local socket
 
-audit is read-only. It makes no network call and writes no file.
+audit is read-only. It writes no file and sends nothing. Without --host it opens no socket.
 `
 
 func main() {
@@ -53,7 +54,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("audit", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	asJSON := fs.Bool("json", false, "")
-	host := fs.Bool("host", false, "")
+	probe := fs.Bool("host", false, "")
 	paths, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return say(stdout, usage, exitOK)
@@ -69,7 +70,9 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		path = paths[0]
 	}
 	opts := rails.AuditOptions()
-	opts.Host = *host
+	if *probe {
+		opts.Host = host.Default().Probe
+	}
 	result, err := audit.Run(path, opts)
 	if errors.Is(err, audit.ErrNotDirectory) {
 		return say(stderr, fmt.Sprintf("packrat audit: %v\n", err), exitUsage)

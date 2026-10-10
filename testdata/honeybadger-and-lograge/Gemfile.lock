@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    honeybadger (5.26.0)
+    lograge (0.14.0)
+    rails (8.0.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  honeybadger
+  lograge
+  rails
+
+BUNDLED WITH
+   2.6.9

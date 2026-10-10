@@ -94,9 +94,13 @@ type Signal struct {
 	Blocked []string   `json:"blocked"`
 }
 
-// Host holds facts about the machine that ran the audit.
+// Host holds facts about the machine that ran the audit. They say nothing about production.
+// EnvSet holds names only; the value of a variable is never kept.
 type Host struct {
-	Notes []string `json:"notes"`
+	AgentPaths    []string `json:"agent_paths"`
+	TraceListener bool     `json:"trace_listener"`
+	EnvSet        []string `json:"env_set"`
+	Notes         []string `json:"notes"`
 }
 
 // Production reports whether the gem loads in production. A gem with no groups does.
@@ -116,6 +120,7 @@ type Facts struct {
 	Agents   []Agent
 	Browser  []Browser
 	EnvNames []EnvName
+	Signals  []Signal
 	Notes    []string
 }
 
@@ -141,8 +146,9 @@ type Audit struct {
 
 // Options are the switches of one run. Stacks are tried in order and the first match is read.
 // NoStack reads what does not depend on a stack, for a repository that no stack detected.
+// Host probes the machine; it is nil unless the user asked for the probe.
 type Options struct {
-	Host    bool
+	Host    func() Host
 	Stacks  []Stack
 	NoStack func(root *os.Root) Facts
 }
@@ -172,6 +178,10 @@ func Run(path string, opts Options) (Audit, error) {
 		return Audit{}, err
 	}
 	result.Path = abs
+	if opts.Host != nil {
+		probed := opts.Host()
+		result.Host = &probed
+	}
 	return result, nil
 }
 
@@ -203,7 +213,7 @@ func (a Audit) with(facts Facts) Audit {
 	a.Agents = append([]Agent{}, facts.Agents...)
 	a.Browser = append([]Browser{}, facts.Browser...)
 	a.EnvNames = append([]EnvName{}, facts.EnvNames...)
-	a.Signals = []Signal{}
+	a.Signals = append([]Signal{}, facts.Signals...)
 	a.Notes = append([]string{}, facts.Notes...)
 	return a
 }

@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    environment:
+      DD_AGENT_HOST: agent
+  agent:
+    image: datadog/agent:7
+    environment:
+      DD_SITE: datadoghq.com

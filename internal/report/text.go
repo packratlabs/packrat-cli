@@ -17,6 +17,9 @@ const NoStack = "No supported stack found (Rails is the only one yet)"
 // Promise is always the last line of the table.
 const Promise = "Nothing was changed. Nothing was sent."
 
+// HostHeading is printed above the facts of --host, so that nobody reads them as production.
+const HostHeading = "This machine, not production"
+
 const (
 	maxWidth     = 99
 	continuation = "      "
@@ -57,6 +60,14 @@ func Text(w io.Writer, a audit.Audit) error {
 		rows = append(rows, envRow(a.EnvNames))
 	}
 	writeRows(&b, rows)
+	if len(a.Signals) > 0 {
+		b.WriteString("\nRoutes\n")
+		writeRows(&b, signalRows(a.Signals))
+	}
+	if a.Host != nil {
+		b.WriteString("\n" + HostHeading + "\n")
+		writeRows(&b, hostRows(*a.Host))
+	}
 	b.WriteString("\n" + Promise + "\n")
 	if _, err := io.WriteString(w, b.String()); err != nil {
 		return fmt.Errorf("writing table: %w", err)
@@ -204,6 +215,58 @@ func envRow(names []audit.EnvName) row {
 	}
 	sort.Strings(files)
 	return row{vendor: "Env names", what: "in " + strings.Join(files, ", "), more: wrap(all, ", ")}
+}
+
+// signalRows puts the reason under the route. Route names are long, and a reason beside one
+// would wrap on some rows and not on others.
+func signalRows(signals []audit.Signal) []row {
+	var rows []row
+	for _, signal := range signals {
+		r := row{vendor: string(signal.Name), where: signal.Route + stateLabel(signal.State)}
+		r.more = wrap(strings.Fields(signal.Reason), " ")
+		for _, blocked := range signal.Blocked {
+			r.more = append(r.more, wrap(strings.Fields("not "+blocked), " ")...)
+		}
+		rows = append(rows, r)
+	}
+	return rows
+}
+
+func stateLabel(state audit.State) string {
+	switch state {
+	case audit.StateRoute:
+		return ""
+	case audit.StateAlready:
+		return " (already here)"
+	case audit.StateLater:
+		return " (later)"
+	case audit.StateUnsupported:
+		return " (not supported)"
+	}
+	return ""
+}
+
+func hostRows(host audit.Host) []row {
+	listener := "nothing listens"
+	if host.TraceListener {
+		listener = "something listens"
+	}
+	rows := []row{
+		{vendor: "Datadog Agent files", where: orNone(host.AgentPaths)},
+		{vendor: "localhost:8126", where: listener},
+		{vendor: "Env names set", where: orNone(host.EnvSet)},
+	}
+	for _, note := range host.Notes {
+		rows = append(rows, row{vendor: "Note", where: note})
+	}
+	return rows
+}
+
+func orNone(items []string) string {
+	if len(items) == 0 {
+		return "none"
+	}
+	return strings.Join(items, ", ")
 }
 
 func union(list, added []string) []string {

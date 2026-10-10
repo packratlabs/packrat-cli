@@ -42,6 +42,7 @@ func (Stack) Read(root *os.Root) (audit.Facts, error) {
 	facts.Agents = agents(root)
 	facts.Browser = browser(root)
 	facts.EnvNames = envNames(root)
+	facts.Signals = Routes(facts)
 	return facts, nil
 }
 

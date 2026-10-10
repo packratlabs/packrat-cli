@@ -5,4 +5,14 @@ Already here
       needs an Agent; no agentless APM in Ruby; gem present, no configure call found
       datadog 2.9.0 (test only)
 
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
 Nothing was changed. Nothing was sent.

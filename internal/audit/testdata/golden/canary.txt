@@ -19,4 +19,15 @@ Already here
       OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, PACKRAT_INGEST_KEY, POSTHOG_API_KEY,
       ROLLBAR_ACCESS_TOKEN, SCOUT_KEY, SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_PRIVATE_KEY
 
+Routes
+  exceptions  Sentry copy
+      sentry-ruby sends; Packrat takes the same envelope
+  traces      Datadog Agent copy
+      Agent config at .github/workflows/ci.yml:10
+      not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
+  logs        Datadog Agent copy
+      same Agent
+  replays     Sentry browser copy
+      replays on
+
 Nothing was changed. Nothing was sent.

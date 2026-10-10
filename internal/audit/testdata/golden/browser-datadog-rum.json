@@ -52,7 +52,36 @@
     }
   ],
   "env_names": [],
-  "signals": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "later",
+      "reason": "Ruby OpenTelemetry logs are pre-1.0; traces first",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "none",
+      "state": "unsupported",
+      "reason": "Datadog RUM replays are not supported yet",
+      "blocked": []
+    }
+  ],
   "host": null,
   "notes": []
 }

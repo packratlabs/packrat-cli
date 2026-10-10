@@ -1,0 +1,108 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "New Relic",
+      "gem": "newrelic_rpm",
+      "version": "9.16.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "exceptions",
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "newrelic_rpm (9.16.0)"
+        },
+        {
+          "path": "config/newrelic.yml",
+          "line": 0,
+          "text": ""
+        }
+      ],
+      "notes": [
+        "coexists with OpenTelemetry"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.26.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions",
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "sentry-rails (5.26.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces on"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK; coexists with New Relic; Sentry traces stay; Packrat reads OpenTelemetry traces because they are finer",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "later",
+      "reason": "Ruby OpenTelemetry logs are pre-1.0; traces first",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

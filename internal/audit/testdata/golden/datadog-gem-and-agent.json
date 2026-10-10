@@ -1,0 +1,134 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "datadog",
+      "version": "2.9.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "datadog (2.9.0)"
+        },
+        {
+          "path": "config/initializers/datadog.rb",
+          "line": 1,
+          "text": "Datadog.configure do |c|"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby",
+        "tracing instrumented"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.26.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "sentry-rails (5.26.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces off"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "vendor": "Datadog Agent",
+      "evidence": [
+        {
+          "path": "docker-compose.yml",
+          "line": 5,
+          "text": ""
+        }
+      ]
+    }
+  ],
+  "browser": [],
+  "env_names": [
+    {
+      "name": "DD_AGENT_HOST",
+      "files": [
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "DD_SITE",
+      "files": [
+        "docker-compose.yml"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at docker-compose.yml:5",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

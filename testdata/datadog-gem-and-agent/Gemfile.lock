@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    datadog (2.9.0)
+    rails (8.0.2)
+    sentry-rails (5.26.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  datadog
+  rails
+  sentry-rails
+
+BUNDLED WITH
+   2.6.9

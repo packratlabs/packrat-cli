@@ -306,7 +306,38 @@
       ]
     }
   ],
-  "signals": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at .github/workflows/ci.yml:10",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays on",
+      "blocked": []
+    }
+  ],
   "host": null,
   "notes": []
 }

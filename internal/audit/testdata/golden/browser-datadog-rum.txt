@@ -4,4 +4,14 @@ Already here
   Datadog RUM      app/javascript/rum.ts:1  @datadog/browser-rum; replays on
   PostHog browser  package.json:4           posthog-js; no replays found
 
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first
+  replays     none (not supported)
+      Datadog RUM replays are not supported yet
+
 Nothing was changed. Nothing was sent.

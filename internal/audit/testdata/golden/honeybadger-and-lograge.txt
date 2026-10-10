@@ -1,0 +1,19 @@
+packrat audit  honeybadger-and-lograge  Rails 8.0.2
+
+Already here
+  Honeybadger  config/honeybadger.yml  exceptions
+      honeybadger 5.26.0
+  logging      Gemfile.lock:5          logs shape; not a destination
+      lograge 0.14.0
+
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error; keeps Honeybadger
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first; logs are shaped by lograge
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.

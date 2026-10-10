@@ -6,4 +6,14 @@ Already here
   Skylight   Gemfile.lock:6       traces; gem present, no configure call found
       skylight 6.0.4
 
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK; coexists with New Relic
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
 Nothing was changed. Nothing was sent.

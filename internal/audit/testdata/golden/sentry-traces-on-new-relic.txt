@@ -1,0 +1,20 @@
+packrat audit  sentry-traces-on-new-relic  Rails 8.0.2
+
+Already here
+  New Relic  config/newrelic.yml              traces, exceptions, logs; coexists with OpenTelemetry
+      newrelic_rpm 9.16.0
+  Sentry     config/initializers/sentry.rb:1  exceptions, traces; traces on
+      sentry-rails 5.26.0
+
+Routes
+  exceptions  Sentry copy
+      sentry-ruby sends; Packrat takes the same envelope
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK; coexists with New Relic; Sentry traces stay; Packrat reads
+      OpenTelemetry traces because they are finer
+  logs        OpenTelemetry logs (later)
+      Ruby OpenTelemetry logs are pre-1.0; traces first
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.
