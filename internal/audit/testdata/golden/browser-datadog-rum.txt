@@ -1,0 +1,7 @@
+packrat audit  browser-datadog-rum  Rails 8.0.2
+
+Already here
+  Datadog RUM      app/javascript/rum.ts:1  @datadog/browser-rum; replays on
+  PostHog browser  package.json:4           posthog-js; no replays found
+
+Nothing was changed. Nothing was sent.

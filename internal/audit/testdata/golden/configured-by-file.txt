@@ -1,0 +1,9 @@
+packrat audit  configured-by-file  Rails 8.0.2
+
+Already here
+  New Relic  config/newrelic.yml  traces, exceptions, logs; coexists with OpenTelemetry
+      newrelic_rpm 9.17.0
+  Skylight   Gemfile.lock:6       traces; gem present, no configure call found
+      skylight 6.0.4
+
+Nothing was changed. Nothing was sent.

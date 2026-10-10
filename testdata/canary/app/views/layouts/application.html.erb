@@ -1,0 +1,2 @@
+<script src="https://browser.sentry-cdn.com/8.0.0/bundle.min.js"></script>
+<script>Sentry.init({ dsn: "<%= ENV["SENTRY_BROWSER_DSN"] %>", integrations: [Sentry.replayIntegration()] });</script>

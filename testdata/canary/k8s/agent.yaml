@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: DaemonSet
+spec:
+  template:
+    spec:
+      containers:
+        - name: agent
+          image: otel/opentelemetry-collector:CANARY_VALUE_DO_NOT_PRINT_7f3a
+          args: ["--token", "CANARY_VALUE_DO_NOT_PRINT_7f3a"]
+        - name: vector
+          image: timberio/vector:latest # CANARY_VALUE_DO_NOT_PRINT_7f3a

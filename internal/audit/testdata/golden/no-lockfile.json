@@ -31,7 +31,9 @@
           "text": "gem \"sentry-rails\""
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Skylight",
@@ -52,7 +54,9 @@
           "text": "gem \"skylight\""
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     }
   ],
   "agents": [],

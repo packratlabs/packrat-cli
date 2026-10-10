@@ -18,7 +18,7 @@ func vendors() []vendor {
 		{Gems: []string{"sentry-ruby", "sentry-rails", "sentry-sidekiq"}, Vendor: "Sentry", Provides: []string{"exceptions"}},
 		{Gems: []string{"newrelic_rpm"}, Vendor: "New Relic", Provides: []string{"traces", "exceptions", "logs"}, Note: "coexists with OpenTelemetry"},
 		{Gems: []string{"opentelemetry-sdk", "opentelemetry-exporter-otlp"}, Prefix: "opentelemetry-instrumentation-", Vendor: "OpenTelemetry", Provides: []string{"traces"}},
-		{Gems: []string{"opentelemetry-logs-sdk", "opentelemetry-exporter-otlp-logs"}, Vendor: "OpenTelemetry", Provides: []string{"logs"}, Note: "pre-1.0"},
+		{Gems: []string{"opentelemetry-logs-sdk", "opentelemetry-exporter-otlp-logs"}, Vendor: "OpenTelemetry", Provides: []string{"logs"}, Note: "OpenTelemetry logs are pre-1.0"},
 		{Gems: []string{"honeybadger"}, Vendor: "Honeybadger", Provides: []string{"exceptions"}},
 		{Gems: []string{"bugsnag"}, Vendor: "Bugsnag", Provides: []string{"exceptions"}},
 		{Gems: []string{"rollbar"}, Vendor: "Rollbar", Provides: []string{"exceptions"}},

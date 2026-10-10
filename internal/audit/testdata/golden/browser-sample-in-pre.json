@@ -1,0 +1,23 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 4,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}

@@ -1,0 +1,8 @@
+{
+  "name": "canary",
+  "env": {
+    "SENTRY_DSN": "CANARY_VALUE_DO_NOT_PRINT_7f3a",
+    "HONEYBADGER_API_KEY": { "description": "CANARY_VALUE_DO_NOT_PRINT_7f3a", "value": "CANARY_VALUE_DO_NOT_PRINT_7f3a" },
+    "CANARY_VALUE_DO_NOT_PRINT_7f3a": "SENTRY_AS_A_VALUE"
+  }
+}

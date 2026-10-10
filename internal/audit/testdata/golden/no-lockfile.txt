@@ -3,7 +3,9 @@ packrat audit  no-lockfile  Rails, Ruby 3.3.0
 no Gemfile.lock; run bundle install for versions
 
 Already here
-  Sentry    sentry-rails  Gemfile:4  exceptions
-  Skylight  skylight      Gemfile:7  traces (test only)
+  Sentry    Gemfile:4  exceptions; gem present, no configure call found
+      sentry-rails
+  Skylight  Gemfile:7  traces (test only); gem present, no configure call found
+      skylight (test only)
 
 Nothing was changed. Nothing was sent.

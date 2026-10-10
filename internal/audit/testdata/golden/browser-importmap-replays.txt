@@ -1,0 +1,6 @@
+packrat audit  browser-importmap-replays  Rails 8.0.2
+
+Already here
+  Sentry browser  app/javascript/application.js:1  @sentry/browser; replays on
+
+Nothing was changed. Nothing was sent.

@@ -111,9 +111,12 @@ func (f Finding) Production() bool {
 
 // Facts is what a Stack read from a repository.
 type Facts struct {
-	Stack StackInfo
-	SDKs  []Finding
-	Notes []string
+	Stack    StackInfo
+	SDKs     []Finding
+	Agents   []Agent
+	Browser  []Browser
+	EnvNames []EnvName
+	Notes    []string
 }
 
 // Stack reads one kind of repository. Rails is the only implementation.
@@ -137,9 +140,11 @@ type Audit struct {
 }
 
 // Options are the switches of one run. Stacks are tried in order and the first match is read.
+// NoStack reads what does not depend on a stack, for a repository that no stack detected.
 type Options struct {
-	Host   bool
-	Stacks []Stack
+	Host    bool
+	Stacks  []Stack
+	NoStack func(root *os.Root) Facts
 }
 
 // Run audits the directory at path.
@@ -159,7 +164,7 @@ func Run(path string, opts Options) (Audit, error) {
 	if err != nil {
 		return Audit{}, fmt.Errorf("opening %s: %w", path, err)
 	}
-	result, err := read(root, opts.Stacks)
+	result, err := read(root, opts)
 	if closeErr := root.Close(); err == nil && closeErr != nil {
 		err = fmt.Errorf("closing %s: %w", path, closeErr)
 	}
@@ -170,17 +175,9 @@ func Run(path string, opts Options) (Audit, error) {
 	return result, nil
 }
 
-func read(root *os.Root, stacks []Stack) (Audit, error) {
-	result := Audit{
-		Schema:   Schema,
-		SDKs:     []Finding{},
-		Agents:   []Agent{},
-		Browser:  []Browser{},
-		EnvNames: []EnvName{},
-		Signals:  []Signal{},
-		Notes:    []string{},
-	}
-	for _, stack := range stacks {
+func read(root *os.Root, opts Options) (Audit, error) {
+	result := Audit{Schema: Schema}
+	for _, stack := range opts.Stacks {
 		found, evidence := stack.Detect(root)
 		if !found {
 			continue
@@ -191,9 +188,22 @@ func read(root *os.Root, stacks []Stack) (Audit, error) {
 		}
 		facts.Stack.Evidence = []Evidence{evidence}
 		result.Stack = &facts.Stack
-		result.SDKs = append(result.SDKs, facts.SDKs...)
-		result.Notes = append(result.Notes, facts.Notes...)
-		break
+		return result.with(facts), nil
 	}
-	return result, nil
+	if opts.NoStack != nil {
+		return result.with(opts.NoStack(root)), nil
+	}
+	return result.with(Facts{}), nil
+}
+
+// with copies facts into the audit. Every list is made non-nil so that the JSON has [] and
+// never null.
+func (a Audit) with(facts Facts) Audit {
+	a.SDKs = append([]Finding{}, facts.SDKs...)
+	a.Agents = append([]Agent{}, facts.Agents...)
+	a.Browser = append([]Browser{}, facts.Browser...)
+	a.EnvNames = append([]EnvName{}, facts.EnvNames...)
+	a.Signals = []Signal{}
+	a.Notes = append([]string{}, facts.Notes...)
+	return a
 }

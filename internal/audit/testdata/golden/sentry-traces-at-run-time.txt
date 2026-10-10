@@ -1,0 +1,7 @@
+packrat audit  sentry-traces-at-run-time  Rails 8.0.2
+
+Already here
+  Sentry  config/initializers/sentry.rb:1  exceptions; traces rate set at run time
+      sentry-rails 5.26.0
+
+Nothing was changed. Nothing was sent.

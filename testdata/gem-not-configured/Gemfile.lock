@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    lograge (0.14.0)
+    rails (8.0.2)
+    rollbar (3.6.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  lograge
+  rails
+  rollbar
+
+BUNDLED WITH
+   2.6.9

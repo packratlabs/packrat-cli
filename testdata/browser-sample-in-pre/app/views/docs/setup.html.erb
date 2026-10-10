@@ -1,0 +1,5 @@
+<h1>Set up the browser SDK</h1>
+<pre><code>import * as Sentry from "@sentry/browser";
+Sentry.init({ dsn: SENTRY_DSN, integrations: [Sentry.replayIntegration()] });
+</code></pre>
+<p>That is all.</p>

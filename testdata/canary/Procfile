@@ -1,0 +1,2 @@
+web: DD_SERVICE=CANARY_VALUE_DO_NOT_PRINT_7f3a SCOUT_KEY=CANARY_VALUE_DO_NOT_PRINT_7f3a bin/with-agent bundle exec puma
+worker: bundle exec sidekiq --note CANARY_VALUE_DO_NOT_PRINT_7f3a

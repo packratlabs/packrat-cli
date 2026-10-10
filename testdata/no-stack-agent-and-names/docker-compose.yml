@@ -1,0 +1,7 @@
+services:
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+  app:
+    build: .
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318

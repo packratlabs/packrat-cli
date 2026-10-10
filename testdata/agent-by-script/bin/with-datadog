@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Starts the datadog-agent beside the process.
+cat > /tmp/datadog.yaml <<YAML
+logs_enabled: false
+YAML
+/opt/agent run -c /tmp/datadog.yaml &
+exec "$@"

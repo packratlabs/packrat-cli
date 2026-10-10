@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    newrelic_rpm (9.17.0)
+    rails (8.0.2)
+    skylight (6.0.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  newrelic_rpm
+  rails
+  skylight
+
+BUNDLED WITH
+   2.6.9

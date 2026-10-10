@@ -1,0 +1,7 @@
+packrat audit  sentry-traces-off  Rails 8.0.2
+
+Already here
+  Sentry  config/initializers/sentry.rb:2  exceptions; traces off
+      sentry-rails 5.26.0
+
+Nothing was changed. Nothing was sent.

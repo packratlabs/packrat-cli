@@ -1,0 +1,11 @@
+service: canary
+env:
+  clear:
+    DD_ENV: CANARY_VALUE_DO_NOT_PRINT_7f3a
+    OTEL_SERVICE_NAME: "CANARY_VALUE_DO_NOT_PRINT_7f3a"
+  secret:
+    - SENTRY_DSN
+    - ROLLBAR_ACCESS_TOKEN
+accessories:
+  agent:
+    image: datadog/agent:7 # CANARY_VALUE_DO_NOT_PRINT_7f3a

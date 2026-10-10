@@ -34,7 +34,9 @@
           "text": "airbrake (13.0.4)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "AppSignal",
@@ -56,7 +58,9 @@
           "text": "appsignal (4.5.1)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Bugsnag",
@@ -78,7 +82,9 @@
           "text": "bugsnag (6.27.1)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Honeybadger",
@@ -100,7 +106,9 @@
           "text": "honeybadger (5.27.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "New Relic",
@@ -124,7 +132,8 @@
         }
       ],
       "notes": [
-        "coexists with OpenTelemetry"
+        "coexists with OpenTelemetry",
+        "gem present, no configure call found"
       ]
     },
     {
@@ -147,7 +156,9 @@
           "text": "rollbar (3.6.1)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Scout",
@@ -169,7 +180,9 @@
           "text": "scout_apm (5.6.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Sentry",
@@ -188,7 +201,9 @@
           "text": "sentry-ruby (5.26.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Skylight",
@@ -209,7 +224,9 @@
           "text": "skylight (6.0.4)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "logging",

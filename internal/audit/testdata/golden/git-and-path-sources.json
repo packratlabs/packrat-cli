@@ -31,7 +31,9 @@
           "text": "sentry-ruby (5.27.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "logging",

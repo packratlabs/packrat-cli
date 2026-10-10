@@ -1,0 +1,10 @@
+packrat audit  no-stack-agent-and-names
+
+No supported stack found (Rails is the only one yet)
+
+Already here
+  OpenTelemetry Collector  docker-compose.yml:3
+  Env names                in .env.example, docker-compose.yml
+      OTEL_EXPORTER_OTLP_ENDPOINT, SENTRY_DSN
+
+Nothing was changed. Nothing was sent.

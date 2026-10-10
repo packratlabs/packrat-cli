@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/packratlabs/packrat-cli/internal/audit"
@@ -20,13 +21,15 @@ const (
 	maxWidth     = 99
 	continuation = "      "
 	// A repository with opentelemetry-instrumentation-all locks about fifty of these as
-	// dependencies. One row each would bury every other finding, so the table counts them. The
-	// JSON lists them all.
+	// dependencies. Named one by one they would bury every other finding, so the table counts
+	// them. The JSON lists them all.
 	instrumentationPrefix = "opentelemetry-instrumentation-"
 )
 
+// row is one finding: a first line of three columns, then lines that hold a list.
 type row struct {
-	vendor, gem, where, what, notes string
+	vendor, where, what, notes string
+	more                       []string
 }
 
 // Text writes the table for a.
@@ -43,7 +46,17 @@ func Text(w io.Writer, a audit.Audit) error {
 		b.WriteString("\n")
 	}
 	b.WriteString("Already here\n")
-	writeRows(&b, sdkRows(a.SDKs))
+	rows := sdkRows(a.SDKs)
+	for _, agent := range a.Agents {
+		rows = append(rows, agentRow(agent))
+	}
+	for _, browser := range a.Browser {
+		rows = append(rows, browserRow(browser))
+	}
+	if len(a.EnvNames) > 0 {
+		rows = append(rows, envRow(a.EnvNames))
+	}
+	writeRows(&b, rows)
 	b.WriteString("\n" + Promise + "\n")
 	if _, err := io.WriteString(w, b.String()); err != nil {
 		return fmt.Errorf("writing table: %w", err)
@@ -63,60 +76,147 @@ func header(a audit.Audit) string {
 	return head + "  " + strings.Join(parts, ", ")
 }
 
+// sdkRows makes one row for each vendor. The list is sorted by vendor, so a vendor's gems are
+// next to each other.
 func sdkRows(sdks []audit.Finding) []row {
 	var rows []row
-	count := transitiveInstrumentations(sdks)
-	counted := false
-	for _, sdk := range sdks {
-		if !isTransitiveInstrumentation(sdk) {
-			rows = append(rows, sdkRow(sdk))
-			continue
+	for start := 0; start < len(sdks); {
+		end := start
+		for end < len(sdks) && sdks[end].Vendor == sdks[start].Vendor {
+			end++
 		}
-		if !counted {
-			gems := fmt.Sprintf("%s* (%d gems)", instrumentationPrefix, count)
-			if count == 1 {
-				gems = instrumentationPrefix + "* (1 gem)"
-			}
-			rows = append(rows, row{vendor: sdk.Vendor, gem: gems, what: "traces (dependency)"})
-			counted = true
-		}
+		rows = append(rows, vendorRow(sdks[start:end]))
+		start = end
 	}
 	return rows
 }
 
-func sdkRow(sdk audit.Finding) row {
-	what := strings.Join(sdk.Provides, ", ")
-	if !sdk.Direct {
-		what += " (dependency)"
+func vendorRow(gems []audit.Finding) row {
+	shown := production(gems)
+	r := row{vendor: gems[0].Vendor, where: where(configEvidence(shown[0]))}
+	var provides, notes, names []string
+	instrumentations := 0
+	for _, gem := range gems {
+		if !gem.Direct && strings.HasPrefix(gem.Gem, instrumentationPrefix) {
+			instrumentations++
+			continue
+		}
+		names = append(names, gemLabel(gem))
 	}
-	if !sdk.Production() {
-		what += " (" + strings.Join(sdk.Groups, ", ") + " only)"
+	for _, gem := range shown {
+		provides = union(provides, gem.Provides)
+		notes = union(notes, gem.Notes)
 	}
-	where := ""
-	if len(sdk.Evidence) > 0 {
-		where = fmt.Sprintf("%s:%d", sdk.Evidence[0].Path, sdk.Evidence[0].Line)
+	switch instrumentations {
+	case 0:
+	case 1:
+		names = append(names, "1 instrumentation gem (dependency)")
+	default:
+		names = append(names, fmt.Sprintf("%d instrumentation gems (dependency)", instrumentations))
 	}
-	return row{
-		vendor: sdk.Vendor,
-		gem:    strings.TrimSpace(sdk.Gem + " " + sdk.Version),
-		where:  where,
-		what:   what,
-		notes:  strings.Join(sdk.Notes, "; "),
+	r.what = strings.Join(provides, ", ")
+	if !shown[0].Production() {
+		r.what += only(shown[0])
 	}
+	r.notes = strings.Join(notes, "; ")
+	r.more = wrap(names, ", ")
+	return r
 }
 
-func isTransitiveInstrumentation(sdk audit.Finding) bool {
-	return !sdk.Direct && strings.HasPrefix(sdk.Gem, instrumentationPrefix)
-}
-
-func transitiveInstrumentations(sdks []audit.Finding) int {
-	count := 0
-	for _, sdk := range sdks {
-		if isTransitiveInstrumentation(sdk) {
-			count++
+// production returns the gems that load in production, or every gem when none does.
+func production(gems []audit.Finding) []audit.Finding {
+	var kept []audit.Finding
+	for _, gem := range gems {
+		if gem.Production() {
+			kept = append(kept, gem)
 		}
 	}
-	return count
+	if len(kept) == 0 {
+		return gems
+	}
+	return kept
+}
+
+func gemLabel(gem audit.Finding) string {
+	label := strings.TrimSpace(gem.Gem + " " + gem.Version)
+	if !gem.Direct {
+		label += " (dependency)"
+	}
+	if !gem.Production() {
+		label += only(gem)
+	}
+	return label
+}
+
+func only(gem audit.Finding) string {
+	return " (" + strings.Join(gem.Groups, ", ") + " only)"
+}
+
+// configEvidence prefers the line that configures the gem to the line that locks it.
+func configEvidence(gem audit.Finding) []audit.Evidence {
+	for i, e := range gem.Evidence {
+		if e.Path != "Gemfile" && e.Path != "Gemfile.lock" {
+			return gem.Evidence[i:]
+		}
+	}
+	return gem.Evidence
+}
+
+func where(evidence []audit.Evidence) string {
+	switch {
+	case len(evidence) == 0:
+		return ""
+	case evidence[0].Line == 0:
+		return evidence[0].Path
+	}
+	return fmt.Sprintf("%s:%d", evidence[0].Path, evidence[0].Line)
+}
+
+func agentRow(agent audit.Agent) row {
+	r := row{vendor: agent.Vendor, where: where(agent.Evidence)}
+	var others []string
+	for i := 1; i < len(agent.Evidence); i++ {
+		others = append(others, where(agent.Evidence[i:]))
+	}
+	if len(others) > 0 {
+		r.what = "also " + strings.Join(others, ", ")
+	}
+	return r
+}
+
+func browserRow(browser audit.Browser) row {
+	replays := "no replays found"
+	if browser.Replays {
+		replays = "replays on"
+	}
+	what := replays
+	if browser.Package != "" {
+		what = browser.Package + "; " + replays
+	}
+	return row{vendor: browser.Vendor, where: where(browser.Evidence), what: what}
+}
+
+func envRow(names []audit.EnvName) row {
+	var all, files []string
+	for _, name := range names {
+		all = append(all, name.Name)
+		files = union(files, name.Files)
+	}
+	sort.Strings(files)
+	return row{vendor: "Env names", what: "in " + strings.Join(files, ", "), more: wrap(all, ", ")}
+}
+
+func union(list, added []string) []string {
+	for _, item := range added {
+		present := false
+		for _, each := range list {
+			present = present || each == item
+		}
+		if !present {
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 func writeRows(b *strings.Builder, rows []row) {
@@ -124,36 +224,60 @@ func writeRows(b *strings.Builder, rows []row) {
 		b.WriteString("  nothing\n")
 		return
 	}
-	vendorWidth, gemWidth, whereWidth := 0, 0, 0
+	vendorWidth, whereWidth := 0, 0
 	for _, r := range rows {
 		vendorWidth = max(vendorWidth, len(r.vendor))
-		gemWidth = max(gemWidth, len(r.gem))
 		whereWidth = max(whereWidth, len(r.where))
 	}
 	for _, r := range rows {
-		left := fmt.Sprintf("  %-*s  %-*s", vendorWidth, r.vendor, gemWidth, r.gem)
-		right := r.what
+		left := fmt.Sprintf("  %-*s", vendorWidth, r.vendor)
 		if r.where != "" {
-			right = fmt.Sprintf("%-*s  %s", whereWidth, r.where, r.what)
+			left += fmt.Sprintf("  %-*s", whereWidth, r.where)
 		}
-		b.WriteString(fit(left, right, r.notes) + "\n")
+		for _, line := range append(fit(left, r.what, r.notes), r.more...) {
+			b.WriteString(strings.TrimRight(line, " ") + "\n")
+		}
 	}
 }
 
-// fit keeps a row under 100 columns. The notes move to a second line first, then the evidence.
-func fit(left, right, notes string) string {
-	line := left + "  " + right
+// fit keeps a row under 100 columns. The notes move to their own lines first, then the rest.
+func fit(left, what, notes string) []string {
+	line := left + "  " + what
+	full := line
 	switch {
-	case notes == "":
-	case len(line)+len("; ")+len(notes) <= maxWidth:
-		return line + "; " + notes
+	case notes != "" && what != "":
+		full = line + "; " + notes
+	case notes != "":
+		full = line + notes
+	}
+	switch {
+	case len(full) <= maxWidth:
+		return []string{full}
 	case len(line) <= maxWidth:
-		return line + "\n" + continuation + notes
-	default:
-		right += "; " + notes
+		return append([]string{line}, wrap(strings.Split(notes, "; "), "; ")...)
 	}
-	if len(line) <= maxWidth {
-		return line
+	return append([]string{left}, wrap(strings.Split(strings.TrimPrefix(full, left+"  "), ", "), ", ")...)
+}
+
+// wrap joins items into continuation lines and breaks only between items.
+func wrap(items []string, separator string) []string {
+	var wrapped []string
+	line := continuation
+	for i, item := range items {
+		if i < len(items)-1 {
+			item += strings.TrimRight(separator, " ")
+		}
+		if len(line) > len(continuation) && len(line)+1+len(item) > maxWidth {
+			wrapped = append(wrapped, line)
+			line = continuation
+		}
+		if len(line) > len(continuation) {
+			line += " "
+		}
+		line += item
 	}
-	return strings.TrimRight(left, " ") + "\n" + continuation + right
+	if len(line) > len(continuation) {
+		wrapped = append(wrapped, line)
+	}
+	return wrapped
 }

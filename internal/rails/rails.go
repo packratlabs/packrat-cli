@@ -12,7 +12,6 @@ import (
 const (
 	lockName    = "Gemfile.lock"
 	gemfileName = "Gemfile"
-	maxFileSize = 2 << 20
 	noLockNote  = "no Gemfile.lock; run bundle install for versions"
 )
 
@@ -39,8 +38,21 @@ func (Stack) Read(root *os.Root) (audit.Facts, error) {
 	}
 	facts.Stack.Version = lock.Gems["rails"].Version
 	facts.Stack.Ruby = rubyVersion(root, lock)
-	facts.SDKs = findings(path, lock, readGemfile(root))
+	facts.SDKs = configure(root, findings(path, lock, readGemfile(root)))
+	facts.Agents = agents(root)
+	facts.Browser = browser(root)
+	facts.EnvNames = envNames(root)
 	return facts, nil
+}
+
+// NoStack reads what does not depend on Rails: env names and agents.
+func NoStack(root *os.Root) audit.Facts {
+	return audit.Facts{Agents: agents(root), EnvNames: envNames(root)}
+}
+
+// AuditOptions are the options that make an audit read Rails repositories.
+func AuditOptions() audit.Options {
+	return audit.Options{Stacks: []audit.Stack{Stack{}}, NoStack: NoStack}
 }
 
 // gems returns the gems of the repository and the file they were read from.
@@ -103,27 +115,4 @@ func findings(path string, lock Lockfile, gemfile Gemfile) []audit.Finding {
 		return found[i].Gem < found[j].Gem
 	})
 	return found
-}
-
-// readFile returns nothing for a file that is missing, a symlink, over 2 MB or not openable. One
-// unreadable file must not fail the audit.
-func readFile(root *os.Root, name string) ([]byte, bool) {
-	info, err := root.Lstat(name)
-	if err != nil || !info.Mode().IsRegular() || info.Size() > maxFileSize {
-		return nil, false
-	}
-	data, err := root.ReadFile(name)
-	if err != nil {
-		return nil, false
-	}
-	return data, true
-}
-
-// lines splits a file and drops the carriage return of a file saved on Windows.
-func lines(data []byte) []string {
-	all := strings.Split(string(data), "\n")
-	for i, line := range all {
-		all[i] = strings.TrimRight(line, " \t\r")
-	}
-	return all
 }

@@ -1,0 +1,73 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "New Relic",
+      "gem": "newrelic_rpm",
+      "version": "9.17.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "exceptions",
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "newrelic_rpm (9.17.0)"
+        },
+        {
+          "path": "config/newrelic.yml",
+          "line": 0,
+          "text": ""
+        }
+      ],
+      "notes": [
+        "coexists with OpenTelemetry"
+      ]
+    },
+    {
+      "vendor": "Skylight",
+      "gem": "skylight",
+      "version": "6.0.4",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "skylight (6.0.4)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}

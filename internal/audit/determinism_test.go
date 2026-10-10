@@ -44,7 +44,7 @@ func fixtures(t *testing.T) []string {
 // render blanks the path of the JSON, which is absolute and differs on every machine.
 func render(t *testing.T, fixture string, m mode) []byte {
 	t.Helper()
-	result, err := audit.Run(filepath.Join("..", "..", "testdata", fixture), audit.Options{Stacks: []audit.Stack{rails.Stack{}}})
+	result, err := audit.Run(filepath.Join("..", "..", "testdata", fixture), rails.AuditOptions())
 	if err != nil {
 		t.Fatalf("audit of %s: %v", fixture, err)
 	}

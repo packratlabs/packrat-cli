@@ -1,0 +1,6 @@
+packrat audit  agent-by-script  Rails 8.0.2
+
+Already here
+  Datadog Agent  Procfile:1  also bin/with-datadog:3
+
+Nothing was changed. Nothing was sent.

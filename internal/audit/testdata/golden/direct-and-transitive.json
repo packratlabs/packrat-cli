@@ -31,7 +31,9 @@
           "text": "sentry-rails (5.26.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "Sentry",
@@ -50,7 +52,9 @@
           "text": "sentry-ruby (5.26.0)"
         }
       ],
-      "notes": []
+      "notes": [
+        "gem present, no configure call found"
+      ]
     },
     {
       "vendor": "logging",

@@ -1,0 +1,2 @@
+web: bin/with-datadog bundle exec puma
+worker: bin/with-datadog bundle exec sidekiq

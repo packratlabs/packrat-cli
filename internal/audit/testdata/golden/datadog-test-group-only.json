@@ -36,7 +36,8 @@
         }
       ],
       "notes": [
-        "needs an Agent; no agentless APM in Ruby"
+        "needs an Agent; no agentless APM in Ruby",
+        "gem present, no configure call found"
       ]
     }
   ],

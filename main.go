@@ -68,7 +68,9 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	if len(paths) == 1 {
 		path = paths[0]
 	}
-	result, err := audit.Run(path, audit.Options{Host: *host, Stacks: []audit.Stack{rails.Stack{}}})
+	opts := rails.AuditOptions()
+	opts.Host = *host
+	result, err := audit.Run(path, opts)
 	if errors.Is(err, audit.ErrNotDirectory) {
 		return say(stderr, fmt.Sprintf("packrat audit: %v\n", err), exitUsage)
 	}

@@ -1,0 +1,22 @@
+packrat audit  canary  Rails 8.0.2
+
+Already here
+  Datadog                  config/initializers/datadog.rb:1          traces, logs, exceptions
+      needs an Agent; no agentless APM in Ruby; tracing instrumented
+      datadog 2.9.0
+  Sentry                   config/initializers/sentry.rb:1           exceptions, traces; traces on
+      sentry-rails 5.26.0, sentry-ruby 5.26.0 (dependency)
+  Datadog Agent            .github/workflows/ci.yml:10
+      also Dockerfile:6, Procfile:1, bin/with-agent:3, config/deploy.yml:11, docker-compose.yml:6
+  OpenTelemetry Collector  .github/workflows/ci.yml:10               also k8s/agent.yaml:8
+  Vector                   k8s/agent.yaml:11
+  Sentry browser           app/views/layouts/application.html.erb:1  replays on
+  Env names
+      in .env, .env.example, .github/workflows/ci.yml, Dockerfile, Procfile, app.json,
+      config/deploy.yml, docker-compose.yml, fly.toml
+      APPSIGNAL_PUSH_API_KEY, BUGSNAG_API_KEY, DD_AGENT_HOST, DD_API_KEY, DD_ENV, DD_SERVICE,
+      DD_SITE, DD_VERSION, ELASTIC_APM_SECRET_TOKEN, HONEYBADGER_API_KEY, NEW_RELIC_LICENSE_KEY,
+      OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, PACKRAT_INGEST_KEY, POSTHOG_API_KEY,
+      ROLLBAR_ACCESS_TOKEN, SCOUT_KEY, SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_PRIVATE_KEY
+
+Nothing was changed. Nothing was sent.

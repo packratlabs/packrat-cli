@@ -1,7 +1,9 @@
 packrat audit  git-and-path-sources  Rails 7.2.2.1, Ruby 3.2.4
 
 Already here
-  Sentry   sentry-ruby 5.27.0  Gemfile.lock:6   exceptions
-  logging  lograge 0.15.0.pre  Gemfile.lock:13  logs shape; not a destination
+  Sentry   Gemfile.lock:6   exceptions; gem present, no configure call found
+      sentry-ruby 5.27.0
+  logging  Gemfile.lock:13  logs shape; not a destination
+      lograge 0.15.0.pre
 
 Nothing was changed. Nothing was sent.

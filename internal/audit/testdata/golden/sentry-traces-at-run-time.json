@@ -1,0 +1,50 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 4,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.26.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 5,
+          "text": "sentry-rails (5.26.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}

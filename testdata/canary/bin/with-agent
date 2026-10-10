@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# datadog-agent in a comment with CANARY_VALUE_DO_NOT_PRINT_7f3a
+/opt/datadog-agent/bin/agent run --api-key CANARY_VALUE_DO_NOT_PRINT_7f3a &
+exec "$@"

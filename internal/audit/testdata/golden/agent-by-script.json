@@ -1,0 +1,39 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 4,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [],
+  "agents": [
+    {
+      "vendor": "Datadog Agent",
+      "evidence": [
+        {
+          "path": "Procfile",
+          "line": 1,
+          "text": ""
+        },
+        {
+          "path": "bin/with-datadog",
+          "line": 3,
+          "text": "datadog.yaml"
+        }
+      ]
+    }
+  ],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}

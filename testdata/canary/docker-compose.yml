@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    environment:
+      - SENTRY_DSN=CANARY_VALUE_DO_NOT_PRINT_7f3a
+      - DD_AGENT_HOST=CANARY_VALUE_DO_NOT_PRINT_7f3a
+      OTEL_EXPORTER_OTLP_ENDPOINT: CANARY_VALUE_DO_NOT_PRINT_7f3a
+  agent:
+    image: datadog/agent:CANARY_VALUE_DO_NOT_PRINT_7f3a
+    environment:
+      DD_API_KEY: CANARY_VALUE_DO_NOT_PRINT_7f3a

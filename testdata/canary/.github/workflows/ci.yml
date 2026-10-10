@@ -1,0 +1,10 @@
+name: ci
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      POSTHOG_API_KEY: CANARY_VALUE_DO_NOT_PRINT_7f3a
+      PACKRAT_INGEST_KEY: ${{ secrets.CANARY_VALUE_DO_NOT_PRINT_7f3a }}
+    steps:
+      - run: DD_API_KEY=CANARY_VALUE_DO_NOT_PRINT_7f3a ./otelcol --config CANARY_VALUE_DO_NOT_PRINT_7f3a
