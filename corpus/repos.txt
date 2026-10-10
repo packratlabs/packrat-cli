@@ -1,0 +1,9 @@
+# name url commit
+# A url that begins with local: is a directory on this machine. It is not cloned and has no pin.
+chatwoot https://github.com/chatwoot/chatwoot e212425e7b1814614bdf8b0beea42ce689baad5c
+forem https://github.com/forem/forem a65607c9c04ad25078070f7ad48322da1c8d94db
+mastodon https://github.com/mastodon/mastodon 9e3fab2708b2f8ee2b513d3c816aac7e2e6786e7
+discourse https://github.com/discourse/discourse 7d3d93e083b41f478616fa6447b884a50911187e
+redmine https://github.com/redmine/redmine e196dbe9a20dffc69e1725e21c09e329144cb535
+openproject https://github.com/opf/openproject 0b921205f4320aba5cf1e2e0d6cdc384d9a2ef5a
+docuseal https://github.com/docusealco/docuseal c6a7555f545ea8ea96207f198c2d8e42d16b091f

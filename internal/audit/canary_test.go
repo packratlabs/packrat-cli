@@ -19,7 +19,7 @@ const canary = "CANARY_VALUE_DO_NOT_PRINT_7f3a"
 // report. Do not weaken this test to make a change pass.
 func TestCanary(t *testing.T) {
 	planted := canaryFiles(t)
-	for _, required := range []string{".env", ".env.example", "app.json", "docker-compose.yml", "config/deploy.yml"} {
+	for _, required := range []string{".env", ".env.example", ".env_sample", "app.json", "docker-compose.yml", "config/deploy.yml"} {
 		if !planted[required] {
 			t.Errorf("the fixture file %s no longer holds the canary", required)
 		}

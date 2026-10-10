@@ -1,0 +1,21 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    actionpack (8.1.4)
+    lograge (0.15.0)
+      railties (>= 4)
+    railties (8.1.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  actionpack (= 8.1.4)
+  lograge
+  railties (= 8.1.4)
+
+RUBY VERSION
+  ruby 3.4.7p58
+
+BUNDLED WITH
+   2.6.9

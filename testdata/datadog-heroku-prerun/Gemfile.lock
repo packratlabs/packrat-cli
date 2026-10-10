@@ -1,0 +1,15 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ddtrace (1.16.2)
+    rails (8.0.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  ddtrace
+  rails
+
+BUNDLED WITH
+   2.6.9

@@ -1,0 +1,17 @@
+packrat audit  sentry-initialized-is-not-init  Rails 8.0.2
+
+Already here
+  Sentry  Gemfile.lock:5  exceptions; gem present, no configure call found
+      sentry-rails 7.0.0
+
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.

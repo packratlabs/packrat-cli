@@ -35,8 +35,8 @@
     {
       "name": "logs",
       "route": "OpenTelemetry logs",
-      "state": "later",
-      "reason": "Ruby OpenTelemetry logs are pre-1.0; traces first",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
       "blocked": []
     },
     {

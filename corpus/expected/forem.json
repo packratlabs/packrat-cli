@@ -1,0 +1,231 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.5",
+    "ruby": "3.3.0",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 765,
+        "text": "rails (8.0.5)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "ddtrace",
+      "version": "1.16.2",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 217,
+          "text": "ddtrace (1.16.2)"
+        },
+        {
+          "path": "config/initializers/datadog.rb",
+          "line": 1,
+          "text": "Datadog.configure do |c|"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby",
+        "tracing instrumented"
+      ]
+    },
+    {
+      "vendor": "Honeybadger",
+      "gem": "honeybadger",
+      "version": "5.30.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 427,
+          "text": "honeybadger (5.30.0)"
+        },
+        {
+          "path": "config/initializers/honeybadger.rb",
+          "line": 24,
+          "text": "Honeybadger.configure do |config|"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.28.1",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 966,
+          "text": "sentry-rails (5.28.1)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 21,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.28.1",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 969,
+          "text": "sentry-ruby (5.28.1)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 21,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-sidekiq",
+      "version": "5.28.1",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 972,
+          "text": "sentry-sidekiq (5.28.1)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 21,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "logging",
+      "gem": "logtail-rails",
+      "version": "0.2.12",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 562,
+          "text": "logtail-rails (0.2.12)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "vendor": "Datadog Agent",
+      "evidence": [
+        {
+          "path": "datadog/prerun.sh",
+          "line": 0,
+          "text": ""
+        }
+      ]
+    }
+  ],
+  "browser": [],
+  "env_names": [
+    {
+      "name": "HONEYBADGER_API_KEY",
+      "files": [
+        ".env_sample"
+      ]
+    },
+    {
+      "name": "HONEYBADGER_JS_API_KEY",
+      "files": [
+        ".env_sample"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at datadog/prerun.sh",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

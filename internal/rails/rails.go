@@ -22,11 +22,22 @@ type Stack struct{}
 // is one; the Gemfile is asked only when there is not.
 func (Stack) Detect(root *os.Root) (bool, audit.Evidence) {
 	path, lock := gems(root)
-	gem, found := lock.Gems["rails"]
-	if !found || gem.Line == 0 {
+	gem, found := railsGem(lock)
+	if !found {
 		return false, audit.Evidence{}
 	}
 	return true, audit.Evidence{Path: path, Line: gem.Line, Text: gem.Text}
+}
+
+// railsGem returns the gem that makes the repository a Rails application. Discourse does not
+// depend on `rails`; it names railties and the other parts one by one.
+func railsGem(lock Lockfile) (Gem, bool) {
+	for _, name := range []string{"rails", "railties"} {
+		if gem, found := lock.Gems[name]; found && gem.Line > 0 {
+			return gem, true
+		}
+	}
+	return Gem{}, false
 }
 
 // Read collects the facts of a Rails repository.
@@ -36,7 +47,8 @@ func (Stack) Read(root *os.Root) (audit.Facts, error) {
 	if path != lockName {
 		facts.Notes = append(facts.Notes, noLockNote)
 	}
-	facts.Stack.Version = lock.Gems["rails"].Version
+	rails, _ := railsGem(lock)
+	facts.Stack.Version = rails.Version
 	facts.Stack.Ruby = rubyVersion(root, lock)
 	facts.SDKs = configure(root, findings(path, lock, readGemfile(root)))
 	facts.Agents = agents(root)
@@ -63,9 +75,24 @@ func gems(root *os.Root) (string, Lockfile) {
 	}
 	lock := Lockfile{Gems: map[string]Gem{}}
 	for name, declared := range readGemfile(root).Gems {
-		lock.Gems[name] = Gem{Direct: true, Source: "gemfile", Line: declared.Line, Text: declared.Text}
+		lock.Gems[name] = Gem{Version: exactVersion(declared.Text), Direct: true, Source: "gemfile", Line: declared.Line, Text: declared.Text}
 	}
 	return gemfileName, lock
+}
+
+// exactVersion returns the version of a Gemfile line that pins one, such as `gem 'rails', '8.1.4'`.
+// A constraint such as "~> 8.0" is not a version.
+func exactVersion(line string) string {
+	code, _, _ := strings.Cut(line, "#")
+	parts := strings.Split(code, ",")
+	if len(parts) != 2 {
+		return ""
+	}
+	version := strings.Trim(strings.TrimSpace(parts[1]), `'"`)
+	if version == "" || strings.Trim(version, "0123456789.") != "" {
+		return ""
+	}
+	return version
 }
 
 func readGemfile(root *os.Root) Gemfile {

@@ -1,0 +1,678 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.1.4",
+    "ruby": "4.0.7",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 663,
+        "text": "rails (8.1.4)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-exporter-otlp",
+      "version": "0.37.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 515,
+          "text": "opentelemetry-exporter-otlp (0.37.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-action_mailer",
+      "version": "0.8.1",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 533,
+          "text": "opentelemetry-instrumentation-action_mailer (0.8.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-action_pack",
+      "version": "0.18.1",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 535,
+          "text": "opentelemetry-instrumentation-action_pack (0.18.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-action_view",
+      "version": "0.13.0",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 537,
+          "text": "opentelemetry-instrumentation-action_view (0.13.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_job",
+      "version": "0.13.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 539,
+          "text": "opentelemetry-instrumentation-active_job (0.13.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_model_serializers",
+      "version": "0.25.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 541,
+          "text": "opentelemetry-instrumentation-active_model_serializers (0.25.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_record",
+      "version": "0.13.0",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 543,
+          "text": "opentelemetry-instrumentation-active_record (0.13.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_storage",
+      "version": "0.5.1",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 545,
+          "text": "opentelemetry-instrumentation-active_storage (0.5.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_support",
+      "version": "0.12.1",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 547,
+          "text": "opentelemetry-instrumentation-active_support (0.12.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-base",
+      "version": "0.26.1",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 549,
+          "text": "opentelemetry-instrumentation-base (0.26.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-concurrent_ruby",
+      "version": "0.25.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 553,
+          "text": "opentelemetry-instrumentation-concurrent_ruby (0.25.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-excon",
+      "version": "0.29.1",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 555,
+          "text": "opentelemetry-instrumentation-excon (0.29.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-faraday",
+      "version": "0.33.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 557,
+          "text": "opentelemetry-instrumentation-faraday (0.33.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-http",
+      "version": "0.30.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 559,
+          "text": "opentelemetry-instrumentation-http (0.30.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-http_client",
+      "version": "0.29.1",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 561,
+          "text": "opentelemetry-instrumentation-http_client (0.29.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-net_http",
+      "version": "0.29.1",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 563,
+          "text": "opentelemetry-instrumentation-net_http (0.29.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-pg",
+      "version": "0.37.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 565,
+          "text": "opentelemetry-instrumentation-pg (0.37.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-rack",
+      "version": "0.31.2",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 569,
+          "text": "opentelemetry-instrumentation-rack (0.31.2)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-rails",
+      "version": "0.42.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 571,
+          "text": "opentelemetry-instrumentation-rails (0.42.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-redis",
+      "version": "0.29.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 580,
+          "text": "opentelemetry-instrumentation-redis (0.29.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-sidekiq",
+      "version": "0.29.0",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 582,
+          "text": "opentelemetry-instrumentation-sidekiq (0.29.0)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-sdk",
+      "version": "1.13.1",
+      "direct": true,
+      "groups": [
+        "opentelemetry"
+      ],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 586,
+          "text": "opentelemetry-sdk (1.13.1)"
+        },
+        {
+          "path": "config/initializers/opentelemetry.rb",
+          "line": 24,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": [
+        "use_all"
+      ]
+    },
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.15.1",
+      "direct": true,
+      "groups": [
+        "production"
+      ],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 428,
+          "text": "lograge (0.15.1)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry",
+      "state": "already",
+      "reason": "already exports OTLP; setup points the exporter at Packrat",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

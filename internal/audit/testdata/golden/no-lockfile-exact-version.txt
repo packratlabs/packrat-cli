@@ -1,0 +1,18 @@
+packrat audit  no-lockfile-exact-version  Rails 8.1.4
+
+no Gemfile.lock; run bundle install for versions
+
+Already here
+  nothing
+
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.

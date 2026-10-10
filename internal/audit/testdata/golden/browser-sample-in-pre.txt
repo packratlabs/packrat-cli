@@ -8,8 +8,8 @@ Routes
       setup subscribes to Rails.error
   traces      OpenTelemetry (Rails)
       setup adds the OpenTelemetry SDK
-  logs        OpenTelemetry logs (later)
-      Ruby OpenTelemetry logs are pre-1.0; traces first
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
   replays     Sentry browser SDK pointed at Packrat
       Packrat accepts Sentry envelopes
 

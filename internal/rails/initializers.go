@@ -10,9 +10,13 @@ import (
 
 const notConfiguredNote = "gem present, no configure call found"
 
+// extra is a line that says more about a configured vendor. SameFile marks a pattern that is too
+// common a word to count outside a file that configures the vendor: Mastodon's
+// config/application.rb has `config.middleware.use Rack::Attack`.
 type extra struct {
-	Pattern string
-	Note    string
+	Pattern  string
+	Note     string
+	SameFile bool
 }
 
 // configRule says how a vendor is configured: a call in a config file, or a file that exists.
@@ -30,13 +34,15 @@ type configRule struct {
 func configRules() []configRule {
 	return []configRule{
 		{Vendor: "Datadog", Calls: []string{"Datadog.configure"}, Extras: []extra{
-			{".tracing.instrument", "tracing instrumented"}, {"c.logs", "logs configured"}}},
+			{Pattern: ".tracing.instrument", Note: "tracing instrumented"}, {Pattern: "c.logs", Note: "logs configured", SameFile: true}}},
 		{Vendor: "Sentry", Calls: []string{"Sentry.init"}},
 		{Vendor: "New Relic", Files: []string{"config/newrelic.yml"}},
 		{Vendor: "OpenTelemetry", Calls: []string{"OpenTelemetry::SDK.configure", "Instrumentation.instance.install"}, Extras: []extra{
-			{"use_all", "use_all"}, {".use ", "named instrumentations"}, {".use(", "named instrumentations"},
-			{"Instrumentation.instance.install", "named instrumentations"},
-			{"OTEL_EXPORTER_OTLP_ENDPOINT", "reads OTEL_EXPORTER_OTLP_ENDPOINT"}}},
+			{Pattern: "use_all", Note: "use_all"},
+			{Pattern: ".use ", Note: "named instrumentations", SameFile: true},
+			{Pattern: ".use(", Note: "named instrumentations", SameFile: true},
+			{Pattern: "Instrumentation.instance.install", Note: "named instrumentations"},
+			{Pattern: "OTEL_EXPORTER_OTLP_ENDPOINT", Note: "reads OTEL_EXPORTER_OTLP_ENDPOINT"}}},
 		{Vendor: "Honeybadger", Calls: []string{"Honeybadger.configure"}, Files: []string{"config/honeybadger.yml"}},
 		{Vendor: "Bugsnag", Calls: []string{"Bugsnag.configure"}, Files: []string{"config/bugsnag.yml"}},
 		{Vendor: "Rollbar", Calls: []string{"Rollbar.configure"}},
@@ -48,10 +54,14 @@ func configRules() []configRule {
 	}
 }
 
+// configSources also reads lib and app/lib. Chatwoot and Packrat call OpenTelemetry::SDK.configure
+// from a class there, and an initializer only calls that class.
 func configSources(root *os.Root) []source {
 	files := list(root, "config", func(base string) bool { return base == "application.rb" })
 	files = append(files, list(root, "config/environments", hasExtension(".rb"))...)
 	files = append(files, list(root, "config/initializers", hasExtension(".rb"))...)
+	files = append(files, walk(root, "lib", hasExtension(".rb"))...)
+	files = append(files, walk(root, "app/lib", hasExtension(".rb"))...)
 	return readSources(root, files)
 }
 
@@ -98,9 +108,19 @@ func applyRule(root *os.Root, rule configRule, sources []source) ([]audit.Eviden
 	if len(evidence) == 0 {
 		return nil, nil
 	}
+	var configuring []source
+	for _, src := range sources {
+		if hasPath(evidence, src.path) {
+			configuring = append(configuring, src)
+		}
+	}
 	var notes []string
 	for _, e := range rule.Extras {
-		if hasCodeLine(sources, e.Pattern) && !contains(notes, e.Note) {
+		in := sources
+		if e.SameFile {
+			in = configuring
+		}
+		if hasCodeLine(in, e.Pattern) && !contains(notes, e.Note) {
 			notes = append(notes, e.Note)
 		}
 	}
@@ -112,11 +132,27 @@ func applyRule(root *os.Root, rule configRule, sources []source) ([]audit.Eviden
 
 func firstCodeLine(src source, pattern string) int {
 	for i, line := range src.lines {
-		if !isComment(line) && strings.Contains(line, pattern) {
+		if !isComment(line) && hasCall(line, pattern) {
 			return i + 1
 		}
 	}
 	return 0
+}
+
+// hasCall reports whether the line holds the pattern as a whole word at its end. `Sentry.init`
+// must not match `Sentry.initialized?`, which Packrat asks in app/lib.
+func hasCall(line, pattern string) bool {
+	for rest := line; ; {
+		at := strings.Index(rest, pattern)
+		if at < 0 {
+			return false
+		}
+		rest = rest[at+len(pattern):]
+		last := pattern[len(pattern)-1]
+		if !isWordByte(last) || rest == "" || !isWordByte(rest[0]) {
+			return true
+		}
+	}
 }
 
 func hasCodeLine(sources []source, pattern string) bool {

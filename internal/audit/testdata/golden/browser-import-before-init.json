@@ -1,0 +1,80 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 4,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [],
+  "agents": [],
+  "browser": [
+    {
+      "vendor": "Sentry browser",
+      "package": "@sentry/vue",
+      "replays": false,
+      "evidence": [
+        {
+          "path": "app/javascript/composables/report.js",
+          "line": 1,
+          "text": "import * as Sentry from \"@sentry/vue\";"
+        },
+        {
+          "path": "app/javascript/entrypoints/dashboard.js",
+          "line": 2,
+          "text": "import * as Sentry from \"@sentry/vue\";"
+        },
+        {
+          "path": "app/javascript/entrypoints/dashboard.js",
+          "line": 5,
+          "text": "Sentry.init({ app, dsn: window.sentryDsn });"
+        },
+        {
+          "path": "package.json",
+          "line": 3,
+          "text": "\"@sentry/vue\": \"^8.55.0\","
+        }
+      ]
+    }
+  ],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays not enabled yet",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

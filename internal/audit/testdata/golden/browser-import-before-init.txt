@@ -1,0 +1,16 @@
+packrat audit  browser-import-before-init  Rails 8.0.2
+
+Already here
+  Sentry browser  app/javascript/entrypoints/dashboard.js:5  @sentry/vue; no replays found
+
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (Rails)
+      setup adds the OpenTelemetry SDK
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
+  replays     Sentry browser copy
+      replays not enabled yet
+
+Nothing was changed. Nothing was sent.

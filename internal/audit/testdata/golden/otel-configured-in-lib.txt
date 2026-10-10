@@ -1,0 +1,17 @@
+packrat audit  otel-configured-in-lib  Rails 8.0.2
+
+Already here
+  OpenTelemetry  lib/opentelemetry_config.rb:3  traces
+      opentelemetry-exporter-otlp 0.31.1, opentelemetry-sdk 1.10.0
+
+Routes
+  exceptions  OpenTelemetry exceptions (Rails.error)
+      setup subscribes to Rails.error
+  traces      OpenTelemetry (already here)
+      already exports OTLP; setup points the exporter at Packrat
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.

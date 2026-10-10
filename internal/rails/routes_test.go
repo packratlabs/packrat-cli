@@ -50,16 +50,18 @@ func signal(t *testing.T, f audit.Facts, name audit.SignalName) audit.Signal {
 }
 
 var (
-	datadog    = gem("Datadog", "datadog")
-	ddAgent    = agent("Datadog Agent", "docker-compose.yml", 41)
-	otelSDK    = gem("OpenTelemetry", "opentelemetry-sdk")
-	otelExport = gem("OpenTelemetry", "opentelemetry-exporter-otlp")
-	sentry     = configured(gem("Sentry", "sentry-rails"), "traces off")
-	sentryOn   = configured(gem("Sentry", "sentry-rails"), "traces on")
-	newRelic   = gem("New Relic", "newrelic_rpm")
-	sentryJS   = audit.Browser{Vendor: "Sentry browser"}
-	sentryPlay = audit.Browser{Vendor: "Sentry browser", Replays: true}
-	datadogRUM = audit.Browser{Vendor: "Datadog RUM", Replays: true}
+	datadog        = gem("Datadog", "datadog")
+	ddAgent        = agent("Datadog Agent", "docker-compose.yml", 41)
+	otelSDK        = gem("OpenTelemetry", "opentelemetry-sdk")
+	otelExport     = gem("OpenTelemetry", "opentelemetry-exporter-otlp")
+	otelLogs       = gem("OpenTelemetry", "opentelemetry-logs-sdk")
+	otelLogsExport = gem("OpenTelemetry", "opentelemetry-exporter-otlp-logs")
+	sentry         = configured(gem("Sentry", "sentry-rails"), "traces off")
+	sentryOn       = configured(gem("Sentry", "sentry-rails"), "traces on")
+	newRelic       = gem("New Relic", "newrelic_rpm")
+	sentryJS       = audit.Browser{Vendor: "Sentry browser"}
+	sentryPlay     = audit.Browser{Vendor: "Sentry browser", Replays: true}
+	datadogRUM     = audit.Browser{Vendor: "Datadog RUM", Replays: true}
 )
 
 type routeCase struct {
@@ -174,26 +176,38 @@ func TestExceptionsRoutes(t *testing.T) {
 }
 
 func TestLogsRoutes(t *testing.T) {
-	later := "Ruby OpenTelemetry logs are pre-1.0; traces first"
+	added := "setup adds the OpenTelemetry logs SDK"
 	checkRoutes(t, audit.Logs, []routeCase{
 		{name: "1 datadog gem and the Agent", facts: facts(datadog, ddAgent),
 			route: rails.RouteDatadogAgent, state: audit.StateRoute, reason: []string{"same Agent"}},
 		{name: "1 needs the Agent", facts: facts(datadog),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later}},
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}},
 		{name: "1 needs the gem", facts: facts(ddAgent),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later}},
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}},
 		{name: "1 needs the Datadog Agent, not another collector", facts: facts(datadog, agent("Vector", "vector.toml", 1)),
-			route: rails.RouteOTelLogs, state: audit.StateLater},
-		{name: "1 before 2: lograge does not change it", facts: facts(datadog, ddAgent, gem("logging", "lograge")),
+			route: rails.RouteOTelLogs, state: audit.StateRoute},
+		{name: "1 before 3: lograge does not change it", facts: facts(datadog, ddAgent, gem("logging", "lograge")),
 			route: rails.RouteDatadogAgent, state: audit.StateRoute, not: []string{"lograge"}},
-		{name: "2 nothing", facts: facts(),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later}, not: []string{"shaped"}},
-		{name: "2 names lograge", facts: facts(gem("logging", "lograge")),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later, "lograge"}},
-		{name: "2 names semantic_logger", facts: facts(gem("logging", "semantic_logger")),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later, "semantic_logger"}},
-		{name: "2 with the OpenTelemetry logs gems is still later", facts: facts(otelSDK, gem("OpenTelemetry", "opentelemetry-logs-sdk")),
-			route: rails.RouteOTelLogs, state: audit.StateLater, reason: []string{later}},
+		{name: "1 before 2: the Agent wins over the OpenTelemetry logs gems", facts: facts(datadog, ddAgent, otelLogs, otelLogsExport),
+			route: rails.RouteDatadogAgent, state: audit.StateRoute},
+		{name: "2 logs SDK and OTLP logs exporter", facts: facts(otelLogs, otelLogsExport),
+			route: rails.RouteOTelLogs, state: audit.StateAlready, reason: []string{"already exports OTLP logs; setup points the exporter at Packrat"}},
+		{name: "2 before 3: lograge does not change it", facts: facts(otelLogs, otelLogsExport, gem("logging", "lograge")),
+			route: rails.RouteOTelLogs, state: audit.StateAlready, not: []string{"lograge", "setup adds"}},
+		{name: "2 needs the exporter", facts: facts(otelSDK, otelLogs),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}},
+		{name: "2 needs the logs SDK", facts: facts(otelLogsExport),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}},
+		{name: "2 does not apply to the trace exporter", facts: facts(otelSDK, otelExport),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}},
+		{name: "2 does not apply to test-only logs gems", facts: facts(gem("OpenTelemetry", "opentelemetry-logs-sdk", "test"), otelLogsExport),
+			route: rails.RouteOTelLogs, state: audit.StateRoute},
+		{name: "3 nothing", facts: facts(),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added}, not: []string{"shaped"}},
+		{name: "3 names lograge", facts: facts(gem("logging", "lograge")),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added, "lograge"}},
+		{name: "3 names semantic_logger", facts: facts(gem("logging", "semantic_logger")),
+			route: rails.RouteOTelLogs, state: audit.StateRoute, reason: []string{added, "semantic_logger"}},
 	})
 }
 

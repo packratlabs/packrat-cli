@@ -284,3 +284,44 @@ func TestLargeFileAndSkippedDirectoriesAreNotRead(t *testing.T) {
 		t.Errorf("walked into node_modules: %v", found)
 	}
 }
+
+func TestHasCall(t *testing.T) {
+	tests := []struct {
+		line, pattern string
+		want          bool
+	}{
+		{"Sentry.init do |config|", "Sentry.init", true},
+		{"  Sentry.init", "Sentry.init", true},
+		{"Sentry.init(dsn: x)", "Sentry.init", true},
+		{"return unless Sentry.initialized? && user", "Sentry.init", false},
+		{"Sentry.initialized? && Sentry.init { }", "Sentry.init", true},
+		{"c.use_all({})", "use_all", true},
+		{"c.use_all_the_things", "use_all", false},
+		{"config.middleware.use Rack::Attack", ".use ", true},
+		{"c.use(\"OpenTelemetry::Instrumentation::Rack\")", ".use(", true},
+		{"nothing here", "Sentry.init", false},
+	}
+	for _, tc := range tests {
+		if got := hasCall(tc.line, tc.pattern); got != tc.want {
+			t.Errorf("hasCall(%q, %q) = %v, want %v", tc.line, tc.pattern, got, tc.want)
+		}
+	}
+}
+
+func TestExactVersion(t *testing.T) {
+	tests := map[string]string{
+		`gem 'rails', '8.1.4'`:                  "8.1.4",
+		`gem "rails", "8.0.5" # Ruby on Rails`:  "8.0.5",
+		`gem "rails", "~> 8.0"`:                 "",
+		`gem "rails", ">= 8.1.3.1"`:             "",
+		`gem "rails", "~> 8.1.3", ">= 8.1.3.1"`: "",
+		`gem "rails"`:                           "",
+		`gem "rails", require: false`:           "",
+		`gem "rails", github: "rails/rails"`:    "",
+	}
+	for line, want := range tests {
+		if got := exactVersion(line); got != want {
+			t.Errorf("exactVersion(%q) = %q, want %q", line, got, want)
+		}
+	}
+}

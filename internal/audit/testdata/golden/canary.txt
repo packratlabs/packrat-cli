@@ -10,9 +10,9 @@ Already here
       also Dockerfile:6, Procfile:1, bin/with-agent:3, config/deploy.yml:11, docker-compose.yml:6
   OpenTelemetry Collector  .github/workflows/ci.yml:10               also k8s/agent.yaml:8
   Vector                   k8s/agent.yaml:11
-  Sentry browser           app/views/layouts/application.html.erb:1  replays on
+  Sentry browser           app/views/layouts/application.html.erb:2  replays on
   Env names
-      in .env, .env.example, .github/workflows/ci.yml, Dockerfile, Procfile, app.json,
+      in .env, .env.example, .env_sample, .github/workflows/ci.yml, Dockerfile, Procfile, app.json,
       config/deploy.yml, docker-compose.yml, fly.toml
       APPSIGNAL_PUSH_API_KEY, BUGSNAG_API_KEY, DD_AGENT_HOST, DD_API_KEY, DD_ENV, DD_SERVICE,
       DD_SITE, DD_VERSION, ELASTIC_APM_SECRET_TOKEN, HONEYBADGER_API_KEY, NEW_RELIC_LICENSE_KEY,

@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    opentelemetry-exporter-otlp (0.31.1)
+    opentelemetry-sdk (1.10.0)
+    rails (8.0.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  opentelemetry-exporter-otlp
+  opentelemetry-sdk
+  rails
+
+BUNDLED WITH
+   2.6.9

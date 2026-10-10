@@ -1,0 +1,360 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.2.3.1",
+    "ruby": "3.4.4",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 713,
+        "text": "rails (7.2.3.1)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "datadog",
+      "version": "2.38.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 196,
+          "text": "datadog (2.38.0)"
+        },
+        {
+          "path": "config/initializers/datadog.rb",
+          "line": 2,
+          "text": "Datadog.configure do |c|"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby",
+        "tracing instrumented"
+      ]
+    },
+    {
+      "vendor": "Elastic APM",
+      "gem": "elastic-apm",
+      "version": "4.6.2",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 272,
+          "text": "elastic-apm (4.6.2)"
+        },
+        {
+          "path": "config/elastic_apm.yml",
+          "line": 0,
+          "text": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "New Relic",
+      "gem": "newrelic_rpm",
+      "version": "9.6.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "exceptions",
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 583,
+          "text": "newrelic_rpm (9.6.0)"
+        },
+        {
+          "path": "config/newrelic.yml",
+          "line": 0,
+          "text": ""
+        }
+      ],
+      "notes": [
+        "coexists with OpenTelemetry"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-exporter-otlp",
+      "version": "0.31.1",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 644,
+          "text": "opentelemetry-exporter-otlp (0.31.1)"
+        },
+        {
+          "path": "lib/opentelemetry_config.rb",
+          "line": 86,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-sdk",
+      "version": "1.10.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 653,
+          "text": "opentelemetry-sdk (1.10.0)"
+        },
+        {
+          "path": "lib/opentelemetry_config.rb",
+          "line": 86,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "Scout",
+      "gem": "scout_apm",
+      "version": "5.3.3",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 880,
+          "text": "scout_apm (5.3.3)"
+        },
+        {
+          "path": "config/scout_apm.yml",
+          "line": 0,
+          "text": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.19.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 892,
+          "text": "sentry-rails (5.19.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 2,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.19.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 895,
+          "text": "sentry-ruby (5.19.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 2,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-sidekiq",
+      "version": "5.19.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 898,
+          "text": "sentry-sidekiq (5.19.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 2,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces rate set at run time"
+      ]
+    },
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.14.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 531,
+          "text": "lograge (0.14.0)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [
+    {
+      "vendor": "Sentry browser",
+      "package": "@sentry/vue",
+      "replays": false,
+      "evidence": [
+        {
+          "path": "app/javascript/dashboard/composables/useTransformKeys.js",
+          "line": 6,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/dashboard/helper/editorHelper.js",
+          "line": 9,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/dashboard/store/modules/contacts/mutations.js",
+          "line": 2,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/dashboard/store/modules/conversations/actions.js",
+          "line": 18,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/entrypoints/dashboard.js",
+          "line": 22,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/entrypoints/dashboard.js",
+          "line": 55,
+          "text": "Sentry.init({"
+        },
+        {
+          "path": "app/javascript/entrypoints/v3app.js",
+          "line": 5,
+          "text": "import * as Sentry from '@sentry/vue';"
+        },
+        {
+          "path": "app/javascript/entrypoints/v3app.js",
+          "line": 37,
+          "text": "Sentry.init({"
+        },
+        {
+          "path": "package.json",
+          "line": 55,
+          "text": "\"@sentry/vue\": \"^8.55.0\","
+        }
+      ]
+    }
+  ],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config not in this repository; setup will print the lines for it",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays not enabled yet",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

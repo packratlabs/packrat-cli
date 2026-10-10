@@ -11,8 +11,8 @@ Routes
       setup subscribes to Rails.error; keeps Rollbar
   traces      OpenTelemetry (Rails)
       setup adds the OpenTelemetry SDK
-  logs        OpenTelemetry logs (later)
-      Ruby OpenTelemetry logs are pre-1.0; traces first; logs are shaped by lograge
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
   replays     Sentry browser SDK pointed at Packrat
       Packrat accepts Sentry envelopes
 

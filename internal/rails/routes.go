@@ -33,7 +33,7 @@ const (
 
 // Routes picks a route for each of the four signals. It reads nothing; the facts are its only
 // input. The rule numbers in the comments are those of section 5.1 of the plan, and their order
-// is the order of precedence. A gem that loads only in development or test picks no route.
+// is the order of precedence. Logs differs from the plan; see logsRoute. A gem that loads only in development or test picks no route.
 func Routes(facts audit.Facts) []audit.Signal {
 	datadog := hasVendor(facts, vendorDatadog)
 	signals := make([]audit.Signal, 0, 4)
@@ -108,8 +108,16 @@ func logsRoute(facts audit.Facts, datadog bool) audit.Signal {
 	if datadog && agentWhere(facts) != "" {
 		return audit.Signal{Route: RouteDatadogAgent, State: audit.StateRoute, Reason: "same Agent"}
 	}
-	// Logs 2: later.
-	reason := "Ruby OpenTelemetry logs are pre-1.0; traces first"
+	// Logs 2 and 3 are not the plan's. The plan said "later" for every other case, because Ruby
+	// OpenTelemetry logs are pre-1.0. The owner decided after the corpus to treat them as released:
+	// Packrat accepts them, and Colorbook sends its logs this way.
+	// Logs 2: the logs SDK and its OTLP exporter are both here.
+	if hasGem(facts, "opentelemetry-logs-sdk") && hasGem(facts, "opentelemetry-exporter-otlp-logs") {
+		return audit.Signal{Route: RouteOTelLogs, State: audit.StateAlready,
+			Reason: "already exports OTLP logs; setup points the exporter at Packrat"}
+	}
+	// Logs 3: everything else gets OpenTelemetry logs.
+	reason := "setup adds the OpenTelemetry logs SDK"
 	var gems []string
 	for _, sdk := range facts.SDKs {
 		if sdk.Vendor == vendorLogging && sdk.Production() {
@@ -119,7 +127,7 @@ func logsRoute(facts audit.Facts, datadog bool) audit.Signal {
 	if len(gems) > 0 {
 		reason += "; logs are shaped by " + strings.Join(gems, ", ")
 	}
-	return audit.Signal{Route: RouteOTelLogs, State: audit.StateLater, Reason: reason}
+	return audit.Signal{Route: RouteOTelLogs, State: audit.StateRoute, Reason: reason}
 }
 
 func replaysRoute(facts audit.Facts) audit.Signal {

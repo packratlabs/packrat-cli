@@ -1,0 +1,15 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rails (8.0.2)
+    sentry-rails (7.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  rails
+  sentry-rails
+
+BUNDLED WITH
+   2.6.9

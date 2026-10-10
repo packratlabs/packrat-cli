@@ -1,0 +1,20 @@
+packrat audit  datadog-heroku-prerun  Rails 8.0.2
+
+Already here
+  Datadog        config/initializers/datadog.rb:1  traces, logs, exceptions
+      needs an Agent; no agentless APM in Ruby
+      ddtrace 1.16.2
+  Datadog Agent  datadog/prerun.sh
+
+Routes
+  exceptions  Datadog Agent copy
+      errors arrive as error spans
+  traces      Datadog Agent copy
+      Agent config at datadog/prerun.sh
+      not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
+  logs        Datadog Agent copy
+      same Agent
+  replays     Sentry browser SDK pointed at Packrat
+      Packrat accepts Sentry envelopes
+
+Nothing was changed. Nothing was sent.

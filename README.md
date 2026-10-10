@@ -42,13 +42,13 @@ With `--host` it also looks at three things on the machine:
 What it reads:
 
 - `Gemfile.lock`, `Gemfile` and `.ruby-version`, for the stack and the gems.
-- `config/application.rb`, `config/environments/*.rb` and `config/initializers/*.rb`, for the line
-  that configures each vendor.
+- `config/application.rb`, `config/environments/*.rb`, `config/initializers/*.rb`, and the Ruby
+  files under `lib` and `app/lib`, for the line that configures each vendor.
 - `Procfile`, `Dockerfile*`, `docker-compose*.yml`, `compose*.yml`, `config/deploy.yml`, `app.json`,
-  `fly.toml`, `heroku.yml`, `.buildpacks`, `.github/workflows/*.yml`, `bin/*`, and everything under
+  `fly.toml`, `heroku.yml`, `.buildpacks`, `.github/workflows/*.yml`, `bin/*`, `datadog/*`, and everything under
   `k8s`, `kubernetes`, `deploy`, `helm` and `charts`, for an agent or a collector.
 - `config/importmap.rb`, `package.json`, `app/javascript/**` and `app/views/**`, for browser SDKs.
-- `.env`, `.env.*` and the deploy files above, for the **names** of environment variables.
+- `.env`, `.env.*`, `.env_*`, `.env-*` and the deploy files above, for the **names** of environment variables.
 
 What it never reads or prints:
 
@@ -129,7 +129,7 @@ pattern that matched.
 |---|---|
 | `name` | `exceptions`, `traces`, `logs` or `replays`. |
 | `route` | How Packrat would take the signal. One of the routes below. |
-| `state` | `route`: setup can add this route. `already`: the repository already sends this way, and setup only points it at Packrat. `later`: not offered yet. `unsupported`: there is no route. |
+| `state` | `route`: setup can add this route. `already`: the repository already sends this way, and setup only points it at Packrat. `later`: not offered yet; no rule gives this state today. `unsupported`: there is no route. |
 | `reason` | One sentence that says why. |
 | `blocked` | Routes that would normally be chosen, each with the reason why not. |
 
@@ -159,5 +159,20 @@ make check    # gofmt, vet, staticcheck, golangci-lint, tests
 Each directory in `testdata/` is a small repository for one behaviour. The output the audit must
 give for it is in `internal/audit/testdata/golden/`. `UPDATE=1 go test ./internal/audit -run Golden`
 rewrites those files; read the diff before you commit it.
+
+## The corpus
+
+The rules are tuned against nine real Rails repositories. `corpus/repos.txt` lists them with a
+pinned commit. `corpus/expected/` holds the JSON that the audit must give for each.
+`corpus/NOTES.md` says what each repository taught.
+
+```
+make corpus                                       # clone the public ones into corpus/src (2 GB)
+go test ./internal/audit -run Corpus -v           # compare each with its expected file
+UPDATE=1 go test ./internal/audit -run Corpus     # rewrite the expected files
+```
+
+`make corpus` is the only command here that uses the network. The test skips a repository that is
+not on the machine, so it does nothing in CI.
 
 Go 1.26, standard library only.

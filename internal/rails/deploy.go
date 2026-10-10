@@ -38,6 +38,11 @@ func agentPatterns() []agentPattern {
 	}
 }
 
+// herokuPrerun is the script that the Datadog buildpack for Heroku runs before it starts the
+// Agent. The buildpack itself is set on the Heroku app, not in the repository; Forem has only
+// this file.
+const herokuPrerun = "datadog/prerun.sh"
+
 func agentFiles(root *os.Root) []string {
 	files := list(root, ".", func(base string) bool {
 		return (NamesOnly(base) && !isEnvFile(base)) || base == ".buildpacks" || base == "heroku.yml"
@@ -45,6 +50,7 @@ func agentFiles(root *os.Root) []string {
 	files = append(files, list(root, "config", func(base string) bool { return base == "deploy.yml" })...)
 	files = append(files, list(root, ".github/workflows", isYAML)...)
 	files = append(files, list(root, "bin", anyName)...)
+	files = append(files, list(root, "datadog", anyName)...)
 	for _, dir := range []string{"k8s", "kubernetes", "deploy", "helm", "charts"} {
 		files = append(files, walk(root, dir, anyName)...)
 	}
@@ -66,6 +72,9 @@ func agents(root *os.Root) []audit.Agent {
 				}
 			}
 		}
+	}
+	if _, ok := readFile(root, herokuPrerun); ok {
+		found[vendorDatadogAgent] = append(found[vendorDatadogAgent], audit.Evidence{Path: herokuPrerun})
 	}
 	for _, src := range sources {
 		for script, vendor := range scripts {

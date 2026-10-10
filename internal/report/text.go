@@ -204,7 +204,18 @@ func browserRow(browser audit.Browser) row {
 	if browser.Package != "" {
 		what = browser.Package + "; " + replays
 	}
-	return row{vendor: browser.Vendor, where: where(browser.Evidence), what: what}
+	return row{vendor: browser.Vendor, where: where(initEvidence(browser.Evidence)), what: what}
+}
+
+// initEvidence prefers the line that starts the SDK. Chatwoot imports @sentry/vue in ten files,
+// and the first of them by name only reports an error.
+func initEvidence(evidence []audit.Evidence) []audit.Evidence {
+	for i, e := range evidence {
+		if strings.Contains(e.Text, ".init(") {
+			return evidence[i:]
+		}
+	}
+	return evidence
 }
 
 func envRow(names []audit.EnvName) row {

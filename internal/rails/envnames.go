@@ -32,8 +32,10 @@ func NamesOnly(name string) bool {
 	return false
 }
 
+// isEnvFile also knows `.env_sample` and `.env-example`; Forem keeps its names in `.env_sample`.
 func isEnvFile(base string) bool {
-	return base == ".env" || strings.HasPrefix(base, ".env.")
+	return base == ".env" || strings.HasPrefix(base, ".env.") ||
+		strings.HasPrefix(base, ".env_") || strings.HasPrefix(base, ".env-")
 }
 
 func isCompose(base string) bool {

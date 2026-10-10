@@ -11,8 +11,8 @@ Routes
   traces      Datadog Agent copy
       Agent config not in this repository; setup will print the lines for it
       not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
-  logs        OpenTelemetry logs (later)
-      Ruby OpenTelemetry logs are pre-1.0; traces first
+  logs        OpenTelemetry logs
+      setup adds the OpenTelemetry logs SDK
   replays     Sentry browser SDK pointed at Packrat
       Packrat accepts Sentry envelopes
 

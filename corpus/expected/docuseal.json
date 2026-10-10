@@ -1,0 +1,74 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.1.3.1",
+    "ruby": "4.0.5",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 386,
+        "text": "rails (8.1.3.1)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.14.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 291,
+          "text": "lograge (0.14.0)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}
