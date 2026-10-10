@@ -1,6 +1,7 @@
 # Linters are tools, not dependencies of the binary. `go run pkg@version` keeps them out of go.mod.
 STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@v0.8.1
 GOLANGCI    := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+GORELEASER  := go run github.com/goreleaser/goreleaser/v2@v2.18.3
 
 .PHONY: build check corpus release-dry
 
@@ -30,5 +31,9 @@ corpus:
 			&& git -C "$$dir" -c advice.detachedHead=false checkout -q FETCH_HEAD || exit 1; \
 	done
 
+# Builds the five release binaries, their archives and checksums.txt into dist/. A snapshot
+# publishes nothing: no release, no tag, no upload.
 release-dry:
-	@echo "make release-dry is milestone M5. It is not built yet."; exit 1
+	$(GORELEASER) check
+	PACKRAT_GO="go$$(sed -n 's/^go //p' go.mod)" $(GORELEASER) release --snapshot --clean
+	@ls dist/*.tar.gz dist/*.zip dist/checksums.txt

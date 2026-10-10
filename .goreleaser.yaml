@@ -1,0 +1,42 @@
+# The release path. `make release-dry` builds everything here and publishes nothing.
+version: 2
+
+project_name: packrat
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+      # GoReleaser itself needs a newer Go. The binaries use the Go of go.mod, which the tests use.
+      - GOTOOLCHAIN={{ .Env.PACKRAT_GO }}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Five targets: there is no Windows build for arm64.
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    # The same commit gives the same binary.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - name_template: "packrat_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true

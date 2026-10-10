@@ -10,6 +10,43 @@ It finds the stack, the observability gems and their configuration, agents and c
 SDKs, and the names of environment variables. From these it picks one route for each signal. It does
 not set anything up; the routes say what a later `packrat setup` would do.
 
+## Install
+
+There is no release yet. Until the first one, build from this repository with Go 1.26:
+
+```
+git clone git@github.com:packratlabs/packrat-cli.git
+cd packrat-cli
+make build              # writes bin/packrat
+bin/packrat audit ~/projects/my-app
+```
+
+`packrat` is one file with no dependencies. Copy `bin/packrat` to a directory on your `PATH`, such
+as `/usr/local/bin`, to run it from anywhere.
+
+After the first release, each release will have one archive for each of these, and a
+`checksums.txt` with the SHA-256 of each archive:
+
+| System | Archive |
+| --- | --- |
+| macOS, Apple silicon | `packrat_darwin_arm64.tar.gz` |
+| macOS, Intel | `packrat_darwin_amd64.tar.gz` |
+| Linux, x86-64 | `packrat_linux_amd64.tar.gz` |
+| Linux, arm64 | `packrat_linux_arm64.tar.gz` |
+| Windows, x86-64 | `packrat_windows_amd64.zip` |
+
+Download the archive for your system, compare it with `checksums.txt`, unpack it, and put
+`packrat` on your `PATH`.
+
+### For an agent
+
+```
+curl -fsSL https://packrat.sh/cli | sh
+```
+
+This script does not exist yet. The line is here so that the install command is decided before the
+script is written. Do not run it until this note is removed.
+
 ## Usage
 
 ```
@@ -174,6 +211,10 @@ pattern that matched.
 make build    # bin/packrat
 make check    # gofmt, vet, staticcheck, golangci-lint, tests
 ```
+
+`make release-dry` runs [GoReleaser](https://goreleaser.com) from `.goreleaser.yaml` in snapshot
+mode. It builds the five release binaries, their archives and `checksums.txt` into `dist/`. It
+publishes nothing and makes no tag. The first run compiles GoReleaser and takes some minutes.
 
 Each directory in `testdata/` is a small repository for one behaviour. The output the audit must
 give for it is in `internal/audit/testdata/golden/`. `UPDATE=1 go test ./internal/audit -run Golden`

@@ -31,12 +31,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Build the five release targets
+      - name: Build the five release targets, their archives and checksums
         env:
-          CGO_ENABLED: "0"
+          # setup-go pins the toolchain. GoReleaser needs a newer Go than go.mod; the binaries
+          # are still built with the Go of go.mod.
+          GOTOOLCHAIN: auto
+        run: make release-dry
+      - name: The checksums match and the binaries use the Go of go.mod
         run: |
-          for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
-            GOOS="${target%/*}" GOARCH="${target#*/}" go build -o "dist/packrat-${target%/*}-${target#*/}" .
+          (cd dist && sha256sum -c checksums.txt)
+          test "$(ls dist/*.tar.gz dist/*.zip | wc -l)" -eq 5
+          want="go$(sed -n 's/^go //p' go.mod)"
+          for binary in dist/*/packrat dist/*/packrat.exe; do
+            go version "$binary" | tee /dev/stderr | grep -q "$want\$"
           done
       - name: The Linux binary is static
-        run: file dist/packrat-linux-amd64 | tee /dev/stderr | grep -q "statically linked"
+        run: file dist/packrat_linux_amd64_v1/packrat | tee /dev/stderr | grep -q "statically linked"
