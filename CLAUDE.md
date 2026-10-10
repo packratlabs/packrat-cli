@@ -1,0 +1,25 @@
+# packrat-cli
+
+Report to the owner in ASD-STE100 Simplified Technical English. Short sentences, one idea each.
+
+`packrat audit` reads a repository and says what observability it has and how Packrat would take
+each signal. It is read-only: no network call, no file written, no environment value read. These
+three are promises checked by tests (`internal/audit/canary_test.go`, `nonetwork_test.go`); do not
+weaken a test to make a change pass.
+
+Go, standard library only. `make check` (gofmt, vet, staticcheck, golangci-lint, tests) must be
+green before every commit. No `panic`, `log.Fatal` or `os.Exit` outside `main.go`. Every error is
+wrapped with context. No package-level mutable state. Tests are table-driven on fixtures in
+`testdata/`; a new behaviour gets a new fixture named for it.
+
+Env files are read for variable **names only**: split at the first `=`, keep the left, discard the
+right at once, and never put a line of such a file into evidence text.
+
+The rules for which route a signal takes are in `internal/rails/routes.go`, numbered as in the
+plan (`~/Downloads/packrat-cli-plan.md`, section 5.1). Change a rule there and in its table test
+together.
+
+Do not commit, push, tag or open a pull request unless told to. End each milestone with a short
+report: built, tested, left out, and the commands to see it.
+
+Comment only what the code cannot say.

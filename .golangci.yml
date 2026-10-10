@@ -1,0 +1,40 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - exhaustive
+    - nilerr
+    - nilnil
+    - gosec
+    - gocritic
+    - revive
+    - unparam
+    - errorlint
+    - wrapcheck
+    - forbidigo
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print.*$
+          msg: print only from internal/report and main.go
+        - pattern: ^panic$
+          msg: no panic outside main.go
+        - pattern: ^os\.Exit$
+          msg: no os.Exit outside main.go
+        - pattern: ^log\.(Fatal|Panic).*$
+          msg: no log.Fatal outside main.go
+  exclusions:
+    rules:
+      - path: ^main\.go$
+        linters:
+          - forbidigo
+      - path: ^internal/report/
+        linters:
+          - forbidigo
+        text: print only from
+
+formatters:
+  enable:
+    - gofmt
