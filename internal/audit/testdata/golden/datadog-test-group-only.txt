@@ -1,0 +1,7 @@
+packrat audit  datadog-test-group-only  Rails 7.1.5
+
+Already here
+  Datadog  datadog 2.9.0  Gemfile.lock:4  traces, logs, exceptions (test only)
+      needs an Agent; no agentless APM in Ruby
+
+Nothing was changed. Nothing was sent.

@@ -1,0 +1,64 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.2.2.1",
+    "ruby": "3.2.4",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 20,
+        "text": "rails (7.2.2.1)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.27.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "sentry-ruby (5.27.0)"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.15.0.pre",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 13,
+          "text": "lograge (0.15.0.pre)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}

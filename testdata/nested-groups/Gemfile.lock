@@ -1,0 +1,33 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    airbrake (13.0.4)
+    appsignal (4.5.1)
+    bugsnag (6.27.1)
+    honeybadger (5.27.0)
+    lograge (0.14.0)
+    newrelic_rpm (9.17.0)
+    rails (7.1.5)
+    rollbar (3.6.1)
+    scout_apm (5.6.0)
+    sentry-ruby (5.26.0)
+    skylight (6.0.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  airbrake
+  appsignal
+  bugsnag
+  honeybadger
+  lograge
+  newrelic_rpm
+  rails (~> 7.1)
+  rollbar
+  scout_apm
+  sentry-ruby
+  skylight
+
+BUNDLED WITH
+   2.5.11

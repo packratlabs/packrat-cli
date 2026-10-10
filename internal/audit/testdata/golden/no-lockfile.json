@@ -1,0 +1,66 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "",
+    "ruby": "3.3.0",
+    "evidence": [
+      {
+        "path": "Gemfile",
+        "line": 3,
+        "text": "gem \"rails\", \"~\u003e 8.0\""
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile",
+          "line": 4,
+          "text": "gem \"sentry-rails\""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "Skylight",
+      "gem": "skylight",
+      "version": "",
+      "direct": true,
+      "groups": [
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile",
+          "line": 7,
+          "text": "gem \"skylight\""
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": [
+    "no Gemfile.lock; run bundle install for versions"
+  ]
+}

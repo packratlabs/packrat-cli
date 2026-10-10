@@ -1,0 +1,8 @@
+packrat audit  direct-and-transitive  Rails 8.0.2, Ruby 3.4.2
+
+Already here
+  Sentry   sentry-rails 5.26.0  Gemfile.lock:13  exceptions
+  Sentry   sentry-ruby 5.26.0   Gemfile.lock:15  exceptions (dependency)
+  logging  lograge 0.14.0       Gemfile.lock:4   logs shape; not a destination
+
+Nothing was changed. Nothing was sent.

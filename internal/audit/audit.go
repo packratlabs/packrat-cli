@@ -44,8 +44,8 @@ type Evidence struct {
 	Text string `json:"text"`
 }
 
-// Stack is the framework the repository was recognised as.
-type Stack struct {
+// StackInfo is the framework the repository was recognised as.
+type StackInfo struct {
 	Name     string     `json:"name"`
 	Version  string     `json:"version"`
 	Ruby     string     `json:"ruby"`
@@ -99,27 +99,51 @@ type Host struct {
 	Notes []string `json:"notes"`
 }
 
+// Production reports whether the gem loads in production. A gem with no groups does.
+func (f Finding) Production() bool {
+	for _, group := range f.Groups {
+		if group != "development" && group != "test" {
+			return true
+		}
+	}
+	return len(f.Groups) == 0
+}
+
+// Facts is what a Stack read from a repository.
+type Facts struct {
+	Stack StackInfo
+	SDKs  []Finding
+	Notes []string
+}
+
+// Stack reads one kind of repository. Rails is the only implementation.
+type Stack interface {
+	Detect(root *os.Root) (bool, Evidence)
+	Read(root *os.Root) (Facts, error)
+}
+
 // Audit is everything one run found. A nil Stack means no supported stack.
 type Audit struct {
-	Schema   string    `json:"schema"`
-	Path     string    `json:"path"`
-	Stack    *Stack    `json:"stack"`
-	SDKs     []Finding `json:"sdks"`
-	Agents   []Agent   `json:"agents"`
-	Browser  []Browser `json:"browser"`
-	EnvNames []EnvName `json:"env_names"`
-	Signals  []Signal  `json:"signals"`
-	Host     *Host     `json:"host"`
-	Notes    []string  `json:"notes"`
+	Schema   string     `json:"schema"`
+	Path     string     `json:"path"`
+	Stack    *StackInfo `json:"stack"`
+	SDKs     []Finding  `json:"sdks"`
+	Agents   []Agent    `json:"agents"`
+	Browser  []Browser  `json:"browser"`
+	EnvNames []EnvName  `json:"env_names"`
+	Signals  []Signal   `json:"signals"`
+	Host     *Host      `json:"host"`
+	Notes    []string   `json:"notes"`
 }
 
-// Options are the switches of one run.
+// Options are the switches of one run. Stacks are tried in order and the first match is read.
 type Options struct {
-	Host bool
+	Host   bool
+	Stacks []Stack
 }
 
-// Run audits the directory at path. It reads nothing yet and returns an empty Audit.
-func Run(path string, _ Options) (Audit, error) {
+// Run audits the directory at path.
+func Run(path string, opts Options) (Audit, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return Audit{}, fmt.Errorf("resolving %s: %w", path, err)
@@ -135,17 +159,41 @@ func Run(path string, _ Options) (Audit, error) {
 	if err != nil {
 		return Audit{}, fmt.Errorf("opening %s: %w", path, err)
 	}
-	if err := root.Close(); err != nil {
-		return Audit{}, fmt.Errorf("closing %s: %w", path, err)
+	result, err := read(root, opts.Stacks)
+	if closeErr := root.Close(); err == nil && closeErr != nil {
+		err = fmt.Errorf("closing %s: %w", path, closeErr)
 	}
-	return Audit{
+	if err != nil {
+		return Audit{}, err
+	}
+	result.Path = abs
+	return result, nil
+}
+
+func read(root *os.Root, stacks []Stack) (Audit, error) {
+	result := Audit{
 		Schema:   Schema,
-		Path:     abs,
 		SDKs:     []Finding{},
 		Agents:   []Agent{},
 		Browser:  []Browser{},
 		EnvNames: []EnvName{},
 		Signals:  []Signal{},
 		Notes:    []string{},
-	}, nil
+	}
+	for _, stack := range stacks {
+		found, evidence := stack.Detect(root)
+		if !found {
+			continue
+		}
+		facts, err := stack.Read(root)
+		if err != nil {
+			return Audit{}, fmt.Errorf("reading the %s stack: %w", facts.Stack.Name, err)
+		}
+		facts.Stack.Evidence = []Evidence{evidence}
+		result.Stack = &facts.Stack
+		result.SDKs = append(result.SDKs, facts.SDKs...)
+		result.Notes = append(result.Notes, facts.Notes...)
+		break
+	}
+	return result, nil
 }

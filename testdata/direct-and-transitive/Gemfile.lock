@@ -1,0 +1,32 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    lograge (0.14.0)
+      actionpack (>= 4)
+    nokogiri (1.18.9)
+      racc (~> 1.4)
+    nokogiri (1.18.9-arm64-darwin)
+      racc (~> 1.4)
+    opentelemetry-api (1.5.0)
+    racc (1.8.1)
+    rails (8.0.2)
+    sentry-rails (5.26.0)
+      sentry-ruby (~> 5.26.0)
+    sentry-ruby (5.26.0)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+
+PLATFORMS
+  arm64-darwin
+  ruby
+
+DEPENDENCIES
+  lograge
+  rails (~> 8.0)
+  sentry-rails
+
+CHECKSUMS
+  datadog (2.9.0) sha256=0000000000000000000000000000000000000000000000000000000000000000
+  rails (8.0.2) sha256=0000000000000000000000000000000000000000000000000000000000000000
+
+BUNDLED WITH
+   2.6.9

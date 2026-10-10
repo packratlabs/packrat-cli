@@ -1,0 +1,5 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 7.2"
+gem "sentry-ruby", git: "https://github.com/getsentry/sentry-ruby.git", branch: "master"
+gem "lograge", path: "vendor/gems/lograge"

@@ -1,0 +1,8 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 8.0"
+gem "sentry-rails"
+
+group :test do
+  gem "skylight"
+end

@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    datadog (2.9.0)
+      msgpack
+    msgpack (1.7.5)
+    rails (7.1.5)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  datadog
+  rails (~> 7.1)
+
+BUNDLED WITH
+   2.5.11

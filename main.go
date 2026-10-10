@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/rails"
 	"github.com/packratlabs/packrat-cli/internal/report"
 )
 
@@ -67,7 +68,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	if len(paths) == 1 {
 		path = paths[0]
 	}
-	result, err := audit.Run(path, audit.Options{Host: *host})
+	result, err := audit.Run(path, audit.Options{Host: *host, Stacks: []audit.Stack{rails.Stack{}}})
 	if errors.Is(err, audit.ErrNotDirectory) {
 		return say(stderr, fmt.Sprintf("packrat audit: %v\n", err), exitUsage)
 	}

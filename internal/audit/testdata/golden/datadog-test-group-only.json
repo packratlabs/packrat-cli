@@ -1,0 +1,49 @@
+{
+  "schema": "packrat.audit/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.1.5",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 7,
+        "text": "rails (7.1.5)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "datadog",
+      "version": "2.9.0",
+      "direct": true,
+      "groups": [
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "datadog (2.9.0)"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [],
+  "host": null,
+  "notes": []
+}
