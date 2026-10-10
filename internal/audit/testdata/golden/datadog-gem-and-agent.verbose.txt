@@ -1,0 +1,25 @@
+packrat audit  datadog-gem-and-agent  Rails 8.0.2
+
+  Exceptions  ready        through Sentry, which you already use
+      Sentry copy: sentry-ruby sends; Packrat takes the same envelope
+  Traces      needs setup  through your Datadog Agent, which sends a copy
+      Datadog Agent copy: Agent config at docker-compose.yml:5
+      not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
+  Logs        needs setup  through your Datadog Agent, which sends a copy
+      Datadog Agent copy: same Agent
+  Replays     needs setup  add the Sentry browser SDK
+      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
+
+1 of 4 signals is ready.
+
+Found in this repository
+  Datadog        config/initializers/datadog.rb:1  traces, logs, exceptions
+      needs an Agent; no agentless APM in Ruby; tracing instrumented
+      datadog 2.9.0
+  Sentry         config/initializers/sentry.rb:1   exceptions; traces off
+      sentry-rails 5.26.0
+  Datadog Agent  docker-compose.yml:5
+  Env names      in docker-compose.yml
+      DD_AGENT_HOST, DD_SITE
+
+Nothing was changed. Nothing was sent.

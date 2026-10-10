@@ -1,0 +1,19 @@
+packrat audit  otel-logs-already  Rails 7.2.2
+
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error
+  Traces      ready        through OpenTelemetry, which you already use
+      OpenTelemetry: already exports OTLP; setup points the exporter at Packrat
+  Logs        ready        through OpenTelemetry, which you already use
+      OpenTelemetry logs: already exports OTLP logs; setup points the exporter at Packrat
+  Replays     needs setup  add the Sentry browser SDK
+      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
+
+2 of 4 signals are ready.
+
+Found in this repository
+  OpenTelemetry  config/initializers/otel.rb:1  traces, logs
+      opentelemetry-exporter-otlp 0.32.0, opentelemetry-exporter-otlp-logs 0.3.0,
+      opentelemetry-logs-sdk 0.4.0, opentelemetry-sdk 1.10.0
+
+Nothing was changed. Nothing was sent.

@@ -1,19 +1,11 @@
 packrat audit  datadog-gem-no-agent  Rails 8.0.2
 
-Already here
-  Datadog  config/initializers/datadog.rb:1  traces, logs, exceptions
-      needs an Agent; no agentless APM in Ruby; tracing instrumented
-      datadog 2.9.0
+  Exceptions  needs setup  through your Datadog Agent, which sends a copy
+  Traces      needs setup  through your Datadog Agent, which sends a copy
+  Logs        needs setup  add the OpenTelemetry logs gems
+  Replays     needs setup  add the Sentry browser SDK
 
-Routes
-  exceptions  Datadog Agent copy
-      errors arrive as error spans
-  traces      Datadog Agent copy
-      Agent config not in this repository; setup will print the lines for it
-      not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
-  logs        OpenTelemetry logs
-      setup adds the OpenTelemetry logs SDK
-  replays     Sentry browser SDK pointed at Packrat
-      Packrat accepts Sentry envelopes
+0 of 4 signals are ready.
+Add --verbose to see what was found and why.
 
 Nothing was changed. Nothing was sent.

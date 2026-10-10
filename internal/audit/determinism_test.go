@@ -20,7 +20,7 @@ type mode struct {
 }
 
 func modes() []mode {
-	return []mode{{"txt", report.Text}, {"json", report.JSON}}
+	return []mode{{"txt", report.Text}, {"verbose.txt", report.Verbose}, {"json", report.JSON}}
 }
 
 func fixtures(t *testing.T) []string {
@@ -100,9 +100,11 @@ func TestGolden(t *testing.T) {
 
 func TestTableIsUnder100Columns(t *testing.T) {
 	for _, fixture := range fixtures(t) {
-		for line := range strings.SplitSeq(string(render(t, fixture, modes()[0])), "\n") {
-			if len(line) >= 100 {
-				t.Errorf("%s: line of %d columns: %s", fixture, len(line), line)
+		for _, m := range modes()[:2] {
+			for line := range strings.SplitSeq(string(render(t, fixture, m)), "\n") {
+				if len(line) >= 100 {
+					t.Errorf("%s %s: line of %d columns: %s", fixture, m.name, len(line), line)
+				}
 			}
 		}
 	}

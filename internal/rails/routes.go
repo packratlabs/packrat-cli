@@ -7,19 +7,6 @@ import (
 	"github.com/packratlabs/packrat-cli/internal/audit"
 )
 
-// The routes of version 1.
-const (
-	RouteDatadogAgent  = "Datadog Agent copy"
-	RouteOTel          = "OpenTelemetry"
-	RouteOTelRails     = "OpenTelemetry (Rails)"
-	RouteSentry        = "Sentry copy"
-	RouteOTelErrors    = "OpenTelemetry exceptions (Rails.error)"
-	RouteOTelLogs      = "OpenTelemetry logs"
-	RouteSentryBrowser = "Sentry browser copy"
-	RouteSentryNew     = "Sentry browser SDK pointed at Packrat"
-	RouteNone          = "none"
-)
-
 const (
 	vendorDatadog       = "Datadog"
 	vendorDatadogAgent  = "Datadog Agent"
@@ -65,11 +52,11 @@ func tracesRoute(facts audit.Facts, datadog bool) audit.Signal {
 		if where := agentWhere(facts); where != "" {
 			reason = "Agent config at " + where
 		}
-		return audit.Signal{Route: RouteDatadogAgent, State: audit.StateRoute, Reason: reason, Blocked: []string{blockedOTel}}
+		return audit.Signal{Route: audit.RouteDatadogAgent, State: audit.StateRoute, Reason: reason, Blocked: []string{blockedOTel}}
 	}
 	// Traces 2: the SDK and the OTLP exporter are both here.
 	if hasGem(facts, "opentelemetry-sdk") && hasGem(facts, "opentelemetry-exporter-otlp") {
-		return audit.Signal{Route: RouteOTel, State: audit.StateAlready,
+		return audit.Signal{Route: audit.RouteOTel, State: audit.StateAlready,
 			Reason: "already exports OTLP; setup points the exporter at Packrat"}
 	}
 	// Traces 3: everything else gets OpenTelemetry.
@@ -80,18 +67,18 @@ func tracesRoute(facts audit.Facts, datadog bool) audit.Signal {
 	if sentryTracesAreOn(facts) {
 		reasons = append(reasons, "Sentry traces stay; Packrat reads OpenTelemetry traces because they are finer")
 	}
-	return audit.Signal{Route: RouteOTelRails, State: audit.StateRoute, Reason: strings.Join(reasons, "; ")}
+	return audit.Signal{Route: audit.RouteOTelRails, State: audit.StateRoute, Reason: strings.Join(reasons, "; ")}
 }
 
 func exceptionsRoute(facts audit.Facts, datadog bool) audit.Signal {
 	// Exceptions 1: a configured Sentry wins over Datadog.
 	if sentryConfigured(facts) {
-		return audit.Signal{Route: RouteSentry, State: audit.StateRoute,
+		return audit.Signal{Route: audit.RouteSentry, State: audit.StateRoute,
 			Reason: "sentry-ruby sends; Packrat takes the same envelope"}
 	}
 	// Exceptions 2: the route chosen for traces carries the errors.
 	if datadog {
-		return audit.Signal{Route: RouteDatadogAgent, State: audit.StateRoute, Reason: "errors arrive as error spans"}
+		return audit.Signal{Route: audit.RouteDatadogAgent, State: audit.StateRoute, Reason: "errors arrive as error spans"}
 	}
 	// Exceptions 3: Rails.error, next to any error tracker that is here.
 	reasons := []string{"setup subscribes to Rails.error"}
@@ -100,20 +87,20 @@ func exceptionsRoute(facts audit.Facts, datadog bool) audit.Signal {
 			reasons = append(reasons, "keeps "+vendor)
 		}
 	}
-	return audit.Signal{Route: RouteOTelErrors, State: audit.StateRoute, Reason: strings.Join(reasons, "; ")}
+	return audit.Signal{Route: audit.RouteOTelErrors, State: audit.StateRoute, Reason: strings.Join(reasons, "; ")}
 }
 
 func logsRoute(facts audit.Facts, datadog bool) audit.Signal {
 	// Logs 1: only when the Agent is in the repository; the gem alone does not ship logs.
 	if datadog && agentWhere(facts) != "" {
-		return audit.Signal{Route: RouteDatadogAgent, State: audit.StateRoute, Reason: "same Agent"}
+		return audit.Signal{Route: audit.RouteDatadogAgent, State: audit.StateRoute, Reason: "same Agent"}
 	}
 	// Logs 2 and 3 are not the plan's. The plan said "later" for every other case, because Ruby
 	// OpenTelemetry logs are pre-1.0. The owner decided after the corpus to treat them as released:
 	// Packrat accepts them, and Colorbook sends its logs this way.
 	// Logs 2: the logs SDK and its OTLP exporter are both here.
 	if hasGem(facts, "opentelemetry-logs-sdk") && hasGem(facts, "opentelemetry-exporter-otlp-logs") {
-		return audit.Signal{Route: RouteOTelLogs, State: audit.StateAlready,
+		return audit.Signal{Route: audit.RouteOTelLogs, State: audit.StateAlready,
 			Reason: "already exports OTLP logs; setup points the exporter at Packrat"}
 	}
 	// Logs 3: everything else gets OpenTelemetry logs.
@@ -127,7 +114,7 @@ func logsRoute(facts audit.Facts, datadog bool) audit.Signal {
 	if len(gems) > 0 {
 		reason += "; logs are shaped by " + strings.Join(gems, ", ")
 	}
-	return audit.Signal{Route: RouteOTelLogs, State: audit.StateRoute, Reason: reason}
+	return audit.Signal{Route: audit.RouteOTelLogs, State: audit.StateRoute, Reason: reason}
 }
 
 func replaysRoute(facts audit.Facts) audit.Signal {
@@ -137,20 +124,20 @@ func replaysRoute(facts audit.Facts) audit.Signal {
 		}
 		// Replays 1: Sentry browser with replays on.
 		if browser.Replays {
-			return audit.Signal{Route: RouteSentryBrowser, State: audit.StateRoute, Reason: "replays on"}
+			return audit.Signal{Route: audit.RouteSentryBrowser, State: audit.StateRoute, Reason: "replays on"}
 		}
 		// Replays 2: Sentry browser without replays.
-		return audit.Signal{Route: RouteSentryBrowser, State: audit.StateRoute, Reason: "replays not enabled yet"}
+		return audit.Signal{Route: audit.RouteSentryBrowser, State: audit.StateRoute, Reason: "replays not enabled yet"}
 	}
 	// Replays 3: Datadog RUM.
 	for _, browser := range facts.Browser {
 		if browser.Vendor == vendorDatadogRUM {
-			return audit.Signal{Route: RouteNone, State: audit.StateUnsupported,
+			return audit.Signal{Route: audit.RouteNone, State: audit.StateUnsupported,
 				Reason: "Datadog RUM replays are not supported yet"}
 		}
 	}
 	// Replays 4: nothing.
-	return audit.Signal{Route: RouteSentryNew, State: audit.StateRoute, Reason: "Packrat accepts Sentry envelopes"}
+	return audit.Signal{Route: audit.RouteSentryNew, State: audit.StateRoute, Reason: "Packrat accepts Sentry envelopes"}
 }
 
 func hasVendor(facts audit.Facts, vendor string) bool {

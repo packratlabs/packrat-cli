@@ -1,17 +1,11 @@
 packrat audit  browser-datadog-rum  Rails 8.0.2
 
-Already here
-  Datadog RUM      app/javascript/rum.ts:3  @datadog/browser-rum; replays on
-  PostHog browser  package.json:4           posthog-js; no replays found
+  Exceptions  needs setup    add an OpenTelemetry subscriber for Rails errors
+  Traces      needs setup    add the OpenTelemetry gems
+  Logs        needs setup    add the OpenTelemetry logs gems
+  Replays     not supported  Datadog RUM replays are not supported yet
 
-Routes
-  exceptions  OpenTelemetry exceptions (Rails.error)
-      setup subscribes to Rails.error
-  traces      OpenTelemetry (Rails)
-      setup adds the OpenTelemetry SDK
-  logs        OpenTelemetry logs
-      setup adds the OpenTelemetry logs SDK
-  replays     none (not supported)
-      Datadog RUM replays are not supported yet
+0 of 4 signals are ready.
+Add --verbose to see what was found and why.
 
 Nothing was changed. Nothing was sent.

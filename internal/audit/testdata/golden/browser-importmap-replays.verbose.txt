@@ -1,0 +1,17 @@
+packrat audit  browser-importmap-replays  Rails 8.0.2
+
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error
+  Traces      needs setup  add the OpenTelemetry gems
+      OpenTelemetry (Rails): setup adds the OpenTelemetry SDK
+  Logs        needs setup  add the OpenTelemetry logs gems
+      OpenTelemetry logs: setup adds the OpenTelemetry logs SDK
+  Replays     ready        through the Sentry browser SDK, which you already use
+      Sentry browser copy: replays on
+
+1 of 4 signals is ready.
+
+Found in this repository
+  Sentry browser  app/javascript/application.js:3  @sentry/browser; replays on
+
+Nothing was changed. Nothing was sent.

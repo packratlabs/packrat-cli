@@ -1,0 +1,20 @@
+packrat audit  git-and-path-sources  Rails 7.2.2.1, Ruby 3.2.4
+
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error
+  Traces      needs setup  add the OpenTelemetry gems
+      OpenTelemetry (Rails): setup adds the OpenTelemetry SDK
+  Logs        needs setup  add the OpenTelemetry logs gems
+      OpenTelemetry logs: setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
+  Replays     needs setup  add the Sentry browser SDK
+      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
+
+0 of 4 signals are ready.
+
+Found in this repository
+  Sentry   Gemfile.lock:6   exceptions; gem present, no configure call found
+      sentry-ruby 5.27.0
+  logging  Gemfile.lock:13  logs shape; not a destination
+      lograge 0.15.0.pre
+
+Nothing was changed. Nothing was sent.

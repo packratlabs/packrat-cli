@@ -13,11 +13,30 @@ not set anything up; the routes say what a later `packrat setup` would do.
 ## Usage
 
 ```
-packrat audit [path] [--json] [--host]
+packrat audit [path] [--verbose] [--json] [--host]
 ```
 
+```
+packrat audit  shop  Rails 8.1.1, Ruby 3.3.8
+
+  Exceptions  ready        through Sentry, which you already use
+  Traces      ready        through OpenTelemetry, which you already use
+  Logs        needs setup  add the OpenTelemetry logs gems
+  Replays     ready        through the Sentry browser SDK, which you already use
+
+3 of 4 signals are ready.
+Add --verbose to see what was found and why.
+
+Nothing was changed. Nothing was sent.
+```
+
+"ready" means that Packrat can receive what the repository already sends, with no new library.
+
 - `path` is the directory to audit. The default is the current directory.
-- `--json` prints the JSON document instead of the table.
+- `--verbose`, or `-v`, adds the route and the reason under each line, and then everything that was
+  found: each vendor, the file and line that configures it, its gems, agents, browser SDKs and the
+  names of environment variables.
+- `--json` prints the JSON document instead of the table. It always holds everything.
 - `--host` also probes the machine that runs the audit, and prints the result under "This machine,
   not production". It is off by default, because that machine is usually a laptop.
 

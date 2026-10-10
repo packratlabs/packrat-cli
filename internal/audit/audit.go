@@ -36,6 +36,19 @@ const (
 	StateUnsupported State = "unsupported"
 )
 
+// The route names of version 1. They are part of the JSON document.
+const (
+	RouteDatadogAgent  = "Datadog Agent copy"
+	RouteOTel          = "OpenTelemetry"
+	RouteOTelRails     = "OpenTelemetry (Rails)"
+	RouteSentry        = "Sentry copy"
+	RouteOTelErrors    = "OpenTelemetry exceptions (Rails.error)"
+	RouteOTelLogs      = "OpenTelemetry logs"
+	RouteSentryBrowser = "Sentry browser copy"
+	RouteSentryNew     = "Sentry browser SDK pointed at Packrat"
+	RouteNone          = "none"
+)
+
 // Evidence is the file and line a fact was read from. Path is relative to the audited root and
 // uses forward slashes on every OS.
 type Evidence struct {

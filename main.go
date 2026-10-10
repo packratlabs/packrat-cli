@@ -23,10 +23,11 @@ const (
 const usage = `packrat reads a repository and says what observability it has.
 
 Usage:
-  packrat audit [path] [--json] [--host]
+  packrat audit [path] [--verbose] [--json] [--host]
 
   path     directory to audit (default: the current directory)
-  --json   print the JSON document instead of the table
+  -v, --verbose  also print the reason for each line and everything that was found
+  --json   print the JSON document, which always holds everything
   --host   also probe this machine for a Datadog Agent; it opens one local socket
 
 audit is read-only. It writes no file and sends nothing. Without --host it opens no socket.
@@ -55,6 +56,8 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(io.Discard)
 	asJSON := fs.Bool("json", false, "")
 	probe := fs.Bool("host", false, "")
+	verbose := fs.Bool("verbose", false, "")
+	fs.BoolVar(verbose, "v", false, "")
 	paths, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
 		return say(stdout, usage, exitOK)
@@ -81,8 +84,11 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat audit: %v\n", err), exitFailed)
 	}
 	write := report.Text
-	if *asJSON {
+	switch {
+	case *asJSON:
 		write = report.JSON
+	case *verbose:
+		write = report.Verbose
 	}
 	if err := write(stdout, result); err != nil {
 		return say(stderr, fmt.Sprintf("packrat audit: %v\n", err), exitFailed)

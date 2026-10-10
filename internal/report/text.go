@@ -17,6 +17,12 @@ const NoStack = "No supported stack found (Rails is the only one yet)"
 // Promise is always the last line of the table.
 const Promise = "Nothing was changed. Nothing was sent."
 
+// FoundHeading is printed above the evidence in the verbose table.
+const FoundHeading = "Found in this repository"
+
+// Hint is printed by the short table when there is evidence that it does not show.
+const Hint = "Add --verbose to see what was found and why."
+
 // HostHeading is printed above the facts of --host, so that nobody reads them as production.
 const HostHeading = "This machine, not production"
 
@@ -35,34 +41,40 @@ type row struct {
 	more                       []string
 }
 
-// Text writes the table for a.
+// Text writes the short answer: one line for each signal. It is what a person reads first.
 func Text(w io.Writer, a audit.Audit) error {
+	return write(w, a, false)
+}
+
+// Verbose writes the short answer, the reason for each line, and everything that was found.
+func Verbose(w io.Writer, a audit.Audit) error {
+	return write(w, a, true)
+}
+
+func write(w io.Writer, a audit.Audit, verbose bool) error {
 	var b strings.Builder
-	b.WriteString(header(a) + "\n\n")
+	b.WriteString(header(a) + "\n")
 	if a.Stack == nil {
-		b.WriteString(NoStack + "\n\n")
-	}
-	for _, note := range a.Notes {
-		b.WriteString(note + "\n")
+		b.WriteString("\n" + NoStack + "\n")
 	}
 	if len(a.Notes) > 0 {
+		b.WriteString("\n" + strings.Join(a.Notes, "\n") + "\n")
+	}
+	found := foundRows(a)
+	hint := !verbose && len(found) > 0
+	if len(a.Signals) > 0 {
+		b.WriteString("\n")
+		writeRows(&b, signalRows(a, verbose))
+		b.WriteString("\n" + summary(a) + "\n")
+	} else if hint {
 		b.WriteString("\n")
 	}
-	b.WriteString("Already here\n")
-	rows := sdkRows(a.SDKs)
-	for _, agent := range a.Agents {
-		rows = append(rows, agentRow(agent))
+	if hint {
+		b.WriteString(Hint + "\n")
 	}
-	for _, browser := range a.Browser {
-		rows = append(rows, browserRow(browser))
-	}
-	if len(a.EnvNames) > 0 {
-		rows = append(rows, envRow(a.EnvNames))
-	}
-	writeRows(&b, rows)
-	if len(a.Signals) > 0 {
-		b.WriteString("\nRoutes\n")
-		writeRows(&b, signalRows(a.Signals))
+	if verbose {
+		b.WriteString("\n" + FoundHeading + "\n")
+		writeRows(&b, found)
 	}
 	if a.Host != nil {
 		b.WriteString("\n" + HostHeading + "\n")
@@ -73,6 +85,20 @@ func Text(w io.Writer, a audit.Audit) error {
 		return fmt.Errorf("writing table: %w", err)
 	}
 	return nil
+}
+
+func foundRows(a audit.Audit) []row {
+	rows := sdkRows(a.SDKs)
+	for _, agent := range a.Agents {
+		rows = append(rows, agentRow(agent))
+	}
+	for _, browser := range a.Browser {
+		rows = append(rows, browserRow(browser))
+	}
+	if len(a.EnvNames) > 0 {
+		rows = append(rows, envRow(a.EnvNames))
+	}
+	return rows
 }
 
 func header(a audit.Audit) string {
@@ -228,33 +254,101 @@ func envRow(names []audit.EnvName) row {
 	return row{vendor: "Env names", what: "in " + strings.Join(files, ", "), more: wrap(all, ", ")}
 }
 
-// signalRows puts the reason under the route. Route names are long, and a reason beside one
-// would wrap on some rows and not on others.
-func signalRows(signals []audit.Signal) []row {
+const (
+	statusReady       = "ready"
+	statusSetup       = "needs setup"
+	statusLater       = "later"
+	statusUnsupported = "not supported"
+)
+
+// signalRows makes one line for each signal: its name, how much work it is, then what the work is, in
+// words that do not need the route names. The verbose table adds the route and its reason.
+func signalRows(a audit.Audit, verbose bool) []row {
 	var rows []row
-	for _, signal := range signals {
-		r := row{vendor: string(signal.Name), where: signal.Route + stateLabel(signal.State)}
-		r.more = wrap(strings.Fields(signal.Reason), " ")
-		for _, blocked := range signal.Blocked {
-			r.more = append(r.more, wrap(strings.Fields("not "+blocked), " ")...)
+	for _, signal := range a.Signals {
+		name := string(signal.Name)
+		r := row{vendor: strings.ToUpper(name[:1]) + name[1:], where: status(a, signal), what: sentence(a, signal)}
+		if verbose {
+			r.more = wrap(strings.Fields(signal.Route+": "+signal.Reason), " ")
+			for _, blocked := range signal.Blocked {
+				r.more = append(r.more, wrap(strings.Fields("not "+blocked), " ")...)
+			}
 		}
 		rows = append(rows, r)
 	}
 	return rows
 }
 
-func stateLabel(state audit.State) string {
-	switch state {
-	case audit.StateRoute:
-		return ""
+// status says how much work a signal is. "ready" means that Packrat can receive what the
+// repository already sends, with no new library.
+func status(a audit.Audit, signal audit.Signal) string {
+	switch signal.State {
 	case audit.StateAlready:
-		return " (already here)"
+		return statusReady
 	case audit.StateLater:
-		return " (later)"
+		return statusLater
 	case audit.StateUnsupported:
-		return " (not supported)"
+		return statusUnsupported
+	case audit.StateRoute:
+		if signal.Route == audit.RouteSentry || (signal.Route == audit.RouteSentryBrowser && sentryReplays(a)) {
+			return statusReady
+		}
 	}
-	return ""
+	return statusSetup
+}
+
+func sentryReplays(a audit.Audit) bool {
+	for _, browser := range a.Browser {
+		if browser.Vendor == "Sentry browser" && browser.Replays {
+			return true
+		}
+	}
+	return false
+}
+
+func sentence(a audit.Audit, signal audit.Signal) string {
+	if signal.State == audit.StateUnsupported || signal.State == audit.StateLater {
+		return signal.Reason
+	}
+	ready := status(a, signal) == statusReady
+	switch signal.Route {
+	case audit.RouteSentry:
+		return "through Sentry, which you already use"
+	case audit.RouteDatadogAgent:
+		return "through your Datadog Agent, which sends a copy"
+	case audit.RouteOTel:
+		return "through OpenTelemetry, which you already use"
+	case audit.RouteOTelRails:
+		return "add the OpenTelemetry gems"
+	case audit.RouteOTelErrors:
+		return "add an OpenTelemetry subscriber for Rails errors"
+	case audit.RouteOTelLogs:
+		if ready {
+			return "through OpenTelemetry, which you already use"
+		}
+		return "add the OpenTelemetry logs gems"
+	case audit.RouteSentryBrowser:
+		if ready {
+			return "through the Sentry browser SDK, which you already use"
+		}
+		return "turn on replays in the Sentry browser SDK, which you already use"
+	case audit.RouteSentryNew:
+		return "add the Sentry browser SDK"
+	}
+	return signal.Route
+}
+
+func summary(a audit.Audit) string {
+	ready := 0
+	for _, signal := range a.Signals {
+		if status(a, signal) == statusReady {
+			ready++
+		}
+	}
+	if ready == 1 {
+		return fmt.Sprintf("1 of %d signals is ready.", len(a.Signals))
+	}
+	return fmt.Sprintf("%d of %d signals are ready.", ready, len(a.Signals))
 }
 
 func hostRows(host audit.Host) []row {

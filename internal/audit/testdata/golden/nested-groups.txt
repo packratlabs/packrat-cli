@@ -1,41 +1,11 @@
 packrat audit  nested-groups  Rails 7.1.5
 
-Already here
-  Airbrake     Gemfile.lock:4   exceptions (development, test only)
-      gem present, no configure call found
-      airbrake 13.0.4 (development, test only)
-  AppSignal    Gemfile.lock:5   traces (development, test only)
-      gem present, no configure call found
-      appsignal 4.5.1 (development, test only)
-  Bugsnag      Gemfile.lock:6   exceptions (development, test only)
-      gem present, no configure call found
-      bugsnag 6.27.1 (development, test only)
-  Honeybadger  Gemfile.lock:7   exceptions; gem present, no configure call found
-      honeybadger 5.27.0
-  New Relic    Gemfile.lock:9   traces, exceptions, logs (development only)
-      coexists with OpenTelemetry; gem present, no configure call found
-      newrelic_rpm 9.17.0 (development only)
-  Rollbar      Gemfile.lock:11  exceptions (development, test only)
-      gem present, no configure call found
-      rollbar 3.6.1 (development, test only)
-  Scout        Gemfile.lock:12  traces (development, test only)
-      gem present, no configure call found
-      scout_apm 5.6.0 (development, test only)
-  Sentry       Gemfile.lock:13  exceptions; gem present, no configure call found
-      sentry-ruby 5.26.0
-  Skylight     Gemfile.lock:14  traces (test only); gem present, no configure call found
-      skylight 6.0.4 (test only)
-  logging      Gemfile.lock:8   logs shape; not a destination
-      lograge 0.14.0
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+  Traces      needs setup  add the OpenTelemetry gems
+  Logs        needs setup  add the OpenTelemetry logs gems
+  Replays     needs setup  add the Sentry browser SDK
 
-Routes
-  exceptions  OpenTelemetry exceptions (Rails.error)
-      setup subscribes to Rails.error; keeps Honeybadger
-  traces      OpenTelemetry (Rails)
-      setup adds the OpenTelemetry SDK
-  logs        OpenTelemetry logs
-      setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
-  replays     Sentry browser SDK pointed at Packrat
-      Packrat accepts Sentry envelopes
+0 of 4 signals are ready.
+Add --verbose to see what was found and why.
 
 Nothing was changed. Nothing was sent.
