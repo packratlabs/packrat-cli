@@ -2,13 +2,18 @@
 
 [![check](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml/badge.svg)](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml)
 
-`packrat audit` reads a repository and says what observability it has, and which route gets each
-signal (exceptions, logs, traces, replays) into [Packrat](https://packrat.sh). Ruby on Rails is the
-only stack yet.
+`packrat` has three commands:
 
-It finds the stack, the observability gems and their configuration, agents and collectors, browser
-SDKs, and the names of environment variables. From these it picks one route for each signal. It does
-not set anything up; the routes say what a later `packrat setup` would do.
+- `packrat detect` reads a repository and says what observability it has, and which route gets each
+  signal (exceptions, logs, traces, replays) into [Packrat](https://packrat.sh). Ruby on Rails is the
+  only stack yet.
+- `packrat apps` lists the apps that Packrat has data from.
+- `packrat status` says what Packrat receives for one app: each signal, each source that sends it,
+  and whether Packrat keeps it.
+
+`detect` finds the stack, the observability gems and their configuration, agents and collectors,
+browser SDKs, and the names of environment variables. From these it picks one route for each signal.
+It does not set anything up; the routes say what a later `packrat setup` would do.
 
 ## Install
 
@@ -18,7 +23,7 @@ There is no release yet. Until the first one, build from this repository with Go
 git clone git@github.com:packratlabs/packrat-cli.git
 cd packrat-cli
 make build              # writes bin/packrat
-bin/packrat audit ~/projects/my-app
+bin/packrat detect ~/projects/my-app
 ```
 
 `packrat` is one file with no dependencies. Copy `bin/packrat` to a directory on your `PATH`, such
@@ -50,11 +55,15 @@ script is written. Do not run it until this note is removed.
 ## Usage
 
 ```
-packrat audit [path] [--verbose] [--json] [--host]
+packrat detect [path] [--verbose] [--json] [--host]
+packrat apps [--json]
+packrat status --app service/env [--wait] [--json]
 ```
 
+### detect
+
 ```
-packrat audit  shop  Rails 8.1.1, Ruby 3.3.8
+packrat detect  shop  Rails 8.1.1, Ruby 3.3.8
 
   Exceptions  ready        through Sentry, which you already use
   Traces      ready        through OpenTelemetry, which you already use
@@ -69,29 +78,81 @@ Nothing was changed. Nothing was sent.
 
 "ready" means that Packrat can receive what the repository already sends, with no new library.
 
-- `path` is the directory to audit. The default is the current directory.
+- `path` is the directory to read. The default is the current directory.
 - `--verbose`, or `-v`, adds the route and the reason under each line, and then everything that was
   found: each vendor, the file and line that configures it, its gems, agents, browser SDKs and the
   names of environment variables.
 - `--json` prints the JSON document instead of the table. It always holds everything.
-- `--host` also probes the machine that runs the audit, and prints the result under "This machine,
+- `--host` also probes the machine that runs the detection, and prints the result under "This machine,
   not production". It is off by default, because that machine is usually a laptop.
 
-Exit status: `0` when the audit ran, `1` when the path cannot be read, `2` for a usage error.
+Exit status: `0` when the detection ran, `1` when the path cannot be read, `2` for a usage error.
 
-## What is read, and what is never read
+### apps and status
 
-The audit is read-only. It writes no file and sends nothing. It never reads the value of an
+These two commands ask `https://query.packrat.sh` with your API key. They take the key from
+`PACKRAT_API_KEY` in the environment, or from the `.env` file of the current directory.
+
+```
+$ packrat apps
+shop/production   last data now
+shop/development  last data 3 hours ago
+```
+
+An app that you do not know is usually your app with a different name: a service name that was not
+set, or an environment that you did not expect.
+
+```
+$ packrat status --app colorbook/production
+packrat status  colorbook/production
+
+  Exceptions  Sentry           kept      2 minutes ago
+              OpenTelemetry    not kept  2 minutes ago
+  Traces      Sentry           kept      now
+              Datadog          not kept  3 minutes ago
+              Sentry browser   kept      6 minutes ago
+  Logs        Datadog          kept      4 minutes ago
+              OpenTelemetry    kept      now
+  Metrics     nothing yet
+  Replays     Sentry browser   kept      6 minutes ago
+
+  Packrat keeps the first source of exceptions and of traces.
+  To use a different source, ask us to switch it.
+
+4 of 5 signals are arriving.
+```
+
+- `--app` is necessary. It is `service/env`, as `packrat apps` prints it.
+- "not kept" means that the source sends the signal, and Packrat does not store it, because the app
+  keeps that signal from a different source. Logs, metrics and all data from a browser are kept from
+  each source.
+- A time is exact to the minute. A time of less than two minutes is "now".
+- `--wait` asks again each 3 seconds until new data arrives, for 5 minutes at most. Use it during
+  setup: start the command, then start the app and load a page.
+- `--json` prints the answer of the API. The [API page](https://packrat.sh/docs/api#get-status)
+  describes it.
+
+Exit status of `status`: `0` when data arrived in the last hour; `1` when nothing arrived in the
+last hour, when a kept source stopped while a different source sends the same signal, when `--wait`
+got no new data, or when the API refused the request; `2` for a usage error or no key.
+
+What these commands send: the API key, as the `Authorization` header, and the name of the app.
+They send nothing else, read no other value from `.env`, and never print the key. `PACKRAT_QUERY_URL`
+replaces the address of the API.
+
+## What detect reads, and what it never reads
+
+`detect` is read-only. It writes no file and sends nothing. It never reads the value of an
 environment variable from any file. Without `--host` it opens no socket; the test
-`internal/audit/nonetwork_test.go` enforces this.
+`internal/detect/nonetwork_test.go` enforces this.
 
 With `--host` it also looks at three things on the machine:
 
 - whether `/etc/datadog-agent/datadog.yaml` or `/opt/datadog-agent` exists
   (`C:\ProgramData\Datadog\datadog.yaml` on Windows);
 - whether something accepts a TCP connection on `localhost:8126`, the port of the Datadog trace
-  Agent. The audit opens the connection and closes it. It sends no byte. This is the only socket
-  the audit ever opens;
+  Agent. The detection opens the connection and closes it. It sends no byte. This is the only socket
+  the detection ever opens;
 - whether `DD_AGENT_HOST` or `OTEL_EXPORTER_OTLP_ENDPOINT` has a value in the environment. Only
   the name is kept.
 
@@ -108,7 +169,7 @@ What it reads:
 
 What it never reads or prints:
 
-- The value of an environment variable. The audit keeps what is left of the first `=` or `:` and
+- The value of an environment variable. The detection keeps what is left of the first `=` or `:` and
   does not look at the rest. It keeps a name only when the name begins with `DD_`, `DATADOG_`,
   `SENTRY_`, `NEW_RELIC_`, `OTEL_`, `HONEYBADGER_`, `BUGSNAG_`, `ROLLBAR_`, `SCOUT_`, `APPSIGNAL_`,
   `ELASTIC_APM_`, `POSTHOG_` or `PACKRAT_`.
@@ -117,18 +178,18 @@ What it never reads or prints:
 - A symlink, a file over 2 MB, or anything under `.git`, `node_modules`, `vendor/bundle`, `tmp`,
   `log`, `storage`, `public/assets` and `public/packs`.
 
-The test `internal/audit/canary_test.go` enforces this. It plants a marker value in every such file
+The test `internal/detect/canary_test.go` enforces this. It plants a marker value in every such file
 of `testdata/canary` and fails if the marker reaches the output.
 
 ## The JSON
 
-`--json` prints one document. The schema is `packrat.audit/1`. A change that removes or renames a
+`--json` prints one document. The schema is `packrat.detect/1`. A change that removes or renames a
 key, or changes what a value means, will change the schema name. Two runs on the same files print
 the same bytes. A list is never `null`; an empty list is `[]`.
 
 ```json
 {
-  "schema": "packrat.audit/1",
+  "schema": "packrat.detect/1",
   "path": "/Users/x/shop",
   "stack": { "name": "rails", "version": "8.1.1", "ruby": "3.3.8", "evidence": [] },
   "sdks": [],
@@ -143,8 +204,8 @@ the same bytes. A list is never `null`; an empty list is `[]`.
 
 | Key | Meaning |
 |---|---|
-| `schema` | Always `packrat.audit/1`. |
-| `path` | The absolute path that was audited. |
+| `schema` | Always `packrat.detect/1`. |
+| `path` | The absolute path that was read. |
 | `stack` | The framework, or `null` when the repository is not a supported stack. `name` is `rails`. `version` and `ruby` are empty strings when they are not known. |
 | `sdks` | One entry for each observability gem. Sorted by `vendor`, then `gem`. |
 | `agents` | One entry for each agent or collector that the repository starts or configures. Sorted by `vendor`. |
@@ -152,10 +213,10 @@ the same bytes. A list is never `null`; an empty list is `[]`.
 | `env_names` | Names of environment variables, sorted by `name`. Never a value. |
 | `signals` | The route for each signal. Empty when `stack` is `null`; otherwise always four, in the order `exceptions`, `traces`, `logs`, `replays`. |
 | `host` | `null` without `--host`. |
-| `notes` | Sentences about the audit as a whole, such as a missing `Gemfile.lock`. |
+| `notes` | Sentences about the detection as a whole, such as a missing `Gemfile.lock`. |
 
 **Evidence.** Every fact has `evidence`: a list of `{ "path", "line", "text" }`, sorted by `path`,
-then `line`. `path` is relative to the audited directory and uses `/` on every operating system.
+then `line`. `path` is relative to the directory that was read and uses `/` on every operating system.
 `line` starts at 1; it is `0` when the evidence is that the file exists. `text` is the trimmed line,
 cut to 200 bytes. It is empty for an env file or a deploy file, and for an agent it is only the
 pattern that matched.
@@ -216,20 +277,20 @@ make check    # gofmt, vet, staticcheck, golangci-lint, tests
 mode. It builds the five release binaries, their archives and `checksums.txt` into `dist/`. It
 publishes nothing and makes no tag. The first run compiles GoReleaser and takes some minutes.
 
-Each directory in `testdata/` is a small repository for one behaviour. The output the audit must
-give for it is in `internal/audit/testdata/golden/`. `UPDATE=1 go test ./internal/audit -run Golden`
+Each directory in `testdata/` is a small repository for one behaviour. The output the detection must
+give for it is in `internal/detect/testdata/golden/`. `UPDATE=1 go test ./internal/detect -run Golden`
 rewrites those files; read the diff before you commit it.
 
 ## The corpus
 
 The rules are tuned against nine real Rails repositories. `corpus/repos.txt` lists them with a
-pinned commit. `corpus/expected/` holds the JSON that the audit must give for each.
+pinned commit. `corpus/expected/` holds the JSON that the detection must give for each.
 `corpus/NOTES.md` says what each repository taught.
 
 ```
 make corpus                                       # clone the public ones into corpus/src (2 GB)
-go test ./internal/audit -run Corpus -v           # compare each with its expected file
-UPDATE=1 go test ./internal/audit -run Corpus     # rewrite the expected files
+go test ./internal/detect -run Corpus -v           # compare each with its expected file
+UPDATE=1 go test ./internal/detect -run Corpus     # rewrite the expected files
 ```
 
 `make corpus` is the only command here that uses the network. The test skips a repository that is

@@ -1,4 +1,4 @@
-// Package host probes the machine that runs the audit. It is the only code that opens a socket,
+// Package host probes the machine that runs the detection. It is the only code that opens a socket,
 // and it runs only with --host.
 package host
 
@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 // Prober holds what one probe looks at. Tests replace the fields; Default is the real machine.
@@ -38,8 +38,8 @@ func Default() Prober {
 }
 
 // Probe reads the facts. It sends no byte: the dial only opens a connection and closes it.
-func (p Prober) Probe() audit.Host {
-	found := audit.Host{AgentPaths: []string{}, EnvSet: []string{}, Notes: []string{}}
+func (p Prober) Probe() detect.Host {
+	found := detect.Host{AgentPaths: []string{}, EnvSet: []string{}, Notes: []string{}}
 	for _, path := range p.Paths {
 		if _, err := os.Stat(path); err == nil {
 			found.AgentPaths = append(found.AgentPaths, path)

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
-func places(evidence []audit.Evidence) []string {
+func places(evidence []detect.Evidence) []string {
 	var all []string
 	for _, e := range evidence {
 		all = append(all, fmt.Sprintf("%s:%d", e.Path, e.Line))

@@ -12,7 +12,7 @@ type Gem struct {
 	Text    string
 }
 
-// Lockfile is the part of Gemfile.lock the audit uses.
+// Lockfile is the part of Gemfile.lock the detection uses.
 type Lockfile struct {
 	Gems map[string]Gem
 	Ruby string

@@ -1,0 +1,9 @@
+packrat status  shop/production
+
+  Exceptions  OpenTelemetry    kept      3 hours ago
+  Traces      OpenTelemetry    kept      now
+  Logs        OpenTelemetry    kept      now
+  Metrics     OpenTelemetry    kept      now
+  Replays     nothing yet
+
+4 of 5 signals are arriving.

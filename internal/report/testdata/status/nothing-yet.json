@@ -1,0 +1,36 @@
+{
+  "app": "shop/development",
+  "service": "shop",
+  "env": "development",
+  "first_seen_at": "2026-09-30T15:00:00Z",
+  "last_data_at": null,
+  "now": "2026-10-13T15:00:00Z",
+  "signals": [
+    {
+      "signal": "exceptions",
+      "quiet": false,
+      "sources": []
+    },
+    {
+      "signal": "traces",
+      "quiet": false,
+      "sources": []
+    },
+    {
+      "signal": "logs",
+      "quiet": false,
+      "sources": []
+    },
+    {
+      "signal": "metrics",
+      "quiet": false,
+      "sources": []
+    },
+    {
+      "signal": "replays",
+      "quiet": false,
+      "sources": []
+    }
+  ],
+  "warnings": []
+}

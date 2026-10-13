@@ -1,0 +1,11 @@
+packrat detect  sentry-traces-on-new-relic  Rails 8.0.2
+
+  Exceptions  ready        through Sentry, which you already use
+  Traces      needs setup  add the OpenTelemetry gems
+  Logs        needs setup  add the OpenTelemetry logs gems
+  Replays     needs setup  add the Sentry browser SDK
+
+1 of 4 signals is ready.
+Add --verbose to see what was found and why.
+
+Nothing was changed. Nothing was sent.

@@ -1,0 +1,94 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "ddtrace",
+      "version": "1.16.2",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "ddtrace (1.16.2)"
+        },
+        {
+          "path": "config/initializers/datadog.rb",
+          "line": 1,
+          "text": "Datadog.configure do |c|"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "vendor": "Datadog Agent",
+      "evidence": [
+        {
+          "path": "datadog/prerun.sh",
+          "line": 0,
+          "text": ""
+        }
+      ]
+    }
+  ],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "errors arrive as error spans",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at datadog/prerun.sh",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

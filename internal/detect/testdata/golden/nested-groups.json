@@ -1,0 +1,288 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.1.5",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 10,
+        "text": "rails (7.1.5)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Airbrake",
+      "gem": "airbrake",
+      "version": "13.0.4",
+      "direct": true,
+      "groups": [
+        "development",
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "airbrake (13.0.4)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "AppSignal",
+      "gem": "appsignal",
+      "version": "4.5.1",
+      "direct": true,
+      "groups": [
+        "development",
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 5,
+          "text": "appsignal (4.5.1)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Bugsnag",
+      "gem": "bugsnag",
+      "version": "6.27.1",
+      "direct": true,
+      "groups": [
+        "development",
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "bugsnag (6.27.1)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Honeybadger",
+      "gem": "honeybadger",
+      "version": "5.27.0",
+      "direct": true,
+      "groups": [
+        "production",
+        "staging"
+      ],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 7,
+          "text": "honeybadger (5.27.0)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "New Relic",
+      "gem": "newrelic_rpm",
+      "version": "9.17.0",
+      "direct": true,
+      "groups": [
+        "development"
+      ],
+      "configured": false,
+      "provides": [
+        "traces",
+        "exceptions",
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 9,
+          "text": "newrelic_rpm (9.17.0)"
+        }
+      ],
+      "notes": [
+        "coexists with OpenTelemetry",
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Rollbar",
+      "gem": "rollbar",
+      "version": "3.6.1",
+      "direct": true,
+      "groups": [
+        "development",
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 11,
+          "text": "rollbar (3.6.1)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Scout",
+      "gem": "scout_apm",
+      "version": "5.6.0",
+      "direct": true,
+      "groups": [
+        "development",
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 12,
+          "text": "scout_apm (5.6.0)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.26.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 13,
+          "text": "sentry-ruby (5.26.0)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Skylight",
+      "gem": "skylight",
+      "version": "6.0.4",
+      "direct": true,
+      "groups": [
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 14,
+          "text": "skylight (6.0.4)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.14.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 8,
+          "text": "lograge (0.14.0)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error; keeps Honeybadger",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

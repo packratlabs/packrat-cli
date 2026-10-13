@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 // browserPattern is one row of section 4.8 of the plan. A Replay pattern that NeedsVendor counts
@@ -52,15 +52,15 @@ func browserSources(root *os.Root) []source {
 
 type browserMatch struct {
 	pattern  browserPattern
-	evidence audit.Evidence
+	evidence detect.Evidence
 }
 
-func browser(root *os.Root) []audit.Browser {
+func browser(root *os.Root) []detect.Browser {
 	var matches []browserMatch
 	for _, src := range browserSources(root) {
 		matches = append(matches, browserMatchesIn(src)...)
 	}
-	byVendor := map[string]*audit.Browser{}
+	byVendor := map[string]*detect.Browser{}
 	for _, m := range matches {
 		if !m.pattern.NeedsVendor {
 			addBrowserMatch(byVendor, m)
@@ -71,7 +71,7 @@ func browser(root *os.Root) []audit.Browser {
 			addBrowserMatch(byVendor, m)
 		}
 	}
-	found := []audit.Browser{}
+	found := []detect.Browser{}
 	for _, finding := range byVendor {
 		sortEvidence(finding.Evidence)
 		found = append(found, *finding)
@@ -80,10 +80,10 @@ func browser(root *os.Root) []audit.Browser {
 	return found
 }
 
-func addBrowserMatch(byVendor map[string]*audit.Browser, m browserMatch) {
+func addBrowserMatch(byVendor map[string]*detect.Browser, m browserMatch) {
 	finding := byVendor[m.pattern.Vendor]
 	if finding == nil {
-		finding = &audit.Browser{Vendor: m.pattern.Vendor}
+		finding = &detect.Browser{Vendor: m.pattern.Vendor}
 		byVendor[m.pattern.Vendor] = finding
 	}
 	if finding.Package == "" {
@@ -117,7 +117,7 @@ func browserMatchesIn(src source) []browserMatch {
 		for _, pattern := range browserPatterns() {
 			if !seen[pattern.Pattern] && strings.Contains(line, pattern.Pattern) {
 				seen[pattern.Pattern] = true
-				matches = append(matches, browserMatch{pattern, audit.Evidence{Path: src.path, Line: i + 1, Text: clip(line)}})
+				matches = append(matches, browserMatch{pattern, detect.Evidence{Path: src.path, Line: i + 1, Text: clip(line)}})
 			}
 		}
 	}

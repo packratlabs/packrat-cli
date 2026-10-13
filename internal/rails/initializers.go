@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 const notConfiguredNote = "gem present, no configure call found"
@@ -66,7 +66,7 @@ func configSources(root *os.Root) []source {
 }
 
 // configure marks each finding whose vendor is configured. A vendor with no rule is left alone.
-func configure(root *os.Root, found []audit.Finding) []audit.Finding {
+func configure(root *os.Root, found []detect.Finding) []detect.Finding {
 	sources := configSources(root)
 	for _, rule := range configRules() {
 		evidence, notes := applyRule(root, rule, sources)
@@ -90,19 +90,19 @@ func configure(root *os.Root, found []audit.Finding) []audit.Finding {
 	return found
 }
 
-func applyRule(root *os.Root, rule configRule, sources []source) ([]audit.Evidence, []string) {
-	var evidence []audit.Evidence
+func applyRule(root *os.Root, rule configRule, sources []source) ([]detect.Evidence, []string) {
+	var evidence []detect.Evidence
 	for _, src := range sources {
 		for _, call := range rule.Calls {
 			if line := firstCodeLine(src, call); line > 0 {
-				evidence = append(evidence, audit.Evidence{Path: src.path, Line: line, Text: clip(src.lines[line-1])})
+				evidence = append(evidence, detect.Evidence{Path: src.path, Line: line, Text: clip(src.lines[line-1])})
 				break
 			}
 		}
 	}
 	for _, file := range rule.Files {
 		if _, ok := readFile(root, file); ok {
-			evidence = append(evidence, audit.Evidence{Path: file})
+			evidence = append(evidence, detect.Evidence{Path: file})
 		}
 	}
 	if len(evidence) == 0 {

@@ -1,0 +1,9 @@
+packrat status  shop/production
+
+  Exceptions  nothing yet
+  Traces      Datadog          kept      no data yet
+  Logs        OpenTelemetry    kept      3 minutes ago
+  Metrics     nothing yet
+  Replays     nothing yet
+
+2 of 5 signals are arriving.

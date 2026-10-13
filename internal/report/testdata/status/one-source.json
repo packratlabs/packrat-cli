@@ -1,0 +1,64 @@
+{
+  "app": "shop/production",
+  "service": "shop",
+  "env": "production",
+  "first_seen_at": "2026-09-30T15:00:00Z",
+  "last_data_at": "2026-10-13T14:59:52Z",
+  "now": "2026-10-13T15:00:00Z",
+  "signals": [
+    {
+      "signal": "exceptions",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "otel",
+          "name": "OpenTelemetry",
+          "kept": true,
+          "last_seen_at": "2026-10-13T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "signal": "traces",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "otel",
+          "name": "OpenTelemetry",
+          "kept": true,
+          "last_seen_at": "2026-10-13T14:59:52Z"
+        }
+      ]
+    },
+    {
+      "signal": "logs",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "otel",
+          "name": "OpenTelemetry",
+          "kept": true,
+          "last_seen_at": "2026-10-13T14:59:52Z"
+        }
+      ]
+    },
+    {
+      "signal": "metrics",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "otel",
+          "name": "OpenTelemetry",
+          "kept": true,
+          "last_seen_at": "2026-10-13T14:59:20Z"
+        }
+      ]
+    },
+    {
+      "signal": "replays",
+      "quiet": false,
+      "sources": []
+    }
+  ],
+  "warnings": []
+}

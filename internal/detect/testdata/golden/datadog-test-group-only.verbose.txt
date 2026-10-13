@@ -1,0 +1,19 @@
+packrat detect  datadog-test-group-only  Rails 7.1.5
+
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error
+  Traces      needs setup  add the OpenTelemetry gems
+      OpenTelemetry (Rails): setup adds the OpenTelemetry SDK
+  Logs        needs setup  add the OpenTelemetry logs gems
+      OpenTelemetry logs: setup adds the OpenTelemetry logs SDK
+  Replays     needs setup  add the Sentry browser SDK
+      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
+
+0 of 4 signals are ready.
+
+Found in this repository
+  Datadog  Gemfile.lock:4  traces, logs, exceptions (test only)
+      needs an Agent; no agentless APM in Ruby; gem present, no configure call found
+      datadog 2.9.0 (test only)
+
+Nothing was changed. Nothing was sent.

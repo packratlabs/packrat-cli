@@ -1,0 +1,16 @@
+packrat status  colorbook/production
+
+  Exceptions  Sentry           kept      2 minutes ago
+              OpenTelemetry    not kept  2 minutes ago
+  Traces      Sentry           kept      now
+              Datadog          not kept  3 minutes ago
+              Sentry browser   kept      6 minutes ago
+  Logs        Datadog          kept      4 minutes ago
+              OpenTelemetry    kept      now
+  Metrics     nothing yet
+  Replays     Sentry browser   kept      6 minutes ago
+
+  Packrat keeps the first source of exceptions and of traces.
+  To use a different source, ask us to switch it.
+
+4 of 5 signals are arriving.

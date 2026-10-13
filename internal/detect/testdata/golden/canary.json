@@ -1,0 +1,345 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "datadog",
+      "version": "2.9.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "datadog (2.9.0)"
+        },
+        {
+          "path": "config/initializers/datadog.rb",
+          "line": 1,
+          "text": "Datadog.configure do |c|"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby",
+        "tracing instrumented"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.26.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions",
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "sentry-rails (5.26.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces on"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.26.0",
+      "direct": false,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions",
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 8,
+          "text": "sentry-ruby (5.26.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces on"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "vendor": "Datadog Agent",
+      "evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 10,
+          "text": ""
+        },
+        {
+          "path": "Dockerfile",
+          "line": 6,
+          "text": ""
+        },
+        {
+          "path": "Procfile",
+          "line": 1,
+          "text": ""
+        },
+        {
+          "path": "bin/with-agent",
+          "line": 3,
+          "text": "datadog-agent"
+        },
+        {
+          "path": "config/deploy.yml",
+          "line": 11,
+          "text": ""
+        },
+        {
+          "path": "docker-compose.yml",
+          "line": 6,
+          "text": ""
+        }
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry Collector",
+      "evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 10,
+          "text": ""
+        },
+        {
+          "path": "k8s/agent.yaml",
+          "line": 8,
+          "text": "otel/opentelemetry-collector"
+        }
+      ]
+    },
+    {
+      "vendor": "Vector",
+      "evidence": [
+        {
+          "path": "k8s/agent.yaml",
+          "line": 11,
+          "text": "timberio/vector"
+        }
+      ]
+    }
+  ],
+  "browser": [
+    {
+      "vendor": "Sentry browser",
+      "package": "",
+      "replays": true,
+      "evidence": [
+        {
+          "path": "app/views/layouts/application.html.erb",
+          "line": 1,
+          "text": "\u003cscript src=\"https://browser.sentry-cdn.com/8.0.0/bundle.min.js\"\u003e\u003c/script\u003e"
+        },
+        {
+          "path": "app/views/layouts/application.html.erb",
+          "line": 2,
+          "text": "\u003cscript\u003eSentry.init({ dsn: \"\u003c%= ENV[\"SENTRY_BROWSER_DSN\"] %\u003e\", integrations: [Sentry.replayIntegration()] });\u003c/script\u003e"
+        }
+      ]
+    }
+  ],
+  "env_names": [
+    {
+      "name": "APPSIGNAL_PUSH_API_KEY",
+      "files": [
+        "fly.toml"
+      ]
+    },
+    {
+      "name": "BUGSNAG_API_KEY",
+      "files": [
+        "Dockerfile"
+      ]
+    },
+    {
+      "name": "DD_AGENT_HOST",
+      "files": [
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "DD_API_KEY",
+      "files": [
+        ".env",
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "DD_ENV",
+      "files": [
+        "config/deploy.yml"
+      ]
+    },
+    {
+      "name": "DD_SERVICE",
+      "files": [
+        "Procfile"
+      ]
+    },
+    {
+      "name": "DD_SITE",
+      "files": [
+        ".env"
+      ]
+    },
+    {
+      "name": "DD_VERSION",
+      "files": [
+        "Dockerfile"
+      ]
+    },
+    {
+      "name": "ELASTIC_APM_SECRET_TOKEN",
+      "files": [
+        "fly.toml"
+      ]
+    },
+    {
+      "name": "HONEYBADGER_API_KEY",
+      "files": [
+        ".env_sample",
+        "app.json"
+      ]
+    },
+    {
+      "name": "NEW_RELIC_LICENSE_KEY",
+      "files": [
+        ".env.example"
+      ]
+    },
+    {
+      "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "files": [
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "OTEL_SERVICE_NAME",
+      "files": [
+        "config/deploy.yml"
+      ]
+    },
+    {
+      "name": "PACKRAT_INGEST_KEY",
+      "files": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "name": "POSTHOG_API_KEY",
+      "files": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "name": "ROLLBAR_ACCESS_TOKEN",
+      "files": [
+        "config/deploy.yml"
+      ]
+    },
+    {
+      "name": "SCOUT_KEY",
+      "files": [
+        "Procfile"
+      ]
+    },
+    {
+      "name": "SENTRY_DSN",
+      "files": [
+        ".env",
+        ".env.example",
+        ".env_sample",
+        "app.json",
+        "config/deploy.yml",
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "SENTRY_ENVIRONMENT",
+      "files": [
+        "Dockerfile"
+      ]
+    },
+    {
+      "name": "SENTRY_PRIVATE_KEY",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at .github/workflows/ci.yml:10",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ]
+    },
+    {
+      "name": "logs",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays on",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

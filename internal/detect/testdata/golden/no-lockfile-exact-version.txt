@@ -1,0 +1,12 @@
+packrat detect  no-lockfile-exact-version  Rails 8.1.4
+
+no Gemfile.lock; run bundle install for versions
+
+  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
+  Traces      needs setup  add the OpenTelemetry gems
+  Logs        needs setup  add the OpenTelemetry logs gems
+  Replays     needs setup  add the Sentry browser SDK
+
+0 of 4 signals are ready.
+
+Nothing was changed. Nothing was sent.

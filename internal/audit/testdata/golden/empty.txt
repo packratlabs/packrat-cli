@@ -1,5 +1,0 @@
-packrat audit  empty
-
-No supported stack found (Rails is the only one yet)
-
-Nothing was changed. Nothing was sent.

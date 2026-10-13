@@ -5,9 +5,8 @@ initializers, the deploy files and the browser code. The expectation below was w
 reading. "Changed" is the rule that was fixed because the tool and the repository disagreed. Each
 fix has a fixture in `testdata/` named for it.
 
-The public repositories are pinned in `repos.txt`. Packrat and Colorbook are local directories with
-no pin, so their expected files go out of date when those repositories change. Run
-`UPDATE=1 go test ./internal/audit -run Corpus` and read the diff.
+The repositories are pinned in `repos.txt`. To refresh the expected files, run
+`UPDATE=1 go test ./internal/detect -run Corpus` and read the diff.
 
 ## The lessons
 
@@ -19,7 +18,7 @@ no pin, so their expected files go out of date when those repositories change. R
 3. **Not every Rails application depends on `rails`.** Discourse names `railties` and the other
    parts one by one.
 4. **A gem that is present is not a gem that is in use.** Chatwoot locks six vendors, each with
-   `require: false`, each started only when an environment variable is set. The audit cannot know
+   `require: false`, each started only when an environment variable is set. The detection cannot know
    which one production uses. The route rules take the Datadog gem as the answer for traces, and
    for Chatwoot that is a guess. This is not fixed; see "Open".
 5. **The plan's beliefs about other people's repositories were half wrong.** Docuseal has no Sentry
@@ -37,7 +36,7 @@ so "set at run time". OpenTelemetry SDK and exporter, configured in `lib/opentel
 The first run said OpenTelemetry was "not configured" and showed the Sentry browser SDK at a file
 that only imports it. Changed: `lib` is read (lesson 2), and the table prefers the `.init(` line of
 a browser SDK. Not changed: `.env.example` lists `SENTRY_DSN`, `DD_TRACE_AGENT_URL` and others, but
-every one is commented out, and the audit does not read a comment. Routes: Sentry copy for
+every one is commented out, and the detection does not read a comment. Routes: Sentry copy for
 exceptions, Datadog Agent copy for traces (lesson 4), OpenTelemetry logs, Sentry browser copy without
 replays.
 
@@ -72,7 +71,7 @@ Expected: Rails 8.1.4 by `railties`, Ruby 3.4.7 from the lockfile. `lograge` and
 Discourse uses its own `logster`, which is not in the vendor table. The near-empty case.
 
 The first run said "No supported stack found". Changed: `railties` in the lockfile is Rails
-(lesson 3). The lockfile says `ruby 3.4.7p58`; the audit prints `3.4.7`.
+(lesson 3). The lockfile says `ruby 3.4.7p58`; the detection prints `3.4.7`.
 
 ## redmine
 
@@ -106,8 +105,8 @@ the rules are the plan's and the corpus alone does not say what is right.
 - **Chatwoot: which vendor is in use.** See lesson 4. The owner's answer: Chatwoot is a product
   that others host, so it ships every vendor switched off; a customer repository has one in use.
   No rule was added.
-- **Packrat: how it sends logs.** Packrat has no OpenTelemetry logs gems, so the audit offers to
-  add them. If Packrat sends logs another way, the audit does not see it.
+- **Packrat: how it sends logs.** Packrat has no OpenTelemetry logs gems, so the detection offers to
+  add them. If Packrat sends logs another way, the detection does not see it.
 - **Two error trackers in one repository** (Forem) is not what a customer repository looks like.
   The Sentry rule is checked first and its route is right; no rule was added.
 - **Commented names in an example env file** are not read (Chatwoot).
