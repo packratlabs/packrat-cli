@@ -1,0 +1,9 @@
+packrat status  shop/production
+
+  Exceptions  Sentry           kept      9 days ago
+  Traces      Sentry           kept      26 hours ago
+  Logs        OpenTelemetry    kept      26 hours ago
+  Metrics     nothing yet
+  Replays     nothing yet
+
+Nothing has arrived for 26 hours.

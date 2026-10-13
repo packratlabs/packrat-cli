@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 type agentPattern struct {
@@ -59,9 +59,9 @@ func agentFiles(root *os.Root) []string {
 
 // agents finds an agent or collector that the repository starts or configures. A file that only
 // runs a script (`Procfile` runs `bin/with-datadog`) is evidence when that script is.
-func agents(root *os.Root) []audit.Agent {
+func agents(root *os.Root) []detect.Agent {
 	sources := readSources(root, agentFiles(root))
-	found := map[string][]audit.Evidence{}
+	found := map[string][]detect.Evidence{}
 	scripts := map[string]string{}
 	for _, src := range sources {
 		for _, vendor := range agentVendors() {
@@ -74,7 +74,7 @@ func agents(root *os.Root) []audit.Agent {
 		}
 	}
 	if _, ok := readFile(root, herokuPrerun); ok {
-		found[vendorDatadogAgent] = append(found[vendorDatadogAgent], audit.Evidence{Path: herokuPrerun})
+		found[vendorDatadogAgent] = append(found[vendorDatadogAgent], detect.Evidence{Path: herokuPrerun})
 	}
 	for _, src := range sources {
 		for script, vendor := range scripts {
@@ -83,10 +83,10 @@ func agents(root *os.Root) []audit.Agent {
 			}
 		}
 	}
-	result := []audit.Agent{}
+	result := []detect.Agent{}
 	for vendor, evidence := range found {
 		sortEvidence(evidence)
-		result = append(result, audit.Agent{Vendor: vendor, Evidence: evidence})
+		result = append(result, detect.Agent{Vendor: vendor, Evidence: evidence})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Vendor < result[j].Vendor })
 	return result
@@ -102,7 +102,7 @@ func agentVendors() []string {
 	return vendors
 }
 
-func firstAgentLine(src source, vendor string) (audit.Evidence, bool) {
+func firstAgentLine(src source, vendor string) (detect.Evidence, bool) {
 	for i, line := range src.lines {
 		if isComment(line) {
 			continue
@@ -113,29 +113,29 @@ func firstAgentLine(src source, vendor string) (audit.Evidence, bool) {
 			}
 		}
 	}
-	return audit.Evidence{}, false
+	return detect.Evidence{}, false
 }
 
-func firstLineWith(src source, text string) (audit.Evidence, bool) {
+func firstLineWith(src source, text string) (detect.Evidence, bool) {
 	for i, line := range src.lines {
 		if !isComment(line) && strings.Contains(line, text) {
 			return agentEvidence(src.path, i+1, text), true
 		}
 	}
-	return audit.Evidence{}, false
+	return detect.Evidence{}, false
 }
 
 // agentEvidence never carries the line. A deploy file or a script can hold a secret on the line
 // that names the agent, so the text is the pattern that matched, and nothing for a file that is
 // read for names only.
-func agentEvidence(file string, line int, pattern string) audit.Evidence {
+func agentEvidence(file string, line int, pattern string) detect.Evidence {
 	if NamesOnly(file) || mentionsTrackedName(pattern) {
 		pattern = ""
 	}
-	return audit.Evidence{Path: file, Line: line, Text: pattern}
+	return detect.Evidence{Path: file, Line: line, Text: pattern}
 }
 
-func hasPath(evidence []audit.Evidence, file string) bool {
+func hasPath(evidence []detect.Evidence, file string) bool {
 	for _, e := range evidence {
 		if e.Path == file {
 			return true

@@ -1,0 +1,101 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 6,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-exporter-otlp",
+      "version": "0.31.1",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "opentelemetry-exporter-otlp (0.31.1)"
+        },
+        {
+          "path": "lib/opentelemetry_config.rb",
+          "line": 3,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-sdk",
+      "version": "1.10.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 5,
+          "text": "opentelemetry-sdk (1.10.0)"
+        },
+        {
+          "path": "lib/opentelemetry_config.rb",
+          "line": 3,
+          "text": "OpenTelemetry::SDK.configure do |c|"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry",
+      "state": "already",
+      "reason": "already exports OTLP; setup points the exporter at Packrat",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

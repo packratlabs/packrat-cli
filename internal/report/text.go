@@ -1,4 +1,4 @@
-// Package report prints an Audit as a plain-text table or as JSON.
+// Package report prints a Result as a plain-text table or as JSON.
 package report
 
 import (
@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 // NoStack is the line printed when the repository is not a supported stack.
@@ -42,16 +42,16 @@ type row struct {
 }
 
 // Text writes the short answer: one line for each signal. It is what a person reads first.
-func Text(w io.Writer, a audit.Audit) error {
+func Text(w io.Writer, a detect.Result) error {
 	return write(w, a, false)
 }
 
 // Verbose writes the short answer, the reason for each line, and everything that was found.
-func Verbose(w io.Writer, a audit.Audit) error {
+func Verbose(w io.Writer, a detect.Result) error {
 	return write(w, a, true)
 }
 
-func write(w io.Writer, a audit.Audit, verbose bool) error {
+func write(w io.Writer, a detect.Result, verbose bool) error {
 	var b strings.Builder
 	b.WriteString(header(a) + "\n")
 	if a.Stack == nil {
@@ -87,7 +87,7 @@ func write(w io.Writer, a audit.Audit, verbose bool) error {
 	return nil
 }
 
-func foundRows(a audit.Audit) []row {
+func foundRows(a detect.Result) []row {
 	rows := sdkRows(a.SDKs)
 	for _, agent := range a.Agents {
 		rows = append(rows, agentRow(agent))
@@ -101,8 +101,8 @@ func foundRows(a audit.Audit) []row {
 	return rows
 }
 
-func header(a audit.Audit) string {
-	head := "packrat audit  " + filepath.Base(a.Path)
+func header(a detect.Result) string {
+	head := "packrat detect  " + filepath.Base(a.Path)
 	if a.Stack == nil {
 		return head
 	}
@@ -115,7 +115,7 @@ func header(a audit.Audit) string {
 
 // sdkRows makes one row for each vendor. The list is sorted by vendor, so a vendor's gems are
 // next to each other.
-func sdkRows(sdks []audit.Finding) []row {
+func sdkRows(sdks []detect.Finding) []row {
 	var rows []row
 	for start := 0; start < len(sdks); {
 		end := start
@@ -128,7 +128,7 @@ func sdkRows(sdks []audit.Finding) []row {
 	return rows
 }
 
-func vendorRow(gems []audit.Finding) row {
+func vendorRow(gems []detect.Finding) row {
 	shown := production(gems)
 	r := row{vendor: gems[0].Vendor, where: where(configEvidence(shown[0]))}
 	var provides, notes, names []string
@@ -161,8 +161,8 @@ func vendorRow(gems []audit.Finding) row {
 }
 
 // production returns the gems that load in production, or every gem when none does.
-func production(gems []audit.Finding) []audit.Finding {
-	var kept []audit.Finding
+func production(gems []detect.Finding) []detect.Finding {
+	var kept []detect.Finding
 	for _, gem := range gems {
 		if gem.Production() {
 			kept = append(kept, gem)
@@ -174,7 +174,7 @@ func production(gems []audit.Finding) []audit.Finding {
 	return kept
 }
 
-func gemLabel(gem audit.Finding) string {
+func gemLabel(gem detect.Finding) string {
 	label := strings.TrimSpace(gem.Gem + " " + gem.Version)
 	if !gem.Direct {
 		label += " (dependency)"
@@ -185,12 +185,12 @@ func gemLabel(gem audit.Finding) string {
 	return label
 }
 
-func only(gem audit.Finding) string {
+func only(gem detect.Finding) string {
 	return " (" + strings.Join(gem.Groups, ", ") + " only)"
 }
 
 // configEvidence prefers the line that configures the gem to the line that locks it.
-func configEvidence(gem audit.Finding) []audit.Evidence {
+func configEvidence(gem detect.Finding) []detect.Evidence {
 	for i, e := range gem.Evidence {
 		if e.Path != "Gemfile" && e.Path != "Gemfile.lock" {
 			return gem.Evidence[i:]
@@ -199,7 +199,7 @@ func configEvidence(gem audit.Finding) []audit.Evidence {
 	return gem.Evidence
 }
 
-func where(evidence []audit.Evidence) string {
+func where(evidence []detect.Evidence) string {
 	switch {
 	case len(evidence) == 0:
 		return ""
@@ -209,7 +209,7 @@ func where(evidence []audit.Evidence) string {
 	return fmt.Sprintf("%s:%d", evidence[0].Path, evidence[0].Line)
 }
 
-func agentRow(agent audit.Agent) row {
+func agentRow(agent detect.Agent) row {
 	r := row{vendor: agent.Vendor, where: where(agent.Evidence)}
 	var others []string
 	for i := 1; i < len(agent.Evidence); i++ {
@@ -221,7 +221,7 @@ func agentRow(agent audit.Agent) row {
 	return r
 }
 
-func browserRow(browser audit.Browser) row {
+func browserRow(browser detect.Browser) row {
 	replays := "no replays found"
 	if browser.Replays {
 		replays = "replays on"
@@ -235,7 +235,7 @@ func browserRow(browser audit.Browser) row {
 
 // initEvidence prefers the line that starts the SDK. Chatwoot imports @sentry/vue in ten files,
 // and the first of them by name only reports an error.
-func initEvidence(evidence []audit.Evidence) []audit.Evidence {
+func initEvidence(evidence []detect.Evidence) []detect.Evidence {
 	for i, e := range evidence {
 		if strings.Contains(e.Text, ".init(") {
 			return evidence[i:]
@@ -244,7 +244,7 @@ func initEvidence(evidence []audit.Evidence) []audit.Evidence {
 	return evidence
 }
 
-func envRow(names []audit.EnvName) row {
+func envRow(names []detect.EnvName) row {
 	var all, files []string
 	for _, name := range names {
 		all = append(all, name.Name)
@@ -263,7 +263,7 @@ const (
 
 // signalRows makes one line for each signal: its name, how much work it is, then what the work is, in
 // words that do not need the route names. The verbose table adds the route and its reason.
-func signalRows(a audit.Audit, verbose bool) []row {
+func signalRows(a detect.Result, verbose bool) []row {
 	var rows []row
 	for _, signal := range a.Signals {
 		name := string(signal.Name)
@@ -281,23 +281,23 @@ func signalRows(a audit.Audit, verbose bool) []row {
 
 // status says how much work a signal is. "ready" means that Packrat can receive what the
 // repository already sends, with no new library.
-func status(a audit.Audit, signal audit.Signal) string {
+func status(a detect.Result, signal detect.Signal) string {
 	switch signal.State {
-	case audit.StateAlready:
+	case detect.StateAlready:
 		return statusReady
-	case audit.StateLater:
+	case detect.StateLater:
 		return statusLater
-	case audit.StateUnsupported:
+	case detect.StateUnsupported:
 		return statusUnsupported
-	case audit.StateRoute:
-		if signal.Route == audit.RouteSentry || (signal.Route == audit.RouteSentryBrowser && sentryReplays(a)) {
+	case detect.StateRoute:
+		if signal.Route == detect.RouteSentry || (signal.Route == detect.RouteSentryBrowser && sentryReplays(a)) {
 			return statusReady
 		}
 	}
 	return statusSetup
 }
 
-func sentryReplays(a audit.Audit) bool {
+func sentryReplays(a detect.Result) bool {
 	for _, browser := range a.Browser {
 		if browser.Vendor == "Sentry browser" && browser.Replays {
 			return true
@@ -306,39 +306,39 @@ func sentryReplays(a audit.Audit) bool {
 	return false
 }
 
-func sentence(a audit.Audit, signal audit.Signal) string {
-	if signal.State == audit.StateUnsupported || signal.State == audit.StateLater {
+func sentence(a detect.Result, signal detect.Signal) string {
+	if signal.State == detect.StateUnsupported || signal.State == detect.StateLater {
 		return signal.Reason
 	}
 	ready := status(a, signal) == statusReady
 	switch signal.Route {
-	case audit.RouteSentry:
+	case detect.RouteSentry:
 		return "through Sentry, which you already use"
-	case audit.RouteDatadogAgent:
+	case detect.RouteDatadogAgent:
 		return "through your Datadog Agent, which sends a copy"
-	case audit.RouteOTel:
+	case detect.RouteOTel:
 		return "through OpenTelemetry, which you already use"
-	case audit.RouteOTelRails:
+	case detect.RouteOTelRails:
 		return "add the OpenTelemetry gems"
-	case audit.RouteOTelErrors:
+	case detect.RouteOTelErrors:
 		return "add an OpenTelemetry subscriber for Rails errors"
-	case audit.RouteOTelLogs:
+	case detect.RouteOTelLogs:
 		if ready {
 			return "through OpenTelemetry, which you already use"
 		}
 		return "add the OpenTelemetry logs gems"
-	case audit.RouteSentryBrowser:
+	case detect.RouteSentryBrowser:
 		if ready {
 			return "through the Sentry browser SDK, which you already use"
 		}
 		return "turn on replays in the Sentry browser SDK, which you already use"
-	case audit.RouteSentryNew:
+	case detect.RouteSentryNew:
 		return "add the Sentry browser SDK"
 	}
 	return signal.Route
 }
 
-func summary(a audit.Audit) string {
+func summary(a detect.Result) string {
 	ready := 0
 	for _, signal := range a.Signals {
 		if status(a, signal) == statusReady {
@@ -351,7 +351,7 @@ func summary(a audit.Audit) string {
 	return fmt.Sprintf("%d of %d signals are ready.", ready, len(a.Signals))
 }
 
-func hostRows(host audit.Host) []row {
+func hostRows(host detect.Host) []row {
 	listener := "nothing listens"
 	if host.TraceListener {
 		listener = "something listens"

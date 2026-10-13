@@ -1,0 +1,95 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 5,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Rollbar",
+      "gem": "rollbar",
+      "version": "3.6.1",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 6,
+          "text": "rollbar (3.6.1)"
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "logging",
+      "gem": "lograge",
+      "version": "0.14.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs shape"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "lograge (0.14.0)"
+        }
+      ],
+      "notes": [
+        "not a destination"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error; keeps Rollbar",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

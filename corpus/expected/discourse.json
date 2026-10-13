@@ -1,5 +1,5 @@
 {
-  "schema": "packrat.audit/1",
+  "schema": "packrat.detect/1",
   "path": "",
   "stack": {
     "name": "rails",

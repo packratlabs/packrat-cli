@@ -1,0 +1,99 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "",
+    "ruby": "3.3.0",
+    "evidence": [
+      {
+        "path": "Gemfile",
+        "line": 3,
+        "text": "gem \"rails\", \"~\u003e 8.0\""
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile",
+          "line": 4,
+          "text": "gem \"sentry-rails\""
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    },
+    {
+      "vendor": "Skylight",
+      "gem": "skylight",
+      "version": "",
+      "direct": true,
+      "groups": [
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile",
+          "line": 7,
+          "text": "gem \"skylight\""
+        }
+      ],
+      "notes": [
+        "gem present, no configure call found"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": [
+    "no Gemfile.lock; run bundle install for versions"
+  ]
+}

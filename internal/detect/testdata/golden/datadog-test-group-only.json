@@ -1,0 +1,79 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.1.5",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 7,
+        "text": "rails (7.1.5)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "Datadog",
+      "gem": "datadog",
+      "version": "2.9.0",
+      "direct": true,
+      "groups": [
+        "test"
+      ],
+      "configured": false,
+      "provides": [
+        "traces",
+        "logs",
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 4,
+          "text": "datadog (2.9.0)"
+        }
+      ],
+      "notes": [
+        "needs an Agent; no agentless APM in Ruby",
+        "gem present, no configure call found"
+      ]
+    }
+  ],
+  "agents": [],
+  "browser": [],
+  "env_names": [],
+  "signals": [
+    {
+      "name": "exceptions",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": []
+    },
+    {
+      "name": "traces",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": []
+    },
+    {
+      "name": "logs",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": []
+    },
+    {
+      "name": "replays",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": []
+    }
+  ],
+  "host": null,
+  "notes": []
+}

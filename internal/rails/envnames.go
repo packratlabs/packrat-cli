@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 func envPrefixes() []string {
@@ -48,7 +48,7 @@ func namesOnlyFiles(root *os.Root) []string {
 	return append(files, list(root, ".github/workflows", isYAML)...)
 }
 
-func envNames(root *os.Root) []audit.EnvName {
+func envNames(root *os.Root) []detect.EnvName {
 	files := map[string][]string{}
 	for _, src := range readSources(root, namesOnlyFiles(root)) {
 		seen := map[string]bool{}
@@ -70,10 +70,10 @@ func envNames(root *os.Root) []audit.EnvName {
 			}
 		}
 	}
-	names := []audit.EnvName{}
+	names := []detect.EnvName{}
 	for name, where := range files {
 		sort.Strings(where)
-		names = append(names, audit.EnvName{Name: name, Files: where})
+		names = append(names, detect.EnvName{Name: name, Files: where})
 	}
 	sort.Slice(names, func(i, j int) bool { return names[i].Name < names[j].Name })
 	return names
@@ -144,7 +144,7 @@ func procfileNames(line string) []string {
 	return names
 }
 
-// tracked returns name when it is an upper-case variable name with a prefix the audit keeps.
+// tracked returns name when it is an upper-case variable name with a prefix the detection keeps.
 func tracked(name string) string {
 	for i := 0; i < len(name); i++ {
 		if c := name[i]; c != '_' && (c < '0' || c > '9') && (c < 'A' || c > 'Z') {

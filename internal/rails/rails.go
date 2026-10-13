@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 const (
@@ -15,18 +15,18 @@ const (
 	noLockNote  = "no Gemfile.lock; run bundle install for versions"
 )
 
-// Stack is the Rails implementation of audit.Stack.
+// Stack is the Rails implementation of detect.Stack.
 type Stack struct{}
 
 // Detect reports whether the repository is a Rails application. The lockfile decides when there
 // is one; the Gemfile is asked only when there is not.
-func (Stack) Detect(root *os.Root) (bool, audit.Evidence) {
+func (Stack) Detect(root *os.Root) (bool, detect.Evidence) {
 	path, lock := gems(root)
 	gem, found := railsGem(lock)
 	if !found {
-		return false, audit.Evidence{}
+		return false, detect.Evidence{}
 	}
-	return true, audit.Evidence{Path: path, Line: gem.Line, Text: gem.Text}
+	return true, detect.Evidence{Path: path, Line: gem.Line, Text: gem.Text}
 }
 
 // railsGem returns the gem that makes the repository a Rails application. Discourse does not
@@ -41,9 +41,9 @@ func railsGem(lock Lockfile) (Gem, bool) {
 }
 
 // Read collects the facts of a Rails repository.
-func (Stack) Read(root *os.Root) (audit.Facts, error) {
+func (Stack) Read(root *os.Root) (detect.Facts, error) {
 	path, lock := gems(root)
-	facts := audit.Facts{Stack: audit.StackInfo{Name: "rails"}}
+	facts := detect.Facts{Stack: detect.StackInfo{Name: "rails"}}
 	if path != lockName {
 		facts.Notes = append(facts.Notes, noLockNote)
 	}
@@ -59,13 +59,13 @@ func (Stack) Read(root *os.Root) (audit.Facts, error) {
 }
 
 // NoStack reads what does not depend on Rails: env names and agents.
-func NoStack(root *os.Root) audit.Facts {
-	return audit.Facts{Agents: agents(root), EnvNames: envNames(root)}
+func NoStack(root *os.Root) detect.Facts {
+	return detect.Facts{Agents: agents(root), EnvNames: envNames(root)}
 }
 
-// AuditOptions are the options that make an audit read Rails repositories.
-func AuditOptions() audit.Options {
-	return audit.Options{Stacks: []audit.Stack{Stack{}}, NoStack: NoStack}
+// DetectOptions are the options that make a detection read Rails repositories.
+func DetectOptions() detect.Options {
+	return detect.Options{Stacks: []detect.Stack{Stack{}}, NoStack: NoStack}
 }
 
 // gems returns the gems of the repository and the file they were read from.
@@ -110,8 +110,8 @@ func rubyVersion(root *os.Root, lock Lockfile) string {
 	return lock.Ruby
 }
 
-func findings(path string, lock Lockfile, gemfile Gemfile) []audit.Finding {
-	found := []audit.Finding{}
+func findings(path string, lock Lockfile, gemfile Gemfile) []detect.Finding {
+	found := []detect.Finding{}
 	for name, gem := range lock.Gems {
 		vendor, known := lookupVendor(name)
 		if !known {
@@ -125,14 +125,14 @@ func findings(path string, lock Lockfile, gemfile Gemfile) []audit.Finding {
 		if vendor.Note != "" {
 			notes = append(notes, vendor.Note)
 		}
-		found = append(found, audit.Finding{
+		found = append(found, detect.Finding{
 			Vendor:   vendor.Vendor,
 			Gem:      name,
 			Version:  gem.Version,
 			Direct:   gem.Direct,
 			Groups:   groups,
 			Provides: vendor.Provides,
-			Evidence: []audit.Evidence{{Path: path, Line: gem.Line, Text: gem.Text}},
+			Evidence: []detect.Evidence{{Path: path, Line: gem.Line, Text: gem.Text}},
 			Notes:    notes,
 		})
 	}

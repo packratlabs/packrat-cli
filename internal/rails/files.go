@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 const (
@@ -24,7 +24,7 @@ type source struct {
 }
 
 // readFile returns nothing for a file that is missing, a symlink, over 2 MB or not openable. One
-// unreadable file must not fail the audit.
+// unreadable file must not fail the detection.
 func readFile(root *os.Root, name string) ([]byte, bool) {
 	info, err := root.Lstat(name)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxFileSize {
@@ -140,7 +140,7 @@ func clip(line string) string {
 	return text[:end]
 }
 
-func sortEvidence(evidence []audit.Evidence) {
+func sortEvidence(evidence []detect.Evidence) {
 	sort.SliceStable(evidence, func(i, j int) bool {
 		if evidence[i].Path != evidence[j].Path {
 			return evidence[i].Path < evidence[j].Path

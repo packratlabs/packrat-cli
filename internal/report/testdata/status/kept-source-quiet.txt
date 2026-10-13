@@ -1,0 +1,17 @@
+packrat status  shop/production
+
+  Exceptions  Sentry           kept      2 days ago
+              OpenTelemetry    not kept  4 minutes ago
+  Traces      Sentry           kept      2 days ago
+              OpenTelemetry    not kept  now
+  Logs        OpenTelemetry    kept      now
+  Metrics     nothing yet
+  Replays     nothing yet
+
+  Traces come from Sentry, which last sent 2 days ago. OpenTelemetry sends them now, and they are not kept.
+  Ask us to switch the source.
+
+  Packrat keeps the first source of exceptions and of traces.
+  To use a different source, ask us to switch it.
+
+3 of 5 signals are arriving.

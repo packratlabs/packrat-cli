@@ -25,7 +25,7 @@ type openGroup struct {
 // ParseGemfile reads groups line by line. It is approximate: a Gemfile is Ruby, and this does
 // not run Ruby. It knows `group ... do` closed by an `end` at the same indentation, and
 // `group:` or `groups:` on a gem line. Anything else (a conditional, a loop, a gemspec, an
-// eval_gemfile) is not understood, and a gem it cannot place gets no groups, which the audit
+// eval_gemfile) is not understood, and a gem it cannot place gets no groups, which the detection
 // treats as production. The error is in the safe direction: a gem is reported, not hidden.
 func ParseGemfile(data []byte) Gemfile {
 	gemfile := Gemfile{Gems: map[string]Declared{}}

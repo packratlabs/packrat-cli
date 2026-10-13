@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/packratlabs/packrat-cli/internal/audit"
+	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
 func openFixture(t *testing.T, name string) *os.Root {
@@ -37,14 +37,14 @@ func TestDetect(t *testing.T) {
 	tests := []struct {
 		fixture  string
 		detected bool
-		evidence audit.Evidence
+		evidence detect.Evidence
 	}{
-		{"direct-and-transitive", true, audit.Evidence{Path: "Gemfile.lock", Line: 12, Text: "rails (8.0.2)"}},
-		{"git-and-path-sources", true, audit.Evidence{Path: "Gemfile.lock", Line: 20, Text: "rails (7.2.2.1)"}},
-		{"no-lockfile", true, audit.Evidence{Path: "Gemfile", Line: 3, Text: `gem "rails", "~> 8.0"`}},
-		{"bundled-with-only", false, audit.Evidence{}},
-		{"not-rails", false, audit.Evidence{}},
-		{"empty", false, audit.Evidence{}},
+		{"direct-and-transitive", true, detect.Evidence{Path: "Gemfile.lock", Line: 12, Text: "rails (8.0.2)"}},
+		{"git-and-path-sources", true, detect.Evidence{Path: "Gemfile.lock", Line: 20, Text: "rails (7.2.2.1)"}},
+		{"no-lockfile", true, detect.Evidence{Path: "Gemfile", Line: 3, Text: `gem "rails", "~> 8.0"`}},
+		{"bundled-with-only", false, detect.Evidence{}},
+		{"not-rails", false, detect.Evidence{}},
+		{"empty", false, detect.Evidence{}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.fixture, func(t *testing.T) {
