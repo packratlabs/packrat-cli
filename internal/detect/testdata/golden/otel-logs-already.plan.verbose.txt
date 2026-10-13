@@ -1,0 +1,13 @@
+packrat plan  otel-logs-already  Rails 7.2.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  OpenTelemetry   ✓          subscribe to Rails.error
+      setup subscribes to Rails.error
+  Traces      OpenTelemetry   ✓          dual-ship to Packrat
+      already exports OTLP; setup points the exporter at Packrat
+  Logs        OpenTelemetry   ✓          dual-ship to Packrat
+      already exports OTLP logs; setup points the exporter at Packrat
+  Replays     Sentry browser             add the Sentry browser SDK
+      Packrat accepts Sentry envelopes
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

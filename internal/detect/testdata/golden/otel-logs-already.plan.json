@@ -1,0 +1,64 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "7.2.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 8,
+        "text": "rails (7.2.2)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "OpenTelemetry",
+      "installed": true,
+      "step": "subscribe to Rails.error",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "OpenTelemetry",
+      "installed": true,
+      "step": "dual-ship to Packrat",
+      "route": "OpenTelemetry",
+      "state": "already",
+      "reason": "already exports OTLP; setup points the exporter at Packrat",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "OpenTelemetry",
+      "installed": true,
+      "step": "dual-ship to Packrat",
+      "route": "OpenTelemetry logs",
+      "state": "already",
+      "reason": "already exports OTLP logs; setup points the exporter at Packrat",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "Sentry browser",
+      "installed": false,
+      "step": "add the Sentry browser SDK",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": []
+}

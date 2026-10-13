@@ -20,7 +20,8 @@ type mode struct {
 }
 
 func modes() []mode {
-	return []mode{{"txt", report.Text}, {"verbose.txt", report.Verbose}, {"json", report.JSON}}
+	return []mode{{"txt", report.Text}, {"verbose.txt", report.Verbose}, {"plan.txt", report.Plan}, {"plan.verbose.txt", report.PlanVerbose},
+		{"json", report.JSON}, {"plan.json", report.PlanJSON}}
 }
 
 func fixtures(t *testing.T) []string {
@@ -48,7 +49,7 @@ func render(t *testing.T, fixture string, m mode) []byte {
 	if err != nil {
 		t.Fatalf("detection of %s: %v", fixture, err)
 	}
-	if m.name == "json" {
+	if strings.HasSuffix(m.name, "json") {
 		result.Path = ""
 	}
 	var out bytes.Buffer
@@ -100,7 +101,7 @@ func TestGolden(t *testing.T) {
 
 func TestTableIsUnder100Columns(t *testing.T) {
 	for _, fixture := range fixtures(t) {
-		for _, m := range modes()[:2] {
+		for _, m := range modes()[:4] {
 			for line := range strings.SplitSeq(string(render(t, fixture, m)), "\n") {
 				if len(line) >= 100 {
 					t.Errorf("%s %s: line of %d columns: %s", fixture, m.name, len(line), line)

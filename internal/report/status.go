@@ -34,15 +34,16 @@ func Apps(w io.Writer, apps query.Apps) error {
 	if len(apps.Apps) == 0 {
 		return put(w, NoApps+"\n")
 	}
-	width := 0
+	width := len("APP")
 	for _, app := range apps.Apps {
 		width = max(width, len(app.App))
 	}
 	var b strings.Builder
+	fmt.Fprintf(&b, "%-*s  %s\n", width, "APP", "LAST DATA")
 	for _, app := range apps.Apps {
-		last := "no data yet"
+		last := "none"
 		if app.LastDataAt != nil {
-			last = "last data " + ago(apps.Now.Sub(*app.LastDataAt))
+			last = ago(apps.Now.Sub(*app.LastDataAt))
 		}
 		fmt.Fprintf(&b, "%-*s  %s\n", width, app.App, last)
 	}
@@ -54,6 +55,13 @@ func Status(w io.Writer, s query.Status) error {
 	var b strings.Builder
 	b.WriteString("packrat status  " + s.App.App + "\n\n")
 	unkept, arriving := false, 0
+	width := len("Datadog browser")
+	for _, signal := range s.Signals {
+		for _, source := range signal.Sources {
+			width = max(width, len(source.Name))
+		}
+	}
+	fmt.Fprintf(&b, "  %-10s  %-*s  %-4s  %s\n", "SIGNAL", width, "SOURCE", "KEPT", "LAST DATA")
 	for _, signal := range s.Signals {
 		label := signalLabel(signal.Signal)
 		if len(signal.Sources) == 0 {
@@ -61,16 +69,12 @@ func Status(w io.Writer, s query.Status) error {
 			continue
 		}
 		arriving++
-		width := 0
-		for _, source := range signal.Sources {
-			width = max(width, len(source.Name))
-		}
 		for i, source := range signal.Sources {
 			if i > 0 {
 				label = ""
 			}
 			unkept = unkept || !source.Kept
-			line := fmt.Sprintf("  %-10s  %-*s  %-8s  %s", label, max(width, 15), source.Name, kept(source), seen(s, source))
+			line := fmt.Sprintf("  %-10s  %-*s  %-4s  %s", label, width, source.Name, kept(source), seen(s, source))
 			b.WriteString(strings.TrimRight(line, " ") + "\n")
 		}
 	}
@@ -163,14 +167,14 @@ func signalLabel(name string) string {
 
 func kept(source query.Source) string {
 	if source.Kept {
-		return "kept"
+		return "yes"
 	}
-	return "not kept"
+	return "no"
 }
 
 func seen(s query.Status, source query.Source) string {
 	if source.LastSeenAt == nil {
-		return "no data yet"
+		return "none"
 	}
 	return ago(s.Now.Sub(*source.LastSeenAt))
 }

@@ -1,18 +1,11 @@
 packrat detect  rails-by-railties  Rails 8.1.4, Ruby 3.4.7
 
-  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
-      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error
-  Traces      needs setup  add the OpenTelemetry gems
-      OpenTelemetry (Rails): setup adds the OpenTelemetry SDK
-  Logs        needs setup  add the OpenTelemetry logs gems
-      OpenTelemetry logs: setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
-  Replays     needs setup  add the Sentry browser SDK
-      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
-
-0 of 4 signals are ready.
+  SIGNAL      FOUND
+  Exceptions  none
+  Traces      none
+  Logs        none
+  Replays     none
 
 Found in this repository
   logging  Gemfile.lock:5  logs shape; not a destination
       lograge 0.15.0
-
-Nothing was changed. Nothing was sent.

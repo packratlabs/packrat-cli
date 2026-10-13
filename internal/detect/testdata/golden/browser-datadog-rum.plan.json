@@ -1,0 +1,64 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "8.0.2",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 4,
+        "text": "rails (8.0.2)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "subscribe to Rails.error",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "add the OpenTelemetry gems",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "add the OpenTelemetry logs gems",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "none",
+      "installed": false,
+      "step": "not supported",
+      "route": "none",
+      "state": "unsupported",
+      "reason": "Datadog RUM replays are not supported yet",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": []
+}

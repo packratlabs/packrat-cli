@@ -1,0 +1,13 @@
+packrat plan  sentry-traces-at-run-time  Rails 8.0.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Sentry          ✓          dual-ship to Packrat
+      sentry-ruby sends; Packrat takes the same envelope
+  Traces      OpenTelemetry              add the OpenTelemetry gems
+      setup adds the OpenTelemetry SDK
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+      setup adds the OpenTelemetry logs SDK
+  Replays     Sentry browser             add the Sentry browser SDK
+      Packrat accepts Sentry envelopes
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

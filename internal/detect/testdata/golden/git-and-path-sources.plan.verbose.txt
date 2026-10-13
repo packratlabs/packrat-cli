@@ -1,0 +1,13 @@
+packrat plan  git-and-path-sources  Rails 7.2.2.1, Ruby 3.2.4
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  OpenTelemetry              subscribe to Rails.error
+      setup subscribes to Rails.error
+  Traces      OpenTelemetry              add the OpenTelemetry gems
+      setup adds the OpenTelemetry SDK
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+      setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
+  Replays     Sentry browser             add the Sentry browser SDK
+      Packrat accepts Sentry envelopes
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

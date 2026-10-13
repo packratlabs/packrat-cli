@@ -29,16 +29,24 @@ const usage = `packrat reads a repository and says what observability it has, an
 
 Usage:
   packrat detect [path] [--verbose] [--json] [--host]
+  packrat plan [path] [--app service/env] [--verbose] [--json]
   packrat apps [--json]
   packrat status --app service/env [--wait] [--json]
 
-detect
+detect says what the repository has now
   path     directory to read (default: the current directory)
-  -v, --verbose  also print the reason for each line and everything that was found
+  -v, --verbose  also print where each thing was found
   --json   print the JSON document, which always holds everything
   --host   also probe this machine for a Datadog Agent; it opens one local socket
 
-detect is read-only. It writes no file and sends nothing. Without --host it opens no socket.
+plan says how each signal gets to Packrat
+  path     directory to read (default: the current directory)
+  --app    leave out the signals that Packrat already receives for this app
+  -v, --verbose  also print the reason for each step
+  --json   print the JSON document
+
+detect and plan are read-only. They write no file. They send nothing and open no socket, with
+two exceptions: detect --host opens one local socket, and plan --app asks query.packrat.sh.
 
 apps
   lists the apps that your API key opens, with the time of their last data
@@ -80,6 +88,8 @@ func runIn(w world, args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "detect":
 		return runDetect(args[1:], stdout, stderr)
+	case "plan":
+		return runPlan(w, args[1:], stdout, stderr)
 	case "apps":
 		return runApps(w, args[1:], stdout, stderr)
 	case "status":
@@ -204,6 +214,60 @@ func newClient(w world) (query.Client, error) {
 		base = query.DefaultURL
 	}
 	return query.Client{BaseURL: base, Key: key, HTTP: &http.Client{Timeout: httpLimit}}, nil
+}
+
+func runPlan(w world, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	app := fs.String("app", "", "")
+	asJSON := fs.Bool("json", false, "")
+	verbose := fs.Bool("verbose", false, "")
+	fs.BoolVar(verbose, "v", false, "")
+	paths, err := parseInterleaved(fs, args)
+	if errors.Is(err, flag.ErrHelp) {
+		return say(stdout, usage, exitOK)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+	}
+	if len(paths) > 1 {
+		return say(stderr, "packrat plan: takes one path\n", exitUsage)
+	}
+	path := "."
+	if len(paths) == 1 {
+		path = paths[0]
+	}
+	result, err := detect.Run(path, rails.DetectOptions())
+	if errors.Is(err, detect.ErrNotDirectory) {
+		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+	}
+	if !report.Planned(result) {
+		return say(stderr, fmt.Sprintf("packrat plan: %s\n", report.NoPlan), exitFailed)
+	}
+	var status *query.Status
+	if *app != "" {
+		client, err := newClient(w)
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+		}
+		answer, err := client.Status(context.Background(), *app)
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+		}
+		status = &answer
+	}
+	if *asJSON {
+		err = report.PlanJSONFor(stdout, result, status)
+	} else {
+		err = report.PlanFor(stdout, result, status, *verbose)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+	}
+	return exitOK
 }
 
 func runDetect(args []string, stdout, stderr io.Writer) int {

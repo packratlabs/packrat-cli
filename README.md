@@ -2,18 +2,20 @@
 
 [![check](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml/badge.svg)](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml)
 
-`packrat` has three commands:
+`packrat` has four commands:
 
-- `packrat detect` reads a repository and says what observability it has, and which route gets each
-  signal (exceptions, logs, traces, replays) into [Packrat](https://packrat.sh). Ruby on Rails is the
+- `packrat detect` reads a repository and says what observability it has now. Ruby on Rails is the
   only stack yet.
+- `packrat plan` says how each signal (exceptions, traces, logs, replays) gets from that repository
+  into [Packrat](https://packrat.sh).
 - `packrat apps` lists the apps that Packrat has data from.
 - `packrat status` says what Packrat receives for one app: each signal, each source that sends it,
   and whether Packrat keeps it.
 
-`detect` finds the stack, the observability gems and their configuration, agents and collectors,
-browser SDKs, and the names of environment variables. From these it picks one route for each signal.
-It does not set anything up; the routes say what a later `packrat setup` would do.
+`detect` gives facts and `plan` gives steps. `detect` finds the stack, the observability gems and
+their configuration, agents and collectors, browser SDKs, and the names of environment variables.
+`plan` picks one route for each signal from these facts. It does not set anything up; its steps say
+what a later `packrat setup` would do.
 
 ## Install
 
@@ -56,6 +58,7 @@ script is written. Do not run it until this note is removed.
 
 ```
 packrat detect [path] [--verbose] [--json] [--host]
+packrat plan [path] [--verbose] [--json]
 packrat apps [--json]
 packrat status --app service/env [--wait] [--json]
 ```
@@ -65,28 +68,72 @@ packrat status --app service/env [--wait] [--json]
 ```
 packrat detect  shop  Rails 8.1.1, Ruby 3.3.8
 
-  Exceptions  ready        through Sentry, which you already use
-  Traces      ready        through OpenTelemetry, which you already use
-  Logs        needs setup  add the OpenTelemetry logs gems
-  Replays     ready        through the Sentry browser SDK, which you already use
-
-3 of 4 signals are ready.
-Add --verbose to see what was found and why.
-
-Nothing was changed. Nothing was sent.
+  SIGNAL      FOUND
+  Exceptions  Sentry
+  Traces      OpenTelemetry
+  Logs        none
+  Replays     Sentry browser
 ```
 
-"ready" means that Packrat can receive what the repository already sends, with no new library.
+FOUND names each vendor in the repository that sends the signal in production. It includes a vendor
+that Packrat cannot receive from, such as New Relic. `none` means that nothing sends the signal.
 
 - `path` is the directory to read. The default is the current directory.
-- `--verbose`, or `-v`, adds the route and the reason under each line, and then everything that was
-  found: each vendor, the file and line that configures it, its gems, agents, browser SDKs and the
+- `--verbose`, or `-v`, adds everything that was found: each vendor, the file and line that configures it, its gems, agents, browser SDKs and the
   names of environment variables.
 - `--json` prints the JSON document instead of the table. It always holds everything.
 - `--host` also probes the machine that runs the detection, and prints the result under "This machine,
   not production". It is off by default, because that machine is usually a laptop.
 
 Exit status: `0` when the detection ran, `1` when the path cannot be read, `2` for a usage error.
+
+### plan
+
+```
+packrat plan  shop  Rails 8.1.1, Ruby 3.3.8
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Sentry          ✓          dual-ship to Packrat
+  Traces      OpenTelemetry   ✓          dual-ship to Packrat
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+  Replays     Sentry browser  ✓          dual-ship to Packrat
+
+Add --app service/env to detect if Packrat is receiving data from each signal.
+```
+
+- SOURCE is what Packrat will receive the signal from. The names are the names that
+  `packrat status` prints.
+- INSTALLED has a check mark when the repository has that source now.
+- STEP is what setup would do. "dual-ship" means that the source continues to send to its vendor
+  and also sends to Packrat.
+- A line under the table says why a usual route was not chosen, or why a signal has no route.
+- `--verbose`, or `-v`, adds the reason under each step. `--json` prints the plan document.
+- `plan` takes the same `path` as `detect`. It has no `--host`.
+
+The repository cannot show where a source sends: that address is usually a variable of the
+production environment, and `plan` never reads the value of a variable. So a repository that
+already ships to Packrat gets the same steps. `--app service/env` asks Packrat what it receives for
+that app, as `packrat status` does, and a signal that Packrat already keeps has no step:
+
+```
+$ packrat plan --app colorbook/production
+packrat plan  colorbook  Rails 8.0.2, Ruby 3.3.6
+
+  SIGNAL      SOURCE                         INSTALLED  STEP
+  Exceptions  OpenTelemetry                  ✓          none: Packrat receives it
+  Traces      OpenTelemetry, Sentry browser  ✓          none: Packrat receives it
+  Logs        OpenTelemetry                  ✓          none: Packrat receives it
+  Replays     Sentry browser                 ✓          none: Packrat receives it
+
+Nothing to do. Packrat already receives 4 signals.
+```
+
+With `--app`, SOURCE is the source that sends the signal now. It can be different from the source
+that the repository alone suggests: an app keeps its exceptions and its traces from the first source
+that sent them, so a second source would not be kept.
+
+Exit status: `0` when there is a plan, `1` when the repository is not a supported stack or the path
+cannot be read, `2` for a usage error.
 
 ### apps and status
 
@@ -95,8 +142,9 @@ These two commands ask `https://query.packrat.sh` with your API key. They take t
 
 ```
 $ packrat apps
-shop/production   last data now
-shop/development  last data 3 hours ago
+APP               LAST DATA
+shop/production   now
+shop/development  3 hours ago
 ```
 
 An app that you do not know is usually your app with a different name: a service name that was not
@@ -106,15 +154,16 @@ set, or an environment that you did not expect.
 $ packrat status --app colorbook/production
 packrat status  colorbook/production
 
-  Exceptions  Sentry           kept      2 minutes ago
-              OpenTelemetry    not kept  2 minutes ago
-  Traces      Sentry           kept      now
-              Datadog          not kept  3 minutes ago
-              Sentry browser   kept      6 minutes ago
-  Logs        Datadog          kept      4 minutes ago
-              OpenTelemetry    kept      now
+  SIGNAL      SOURCE           KEPT  LAST DATA
+  Exceptions  Sentry           yes   2 minutes ago
+              OpenTelemetry    no    2 minutes ago
+  Traces      Sentry           yes   now
+              Datadog          no    3 minutes ago
+              Sentry browser   yes   6 minutes ago
+  Logs        Datadog          yes   4 minutes ago
+              OpenTelemetry    yes   now
   Metrics     nothing yet
-  Replays     Sentry browser   kept      6 minutes ago
+  Replays     Sentry browser   yes   6 minutes ago
 
   Packrat keeps the first source of exceptions and of traces.
   To use a different source, ask us to switch it.
@@ -123,7 +172,7 @@ packrat status  colorbook/production
 ```
 
 - `--app` is necessary. It is `service/env`, as `packrat apps` prints it.
-- "not kept" means that the source sends the signal, and Packrat does not store it, because the app
+- `no` under KEPT means that the source sends the signal, and Packrat does not store it, because the app
   keeps that signal from a different source. Logs, metrics and all data from a browser are kept from
   each source.
 - A time is exact to the minute. A time of less than two minutes is "now".
@@ -183,6 +232,8 @@ of `testdata/canary` and fails if the marker reaches the output.
 
 ## The JSON
 
+### The detect document
+
 `--json` prints one document. The schema is `packrat.detect/1`. A change that removes or renames a
 key, or changes what a value means, will change the schema name. Two runs on the same files print
 the same bytes. A list is never `null`; an empty list is `[]`.
@@ -196,7 +247,6 @@ the same bytes. A list is never `null`; an empty list is `[]`.
   "agents": [],
   "browser": [],
   "env_names": [],
-  "signals": [],
   "host": null,
   "notes": []
 }
@@ -211,7 +261,6 @@ the same bytes. A list is never `null`; an empty list is `[]`.
 | `agents` | One entry for each agent or collector that the repository starts or configures. Sorted by `vendor`. |
 | `browser` | One entry for each browser SDK. Sorted by `vendor`. |
 | `env_names` | Names of environment variables, sorted by `name`. Never a value. |
-| `signals` | The route for each signal. Empty when `stack` is `null`; otherwise always four, in the order `exceptions`, `traces`, `logs`, `replays`. |
 | `host` | `null` without `--host`. |
 | `notes` | Sentences about the detection as a whole, such as a missing `Gemfile.lock`. |
 
@@ -240,23 +289,6 @@ pattern that matched.
 
 **An entry of `env_names`** has `name` and `files`, the sorted paths that name it.
 
-**An entry of `signals`.**
-
-| Key | Meaning |
-|---|---|
-| `name` | `exceptions`, `traces`, `logs` or `replays`. |
-| `route` | How Packrat would take the signal. One of the routes below. |
-| `state` | `route`: setup can add this route. `already`: the repository already sends this way, and setup only points it at Packrat. `later`: not offered yet; no rule gives this state today. `unsupported`: there is no route. |
-| `reason` | One sentence that says why. |
-| `blocked` | Routes that would normally be chosen, each with the reason why not. |
-
-| Signal | Routes |
-|---|---|
-| `exceptions` | `Sentry copy`, `Datadog Agent copy`, `OpenTelemetry exceptions (Rails.error)` |
-| `traces` | `Datadog Agent copy`, `OpenTelemetry`, `OpenTelemetry (Rails)` |
-| `logs` | `Datadog Agent copy`, `OpenTelemetry logs` |
-| `replays` | `Sentry browser copy`, `Sentry browser SDK pointed at Packrat`, `none` |
-
 **`host`**, with `--host`.
 
 | Key | Meaning |
@@ -265,6 +297,48 @@ pattern that matched.
 | `trace_listener` | `true` when something accepts a connection on `localhost:8126`. |
 | `env_set` | Which of `DD_AGENT_HOST` and `OTEL_EXPORTER_OTLP_ENDPOINT` have a value. Names only. |
 | `notes` | Problems during the probe. |
+
+### The plan document
+
+`packrat plan --json` prints one document. The schema is `packrat.plan/1`.
+
+```json
+{
+  "schema": "packrat.plan/1",
+  "path": "/Users/x/shop",
+  "app": null,
+  "stack": { "name": "rails", "version": "8.1.1", "ruby": "3.3.8", "evidence": [] },
+  "steps": [
+    { "name": "exceptions", "source": "Sentry", "installed": true, "step": "dual-ship to Packrat",
+      "route": "Sentry copy", "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope", "blocked": [], "arrives": false }
+  ],
+  "notes": []
+}
+```
+
+`steps` always has four entries, in the order `exceptions`, `traces`, `logs`, `replays`.
+
+| Key | Meaning |
+|---|---|
+| `name` | `exceptions`, `traces`, `logs` or `replays`. |
+| `source` | What Packrat will receive the signal from: `Sentry`, `Datadog`, `OpenTelemetry`, `Sentry browser`, or `none`. |
+| `installed` | `true` when the repository has that source now. |
+| `step` | What setup would do, as the table prints it. |
+| `route` | The rule's name for the way in. One of the routes below. |
+| `state` | `route`: setup can add this route. `already`: the repository already sends this way, and setup only points it at Packrat. `later`: not offered yet; no rule gives this state today. `unsupported`: there is no route. |
+| `reason` | One sentence that says why. |
+| `blocked` | Routes that would normally be chosen, each with the reason why not. |
+| `arrives` | `true` when Packrat already keeps the signal for the app of `--app`. Always `false` without `--app`. |
+
+`app` is the app of `--app`, or `null`.
+
+| Signal | Routes |
+|---|---|
+| `exceptions` | `Sentry copy`, `Datadog Agent copy`, `OpenTelemetry exceptions (Rails.error)` |
+| `traces` | `Datadog Agent copy`, `OpenTelemetry`, `OpenTelemetry (Rails)` |
+| `logs` | `Datadog Agent copy`, `OpenTelemetry logs` |
+| `replays` | `Sentry browser copy`, `Sentry browser SDK pointed at Packrat`, `none` |
 
 ## Development
 
@@ -277,14 +351,14 @@ make check    # gofmt, vet, staticcheck, golangci-lint, tests
 mode. It builds the five release binaries, their archives and `checksums.txt` into `dist/`. It
 publishes nothing and makes no tag. The first run compiles GoReleaser and takes some minutes.
 
-Each directory in `testdata/` is a small repository for one behaviour. The output the detection must
-give for it is in `internal/detect/testdata/golden/`. `UPDATE=1 go test ./internal/detect -run Golden`
+Each directory in `testdata/` is a small repository for one behaviour. The output that `detect` and
+`plan` must give for it is in `internal/detect/testdata/golden/`. `UPDATE=1 go test ./internal/detect -run Golden`
 rewrites those files; read the diff before you commit it.
 
 ## The corpus
 
 The rules are tuned against nine real Rails repositories. `corpus/repos.txt` lists them with a
-pinned commit. `corpus/expected/` holds the JSON that the detection must give for each.
+pinned commit. `corpus/expected/` holds the two JSON documents that `detect` and `plan` must give for each.
 `corpus/NOTES.md` says what each repository taught.
 
 ```

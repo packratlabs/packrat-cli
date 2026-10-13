@@ -1,8 +1,9 @@
 packrat status  shop/production
 
-  Exceptions  Sentry           kept      9 days ago
-  Traces      Sentry           kept      26 hours ago
-  Logs        OpenTelemetry    kept      26 hours ago
+  SIGNAL      SOURCE           KEPT  LAST DATA
+  Exceptions  Sentry           yes   9 days ago
+  Traces      Sentry           yes   26 hours ago
+  Logs        OpenTelemetry    yes   26 hours ago
   Metrics     nothing yet
   Replays     nothing yet
 

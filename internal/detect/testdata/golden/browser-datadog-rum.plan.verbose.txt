@@ -1,0 +1,14 @@
+packrat plan  browser-datadog-rum  Rails 8.0.2
+
+  SIGNAL      SOURCE         INSTALLED  STEP
+  Exceptions  OpenTelemetry             subscribe to Rails.error
+      setup subscribes to Rails.error
+  Traces      OpenTelemetry             add the OpenTelemetry gems
+      setup adds the OpenTelemetry SDK
+  Logs        OpenTelemetry             add the OpenTelemetry logs gems
+      setup adds the OpenTelemetry logs SDK
+  Replays     none                      not supported
+
+  Replays: Datadog RUM replays are not supported yet.
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

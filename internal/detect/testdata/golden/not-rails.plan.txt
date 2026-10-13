@@ -1,0 +1,3 @@
+packrat plan  not-rails
+
+No supported stack found (Rails is the only one yet). There is no plan.

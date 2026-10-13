@@ -1,16 +1,10 @@
 packrat detect  canary  Rails 8.0.2
 
-  Exceptions  ready        through Sentry, which you already use
-      Sentry copy: sentry-ruby sends; Packrat takes the same envelope
-  Traces      needs setup  through your Datadog Agent, which sends a copy
-      Datadog Agent copy: Agent config at .github/workflows/ci.yml:10
-      not OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide
-  Logs        needs setup  through your Datadog Agent, which sends a copy
-      Datadog Agent copy: same Agent
-  Replays     ready        through the Sentry browser SDK, which you already use
-      Sentry browser copy: replays on
-
-2 of 4 signals are ready.
+  SIGNAL      FOUND
+  Exceptions  Datadog, Sentry
+  Traces      Datadog, Sentry
+  Logs        Datadog
+  Replays     Sentry browser
 
 Found in this repository
   Datadog                  config/initializers/datadog.rb:1          traces, logs, exceptions
@@ -30,5 +24,3 @@ Found in this repository
       DD_SITE, DD_VERSION, ELASTIC_APM_SECRET_TOKEN, HONEYBADGER_API_KEY, NEW_RELIC_LICENSE_KEY,
       OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, PACKRAT_INGEST_KEY, POSTHOG_API_KEY,
       ROLLBAR_ACCESS_TOKEN, SCOUT_KEY, SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_PRIVATE_KEY
-
-Nothing was changed. Nothing was sent.

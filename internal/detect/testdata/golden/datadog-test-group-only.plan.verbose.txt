@@ -1,0 +1,13 @@
+packrat plan  datadog-test-group-only  Rails 7.1.5
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  OpenTelemetry              subscribe to Rails.error
+      setup subscribes to Rails.error
+  Traces      OpenTelemetry              add the OpenTelemetry gems
+      setup adds the OpenTelemetry SDK
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+      setup adds the OpenTelemetry logs SDK
+  Replays     Sentry browser             add the Sentry browser SDK
+      Packrat accepts Sentry envelopes
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

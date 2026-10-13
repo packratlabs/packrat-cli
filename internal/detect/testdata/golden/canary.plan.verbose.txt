@@ -1,0 +1,16 @@
+packrat plan  canary  Rails 8.0.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Sentry          ✓          dual-ship to Packrat
+      sentry-ruby sends; Packrat takes the same envelope
+  Traces      Datadog         ✓          dual-ship from the Agent
+      Agent config at .github/workflows/ci.yml:10
+  Logs        Datadog         ✓          dual-ship from the Agent
+      same Agent
+  Replays     Sentry browser  ✓          dual-ship to Packrat
+      replays on
+
+  Traces do not use OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP
+  instrumentation collide.
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

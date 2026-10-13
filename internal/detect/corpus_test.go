@@ -51,7 +51,7 @@ func corpusRepos(t *testing.T, corpus string) []corpusRepo {
 	return repos
 }
 
-// TestCorpus compares the detection of each real repository with its expected JSON. A repository that
+// TestCorpus compares the detection and the plan of each real repository with their expected JSON. A repository that
 // is not on this machine is skipped, so the test does nothing in CI. `make corpus` clones them.
 // UPDATE=1 rewrites the expected files; read the diff against the repository's own files, and
 // write what it taught in corpus/NOTES.md, before you commit it.
@@ -67,22 +67,26 @@ func TestCorpus(t *testing.T) {
 				t.Fatalf("detection of %s: %v", repo.name, err)
 			}
 			result.Path = ""
-			var got bytes.Buffer
-			if err := report.JSON(&got, result); err != nil {
-				t.Fatalf("report of %s: %v", repo.name, err)
-			}
 			expected := filepath.Join(corpus, "expected")
-			if os.Getenv("UPDATE") == "1" {
-				if err := os.WriteFile(filepath.Join(expected, repo.name+".json"), got.Bytes(), 0o600); err != nil {
-					t.Fatalf("writing the expected file of %s: %v", repo.name, err)
+			// The facts and the plan are two documents, and a rule can break one and not the other.
+			for _, m := range []mode{{"json", report.JSON}, {"plan.json", report.PlanJSON}} {
+				file := repo.name + "." + m.name
+				var got bytes.Buffer
+				if err := m.write(&got, result); err != nil {
+					t.Fatalf("report of %s: %v", repo.name, err)
 				}
-			}
-			want, err := fs.ReadFile(os.DirFS(expected), repo.name+".json")
-			if err != nil {
-				t.Fatalf("reading the expected file of %s: %v", repo.name, err)
-			}
-			if !bytes.Equal(got.Bytes(), want) {
-				t.Errorf("%s differs from corpus/expected/%s.json. got:\n%s", repo.name, repo.name, got.Bytes())
+				if os.Getenv("UPDATE") == "1" {
+					if err := os.WriteFile(filepath.Join(expected, file), got.Bytes(), 0o600); err != nil {
+						t.Fatalf("writing %s: %v", file, err)
+					}
+				}
+				want, err := fs.ReadFile(os.DirFS(expected), file)
+				if err != nil {
+					t.Fatalf("reading %s: %v", file, err)
+				}
+				if !bytes.Equal(got.Bytes(), want) {
+					t.Errorf("%s differs from corpus/expected/%s. got:\n%s", repo.name, file, got.Bytes())
+				}
 			}
 		})
 	}
