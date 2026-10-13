@@ -1,0 +1,66 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "7.2.3.1",
+    "ruby": "3.4.4",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 713,
+        "text": "rails (7.2.3.1)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "Sentry",
+      "installed": true,
+      "step": "dual-ship to Packrat",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "Datadog",
+      "installed": true,
+      "step": "dual-ship from the Agent",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config not in this repository; setup will print the lines for it",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "add the OpenTelemetry logs gems",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "Sentry browser",
+      "installed": true,
+      "step": "turn on replays, then dual-ship to Packrat",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays not enabled yet",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": []
+}

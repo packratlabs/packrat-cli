@@ -1,0 +1,12 @@
+packrat plan  datadog-gem-and-agent  Rails 8.0.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Sentry          ✓          dual-ship to Packrat
+  Traces      Datadog         ✓          dual-ship from the Agent
+  Logs        Datadog         ✓          dual-ship from the Agent
+  Replays     Sentry browser             add the Sentry browser SDK
+
+  Traces do not use OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP
+  instrumentation collide.
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

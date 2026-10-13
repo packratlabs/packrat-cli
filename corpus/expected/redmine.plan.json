@@ -1,0 +1,66 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "8.1.4",
+    "ruby": "",
+    "evidence": [
+      {
+        "path": "Gemfile",
+        "line": 5,
+        "text": "gem 'rails', '8.1.4'"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "subscribe to Rails.error",
+      "route": "OpenTelemetry exceptions (Rails.error)",
+      "state": "route",
+      "reason": "setup subscribes to Rails.error",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "add the OpenTelemetry gems",
+      "route": "OpenTelemetry (Rails)",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry SDK",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "OpenTelemetry",
+      "installed": false,
+      "step": "add the OpenTelemetry logs gems",
+      "route": "OpenTelemetry logs",
+      "state": "route",
+      "reason": "setup adds the OpenTelemetry logs SDK",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "Sentry browser",
+      "installed": false,
+      "step": "add the Sentry browser SDK",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": [
+    "no Gemfile.lock; run bundle install for versions"
+  ]
+}

@@ -70,36 +70,6 @@
   "agents": [],
   "browser": [],
   "env_names": [],
-  "signals": [
-    {
-      "name": "exceptions",
-      "route": "OpenTelemetry exceptions (Rails.error)",
-      "state": "route",
-      "reason": "setup subscribes to Rails.error",
-      "blocked": []
-    },
-    {
-      "name": "traces",
-      "route": "OpenTelemetry",
-      "state": "already",
-      "reason": "already exports OTLP; setup points the exporter at Packrat",
-      "blocked": []
-    },
-    {
-      "name": "logs",
-      "route": "OpenTelemetry logs",
-      "state": "route",
-      "reason": "setup adds the OpenTelemetry logs SDK",
-      "blocked": []
-    },
-    {
-      "name": "replays",
-      "route": "Sentry browser SDK pointed at Packrat",
-      "state": "route",
-      "reason": "Packrat accepts Sentry envelopes",
-      "blocked": []
-    }
-  ],
   "host": null,
   "notes": []
 }

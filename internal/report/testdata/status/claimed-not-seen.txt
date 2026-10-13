@@ -1,8 +1,9 @@
 packrat status  shop/production
 
+  SIGNAL      SOURCE           KEPT  LAST DATA
   Exceptions  nothing yet
-  Traces      Datadog          kept      no data yet
-  Logs        OpenTelemetry    kept      3 minutes ago
+  Traces      Datadog          yes   none
+  Logs        OpenTelemetry    yes   3 minutes ago
   Metrics     nothing yet
   Replays     nothing yet
 

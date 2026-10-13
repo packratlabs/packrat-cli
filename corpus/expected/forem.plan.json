@@ -1,0 +1,66 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "8.0.5",
+    "ruby": "3.3.0",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 765,
+        "text": "rails (8.0.5)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "Sentry",
+      "installed": true,
+      "step": "dual-ship to Packrat",
+      "route": "Sentry copy",
+      "state": "route",
+      "reason": "sentry-ruby sends; Packrat takes the same envelope",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "Datadog",
+      "installed": true,
+      "step": "dual-ship from the Agent",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "Agent config at datadog/prerun.sh",
+      "blocked": [
+        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
+      ],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "Datadog",
+      "installed": true,
+      "step": "dual-ship from the Agent",
+      "route": "Datadog Agent copy",
+      "state": "route",
+      "reason": "same Agent",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "Sentry browser",
+      "installed": false,
+      "step": "add the Sentry browser SDK",
+      "route": "Sentry browser SDK pointed at Packrat",
+      "state": "route",
+      "reason": "Packrat accepts Sentry envelopes",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": []
+}

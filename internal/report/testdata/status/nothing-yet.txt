@@ -1,5 +1,6 @@
 packrat status  shop/development
 
+  SIGNAL      SOURCE           KEPT  LAST DATA
   Exceptions  nothing yet
   Traces      nothing yet
   Logs        nothing yet

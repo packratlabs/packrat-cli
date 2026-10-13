@@ -1,0 +1,9 @@
+packrat plan  browser-import-before-init  Rails 8.0.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  OpenTelemetry              subscribe to Rails.error
+  Traces      OpenTelemetry              add the OpenTelemetry gems
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+  Replays     Sentry browser  ✓          turn on replays, then dual-ship to Packrat
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

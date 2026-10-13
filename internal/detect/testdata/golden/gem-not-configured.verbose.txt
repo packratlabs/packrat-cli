@@ -1,20 +1,13 @@
 packrat detect  gem-not-configured  Rails 8.0.2
 
-  Exceptions  needs setup  add an OpenTelemetry subscriber for Rails errors
-      OpenTelemetry exceptions (Rails.error): setup subscribes to Rails.error; keeps Rollbar
-  Traces      needs setup  add the OpenTelemetry gems
-      OpenTelemetry (Rails): setup adds the OpenTelemetry SDK
-  Logs        needs setup  add the OpenTelemetry logs gems
-      OpenTelemetry logs: setup adds the OpenTelemetry logs SDK; logs are shaped by lograge
-  Replays     needs setup  add the Sentry browser SDK
-      Sentry browser SDK pointed at Packrat: Packrat accepts Sentry envelopes
-
-0 of 4 signals are ready.
+  SIGNAL      FOUND
+  Exceptions  Rollbar
+  Traces      none
+  Logs        none
+  Replays     none
 
 Found in this repository
   Rollbar  Gemfile.lock:6  exceptions; gem present, no configure call found
       rollbar 3.6.1
   logging  Gemfile.lock:4  logs shape; not a destination
       lograge 0.14.0
-
-Nothing was changed. Nothing was sent.

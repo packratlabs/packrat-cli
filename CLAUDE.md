@@ -2,8 +2,10 @@
 
 Report to the owner in ASD-STE100 Simplified Technical English. Short sentences, one idea each.
 
-`packrat detect` reads a repository and says what observability it has and how Packrat would take
-each signal. It is read-only: no network call, no file written, no environment value read. These
+`packrat detect` reads a repository and says what observability it has. `packrat plan` says how
+Packrat would take each signal. `detect` prints facts only; a suggestion, a state or a step belongs
+in `plan` (`internal/report/plan.go`). Both are read-only: no network call, no file written, no
+environment value read. These
 three are promises checked by tests (`internal/detect/canary_test.go`, `nonetwork_test.go`); do not
 weaken a test to make a change pass.
 
@@ -11,7 +13,7 @@ weaken a test to make a change pass.
 receives. `internal/query` is the only package that sends a request and the only one that reads a
 value from an env file, and that value is `PACKRAT_API_KEY` alone. It must never reach stdout,
 stderr or an error; `main_test.go` and `internal/query/query_test.go` check this. `detect` must not
-import `internal/query`.
+import `internal/query`. `plan` asks the API only with `--app`.
 
 Go, standard library only. `make check` (gofmt, vet, staticcheck, golangci-lint, tests) must be
 green before every commit. No `panic`, `log.Fatal` or `os.Exit` outside `main.go`. Every error is
@@ -21,7 +23,7 @@ wrapped with context. No package-level mutable state. Tests are table-driven on 
 In `detect`, env files are read for variable **names only**: split at the first `=`, keep the left, discard the
 right at once, and never put a line of such a file into evidence text.
 
-The rules for which route a signal takes are in `internal/rails/routes.go`, numbered as in the
+The rules for which route a signal takes, which `plan` prints, are in `internal/rails/routes.go`, numbered as in the
 plan (`~/Downloads/packrat-cli-plan.md`, section 5.1). Change a rule there and in its table test
 together.
 

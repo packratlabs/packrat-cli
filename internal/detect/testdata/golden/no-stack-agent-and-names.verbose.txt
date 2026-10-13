@@ -6,5 +6,3 @@ Found in this repository
   OpenTelemetry Collector  docker-compose.yml:3
   Env names                in .env.example, docker-compose.yml
       OTEL_EXPORTER_OTLP_ENDPOINT, SENTRY_DSN
-
-Nothing was changed. Nothing was sent.

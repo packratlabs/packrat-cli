@@ -152,9 +152,10 @@ type Result struct {
 	Agents   []Agent    `json:"agents"`
 	Browser  []Browser  `json:"browser"`
 	EnvNames []EnvName  `json:"env_names"`
-	Signals  []Signal   `json:"signals"`
-	Host     *Host      `json:"host"`
-	Notes    []string   `json:"notes"`
+	// Signals are the routes, which packrat plan prints. They are not a fact about the repository.
+	Signals []Signal `json:"-"`
+	Host    *Host    `json:"host"`
+	Notes   []string `json:"notes"`
 }
 
 // Options are the switches of one run. Stacks are tried in order and the first match is read.

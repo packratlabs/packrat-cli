@@ -253,36 +253,6 @@
   "agents": [],
   "browser": [],
   "env_names": [],
-  "signals": [
-    {
-      "name": "exceptions",
-      "route": "OpenTelemetry exceptions (Rails.error)",
-      "state": "route",
-      "reason": "setup subscribes to Rails.error; keeps Honeybadger",
-      "blocked": []
-    },
-    {
-      "name": "traces",
-      "route": "OpenTelemetry (Rails)",
-      "state": "route",
-      "reason": "setup adds the OpenTelemetry SDK",
-      "blocked": []
-    },
-    {
-      "name": "logs",
-      "route": "OpenTelemetry logs",
-      "state": "route",
-      "reason": "setup adds the OpenTelemetry logs SDK; logs are shaped by lograge",
-      "blocked": []
-    },
-    {
-      "name": "replays",
-      "route": "Sentry browser SDK pointed at Packrat",
-      "state": "route",
-      "reason": "Packrat accepts Sentry envelopes",
-      "blocked": []
-    }
-  ],
   "host": null,
   "notes": []
 }

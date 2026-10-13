@@ -1,0 +1,16 @@
+packrat plan  datadog-heroku-prerun  Rails 8.0.2
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Datadog         ✓          dual-ship from the Agent
+      errors arrive as error spans
+  Traces      Datadog         ✓          dual-ship from the Agent
+      Agent config at datadog/prerun.sh
+  Logs        Datadog         ✓          dual-ship from the Agent
+      same Agent
+  Replays     Sentry browser             add the Sentry browser SDK
+      Packrat accepts Sentry envelopes
+
+  Traces do not use OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP
+  instrumentation collide.
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

@@ -47,38 +47,6 @@
   "agents": [],
   "browser": [],
   "env_names": [],
-  "signals": [
-    {
-      "name": "exceptions",
-      "route": "Datadog Agent copy",
-      "state": "route",
-      "reason": "errors arrive as error spans",
-      "blocked": []
-    },
-    {
-      "name": "traces",
-      "route": "Datadog Agent copy",
-      "state": "route",
-      "reason": "Agent config not in this repository; setup will print the lines for it",
-      "blocked": [
-        "OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP instrumentation collide"
-      ]
-    },
-    {
-      "name": "logs",
-      "route": "OpenTelemetry logs",
-      "state": "route",
-      "reason": "setup adds the OpenTelemetry logs SDK",
-      "blocked": []
-    },
-    {
-      "name": "replays",
-      "route": "Sentry browser SDK pointed at Packrat",
-      "state": "route",
-      "reason": "Packrat accepts Sentry envelopes",
-      "blocked": []
-    }
-  ],
   "host": null,
   "notes": []
 }

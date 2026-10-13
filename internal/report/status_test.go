@@ -66,7 +66,7 @@ func TestApps(t *testing.T) {
 			{App: "shop/production", LastDataAt: &recent},
 			{App: "shop/dev", LastDataAt: &old},
 			{App: "rails/production"},
-		}, want: "shop/production   last data now\nshop/dev          last data 3 hours ago\nrails/production  no data yet\n"},
+		}, want: "APP               LAST DATA\nshop/production   now\nshop/dev          3 hours ago\nrails/production  none\n"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
