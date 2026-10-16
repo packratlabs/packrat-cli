@@ -104,6 +104,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a watch for a pull request", args: []string{"pr", "482", "watch", "--due", "2026-10-20T21:00Z", "--app", "shop"}, login: true, stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "wch_2"`, request: "POST /watches?app=shop&due=2026-10-20T21%3A00Z&pull=482 Gift card totals are right."},
 		{name: "a watch needs a time", args: []string{"pr", "482", "watch"}, login: true, stdin: "x", code: 2, stderr: "--due is the first time", none: true},
 		{name: "a watch needs a text", args: []string{"pr", "482", "watch", "--due", "2026-10-20T21:00Z"}, login: true, code: 2, stderr: "on stdin", none: true},
+		{name: "a watch from a report", args: []string{"watch", "add", "--app", "shop", "--report", "rep_1", "--due", "2026-10-20T21:00Z"}, login: true, stdin: "It held.", code: 0, stdout: `"id": "wch_2"`, request: "POST /watches?app=shop&due=2026-10-20T21%3A00Z&report=rep_1 It held."},
+		{name: "watch with no command", args: []string{"watch"}, login: true, code: 2, stderr: "packrat watch add --due", none: true},
 		{name: "watch list", args: []string{"watch", "list", "--app", "shop", "--pull", "482"}, login: true, code: 0, stdout: "wch_1 #482", request: "GET /watches?app=shop&pull=482"},
 		{name: "watch close", args: []string{"watch", "close", "wch_1"}, login: true, code: 0, stdout: "Closed by a developer", request: "DELETE /watches/wch_1"},
 		{name: "sql prints rows and a summary", args: []string{"sql", "--app", "shop", "select 1"}, login: true, code: 0, stdout: `"values":[1]`, stderr: "1 rows in 0.01s from shop/production", request: "POST /sql?app=shop select 1"},

@@ -186,6 +186,8 @@ Watches
 - `packrat pr 482 watch --due 2026-10-20T21:00Z < watch.txt` asks the analyst to verify something at
   that time. The text says what must be true and the SQL that shows it. The answer is mailed in the
   thread of the pull request's verdict.
+- `packrat watch add --due 2026-10-20T21:00Z --report rep_… < watch.txt` asks for a watch that is not
+  for a pull request; `--report` puts the answer in the thread of that analyst mail.
 - `packrat watch list` lists the app's watches, `--pull 482` only that pull request's.
   `packrat watch close wch_…` closes one before it is verified.
 - `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML

@@ -35,6 +35,7 @@ Usage:
   packrat auth status
   packrat pr <number or URL> [--app service] [--json]
   packrat pr <number or URL> watch --due <time> [--app service]   < what must be true, and its SQL
+  packrat watch add --due <time> [--app service] [--pull number] [--report id]   < what must be true, and its SQL
   packrat watch list [--app service] [--pull number] [--json]
   packrat watch close <watch id>
   packrat open <Packrat URL, or the line from a Packrat mail>
@@ -54,7 +55,8 @@ pr        how a pull request went in production: each deploy that shipped it, th
           request's repository: the URL's, or the origin remote of this checkout.
 pr watch  asks the analyst to verify something for the pull request at a later time, in UTC
           (--due 2026-10-20T21:00Z). The text on stdin says what must be true and the SQL that shows it.
-watch     lists the app's watches, or closes one before it is verified.
+watch     asks the analyst to verify something at a later time (add), lists the app's watches, or
+          closes one before it is verified. --report puts the answer in the thread of that mail.
 open      reads a Packrat page, a report, or the URL in a pasted curl line, with your key. A GitHub
           pull request's URL is the same as packrat pr. The key is sent only to Packrat.
 sql       runs SQL against an app and prints NDJSON rows. A summary goes to stderr.

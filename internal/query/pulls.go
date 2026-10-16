@@ -105,15 +105,27 @@ func (c Client) Watches(ctx context.Context, where Where, pull int) (Watches, er
 	return watches, nil
 }
 
-// Watch asks the analyst to verify text at due, for pull request pull when it is above 0.
-func (c Client) Watch(ctx context.Context, where Where, pull int, due time.Time, text string) (Watch, error) {
+// Ask is a watch to ask for: what must be true and the SQL that shows it, from when, and the pull
+// request or the analyst's mail it belongs to, if any.
+type Ask struct {
+	Text   string
+	Due    time.Time
+	Pull   int
+	Report string
+}
+
+// Watch asks the analyst to verify something at a later time.
+func (c Client) Watch(ctx context.Context, where Where, ask Ask) (Watch, error) {
 	values := where.values()
-	values.Set("due", due.UTC().Format("2006-01-02T15:04Z"))
-	if pull > 0 {
-		values.Set("pull", strconv.Itoa(pull))
+	values.Set("due", ask.Due.UTC().Format("2006-01-02T15:04Z"))
+	if ask.Pull > 0 {
+		values.Set("pull", strconv.Itoa(ask.Pull))
+	}
+	if ask.Report != "" {
+		values.Set("report", ask.Report)
 	}
 	var watch Watch
-	body, err := c.send(ctx, "POST", "/watches"+query(values), "text/plain", "application/json", strings.NewReader(text))
+	body, err := c.send(ctx, "POST", "/watches"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
 	if err != nil {
 		return Watch{}, err
 	}

@@ -197,7 +197,7 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitUsage)
 	}
 	if len(words) == 2 {
-		return askWatch(w, client, where, number, *due, stdout, stderr)
+		return askWatch(w, client, where, query.Ask{Pull: number}, *due, "packrat pr watch", stdout, stderr)
 	}
 	pull, err := client.Pull(context.Background(), number, where)
 	if err != nil {
@@ -214,36 +214,39 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-func askWatch(w world, client query.Client, where query.Where, pull int, due string, stdout, stderr io.Writer) int {
+func askWatch(w world, client query.Client, where query.Where, ask query.Ask, due, name string, stdout, stderr io.Writer) int {
 	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
 	if err != nil {
 		at, err = time.Parse(time.RFC3339, due)
 	}
 	if err != nil {
-		return say(stderr, "packrat pr watch: --due is the first time it can be verified, in UTC: --due 2026-10-20T21:00Z\n", exitUsage)
+		return say(stderr, name+": --due is the first time it can be verified, in UTC: --due 2026-10-20T21:00Z\n", exitUsage)
 	}
 	text, err := io.ReadAll(w.stdin)
 	if err != nil || len(bytes.TrimSpace(text)) == 0 {
-		return say(stderr, "packrat pr watch: write what must be true, and the SQL that shows it, on stdin\n", exitUsage)
+		return say(stderr, name+": write what must be true, and the SQL that shows it, on stdin\n", exitUsage)
 	}
-	watch, err := client.Watch(context.Background(), where, pull, at, string(text))
+	ask.Due, ask.Text = at, string(text)
+	watch, err := client.Watch(context.Background(), where, ask)
+	if err == nil {
+		err = report.WatchJSON(stdout, watch)
+	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat pr watch: %v\n", err), exitFailed)
-	}
-	if err := report.WatchJSON(stdout, watch); err != nil {
-		return say(stderr, fmt.Sprintf("packrat pr watch: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("%s: %v\n", name, err), exitFailed)
 	}
 	return exitOK
 }
 
 func runWatch(w world, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		return say(stderr, "packrat watch: the commands are packrat watch list and packrat watch close <id>\n", exitUsage)
+		return say(stderr, watchUsage, exitUsage)
 	}
 	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
 	pull := fs.Int("pull", 0, "")
+	due := fs.String("due", "", "")
+	reportID := fs.String("report", "", "")
 	asJSON := fs.Bool("json", false, "")
 	words, err := parseInterleaved(fs, args[1:])
 	if err != nil {
@@ -254,6 +257,8 @@ func runWatch(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat watch: %v\n", err), exitUsage)
 	}
 	switch {
+	case args[0] == "add" && len(words) == 0:
+		return askWatch(w, client, query.Where{App: *app}, query.Ask{Pull: *pull, Report: *reportID}, *due, "packrat watch add", stdout, stderr)
 	case args[0] == "list" && len(words) == 0:
 		watches, err := client.Watches(context.Background(), query.Where{App: *app}, *pull)
 		if err == nil {
@@ -277,9 +282,11 @@ func runWatch(w world, args []string, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	default:
-		return say(stderr, "packrat watch: the commands are packrat watch list and packrat watch close <id>\n", exitUsage)
+		return say(stderr, watchUsage, exitUsage)
 	}
 }
+
+const watchUsage = "packrat watch: the commands are packrat watch add --due <time>, packrat watch list and packrat watch close <id>\n"
 
 func runOpen(w world, args []string, stdout, stderr io.Writer) int {
 	address := anyURL.FindString(strings.Join(args, " "))
