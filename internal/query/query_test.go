@@ -5,40 +5,38 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/packratlabs/packrat-cli/internal/auth"
 	"github.com/packratlabs/packrat-cli/internal/query"
 )
 
 const testKey = "packrat_api_canary"
 
+type signIns struct {
+	signIn auth.SignIn
+	err    error
+}
+
+func (s signIns) Current() (auth.SignIn, error) { return s.signIn, s.err }
+
 func TestKey(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     string
-		file    string
+		stored  signIns
 		want    string
 		wantErr error
 	}{
-		{name: "the environment wins", env: "from-env", file: "PACKRAT_API_KEY=from-file\n", want: "from-env"},
-		{name: "the env file", file: "OTHER=1\nPACKRAT_API_KEY=from-file\n", want: "from-file"},
-		{name: "export and quotes", file: "export PACKRAT_API_KEY=\"from-file\"\n", want: "from-file"},
-		{name: "another name with the same start", file: "PACKRAT_API_KEY_OLD=old\n", wantErr: query.ErrNoKey},
-		{name: "a name with no value", file: "PACKRAT_API_KEY=\n", wantErr: query.ErrNoKey},
-		{name: "no file", wantErr: query.ErrNoKey},
+		{name: "the environment wins", env: "from-env", stored: signIns{signIn: auth.SignIn{Token: "from-login"}}, want: "from-env"},
+		{name: "the sign-in", stored: signIns{signIn: auth.SignIn{Token: "from-login"}}, want: "from-login"},
+		{name: "no sign-in", stored: signIns{err: auth.ErrNotSignedIn}, wantErr: query.ErrNoKey},
+		{name: "a sign-in with no token", stored: signIns{signIn: auth.SignIn{Org: "org_a"}}, wantErr: query.ErrNoKey},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			if tc.file != "" {
-				if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(tc.file), 0o600); err != nil {
-					t.Fatalf("writing .env: %v", err)
-				}
-			}
-			got, err := query.Key(func(string) string { return tc.env }, dir)
+			got, err := query.Key(func(string) string { return tc.env }, tc.stored)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("error is %v, want %v", err, tc.wantErr)
 			}

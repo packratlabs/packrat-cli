@@ -1,0 +1,365 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/packratlabs/packrat-cli/internal/auth"
+	"github.com/packratlabs/packrat-cli/internal/query"
+	"github.com/packratlabs/packrat-cli/internal/report"
+)
+
+const slowDown = 5 * time.Second
+
+var (
+	pullURL  = regexp.MustCompile(`github\.com/([^/\s]+/[^/\s]+)/pull/(\d+)`)
+	pullNum  = regexp.MustCompile(`^#?(\d+)$`)
+	anyURL   = regexp.MustCompile(`https?://[^\s"'<>]+`)
+	originRe = regexp.MustCompile(`github\.com[:/]([^/\s]+/[^/\s]+?)(\.git)?$`)
+)
+
+func runLogin(w world, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("login", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	noBrowser := fs.Bool("no-browser", false, "")
+	if extra, err := parseInterleaved(fs, args); err != nil || len(extra) > 0 {
+		return say(stderr, "packrat login: takes only --no-browser\n", exitUsage)
+	}
+	site := siteClient(w, "")
+	name, err := w.hostname()
+	if err != nil || name == "" {
+		name = "a machine"
+	}
+	ctx := context.Background()
+	started, err := site.StartSignIn(ctx, name)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
+	}
+	msg := fmt.Sprintf("Open %s and type the code %s\n", started.VerificationURI, started.UserCode)
+	if !*noBrowser && strings.HasPrefix(started.Complete, strings.TrimRight(siteURL(w), "/")+"/") && w.browse(started.Complete) == nil {
+		msg = fmt.Sprintf("Your browser opened %s.\nCheck that it shows the code %s, choose the org, and sign in.\n", started.VerificationURI, started.UserCode)
+	}
+	if code := say(stdout, msg+"Waiting...\n", exitOK); code != exitOK {
+		return code
+	}
+	token, err := awaitToken(w, site, started)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
+	}
+	if err := w.store.Save(auth.SignIn{Org: token.Org, OrgName: token.OrgName, Email: token.Email, Key: token.Key, Token: token.AccessToken}); err != nil {
+		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
+	}
+	return say(stdout, fmt.Sprintf("Signed in to %s as %s.\n", token.OrgName, token.Email), exitOK)
+}
+
+func awaitToken(w world, site query.Client, started query.Started) (query.Token, error) {
+	interval := time.Duration(started.Interval) * time.Second
+	for waited := time.Duration(0); waited < time.Duration(started.ExpiresIn)*time.Second; waited += interval {
+		w.sleep(interval)
+		token, err := site.PollToken(context.Background(), started.DeviceCode)
+		switch {
+		case err == nil:
+			return token, nil
+		case errors.Is(err, query.ErrSlowDown):
+			interval += slowDown
+		case !errors.Is(err, query.ErrPending):
+			return query.Token{}, fmt.Errorf("waiting for the browser: %w", err)
+		}
+	}
+	return query.Token{}, query.ErrExpired
+}
+
+func runLogout(w world, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 {
+		return say(stderr, "packrat logout: takes no argument\n", exitUsage)
+	}
+	signIn, err := w.store.Current()
+	if errors.Is(err, auth.ErrNotSignedIn) {
+		return say(stdout, "Not signed in.\n", exitOK)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat logout: %v\n", err), exitFailed)
+	}
+	if err := siteClient(w, signIn.Token).Revoke(context.Background()); err != nil && !errors.Is(err, query.ErrRefused) {
+		return say(stderr, fmt.Sprintf("packrat logout: revoking the key: %v\n", err), exitFailed)
+	}
+	if err := w.store.Remove(signIn.Org); err != nil {
+		return say(stderr, fmt.Sprintf("packrat logout: %v\n", err), exitFailed)
+	}
+	msg := fmt.Sprintf("Signed out of %s. Its key is revoked.\n", signIn.OrgName)
+	if w.getenv(query.KeyName) != "" {
+		msg += query.KeyName + " is still set, and commands still use it.\n"
+	}
+	return say(stdout, msg, exitOK)
+}
+
+func runAuth(w world, args []string, stdout, stderr io.Writer) int {
+	if len(args) != 1 || args[0] != "status" {
+		return say(stderr, "packrat auth: the command is packrat auth status\n", exitUsage)
+	}
+	key, err := query.Key(w.getenv, w.store)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
+	}
+	who, err := siteClient(w, key).WhoAmI(context.Background())
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
+	}
+	current, all, err := w.store.All()
+	if err != nil && !errors.Is(err, auth.ErrNotSignedIn) {
+		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
+	}
+	if err := report.SignedIn(stdout, who, w.getenv(query.KeyName) != "", current, all); err != nil {
+		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+func runSQL(w world, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("sql", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
+	file := fs.String("f", "", "")
+	quiet := fs.Bool("quiet", false, "")
+	scripts, err := parseInterleaved(fs, args)
+	if err != nil || len(scripts) > 1 || (len(scripts) == 1 && *file != "") {
+		return say(stderr, "packrat sql: give one script, as an argument, with -f file, or on stdin\n", exitUsage)
+	}
+	var script []byte
+	switch {
+	case len(scripts) == 1:
+		script = []byte(scripts[0])
+	case *file != "":
+		script, err = os.ReadFile(*file)
+	default:
+		script, err = io.ReadAll(w.stdin)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat sql: reading the script: %v\n", err), exitUsage)
+	}
+	if len(bytes.TrimSpace(script)) == 0 {
+		return say(stderr, "packrat sql: the script is empty\n", exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat sql: %v\n", err), exitUsage)
+	}
+	last, err := client.SQL(context.Background(), *app, string(script), stdout)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat sql: %v\n", err), exitFailed)
+	}
+	var end struct {
+		Type    string  `json:"type"`
+		Rows    int     `json:"rows"`
+		Seconds float64 `json:"seconds"`
+		App     string  `json:"app"`
+		Message string  `json:"message"`
+	}
+	if json.Unmarshal([]byte(last), &end) == nil {
+		switch {
+		case end.Type == "error":
+			return say(stderr, "packrat sql: "+end.Message+"\n", exitFailed)
+		case end.Type == "end" && !*quiet:
+			return say(stderr, fmt.Sprintf("packrat sql: %d rows in %gs from %s\n", end.Rows, end.Seconds, end.App), exitOK)
+		}
+	}
+	return exitOK
+}
+
+func runPR(w world, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("pr", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
+	due := fs.String("due", "", "")
+	asJSON := fs.Bool("json", false, "")
+	words, err := parseInterleaved(fs, args)
+	if err != nil || len(words) == 0 || len(words) > 2 || (len(words) == 2 && words[1] != "watch") {
+		return say(stderr, "packrat pr: give a pull request's number or URL, and optionally watch --due <time>\n", exitUsage)
+	}
+	number, where, ok := pullRef(w, words[0], *app)
+	if !ok {
+		return say(stderr, fmt.Sprintf("packrat pr: %q is not a pull request's number or URL\n", words[0]), exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitUsage)
+	}
+	if len(words) == 2 {
+		return askWatch(w, client, where, number, *due, stdout, stderr)
+	}
+	pull, err := client.Pull(context.Background(), number, where)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitFailed)
+	}
+	if *asJSON {
+		err = report.PullJSON(stdout, pull)
+	} else {
+		err = report.Pull(stdout, pull, client.BaseURL)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+func askWatch(w world, client query.Client, where query.Where, pull int, due string, stdout, stderr io.Writer) int {
+	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
+	if err != nil {
+		at, err = time.Parse(time.RFC3339, due)
+	}
+	if err != nil {
+		return say(stderr, "packrat pr watch: --due is the first time it can be verified, in UTC: --due 2026-10-20T21:00Z\n", exitUsage)
+	}
+	text, err := io.ReadAll(w.stdin)
+	if err != nil || len(bytes.TrimSpace(text)) == 0 {
+		return say(stderr, "packrat pr watch: write what must be true, and the SQL that shows it, on stdin\n", exitUsage)
+	}
+	watch, err := client.Watch(context.Background(), where, pull, at, string(text))
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat pr watch: %v\n", err), exitFailed)
+	}
+	if err := report.WatchJSON(stdout, watch); err != nil {
+		return say(stderr, fmt.Sprintf("packrat pr watch: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+func runWatch(w world, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		return say(stderr, "packrat watch: the commands are packrat watch list and packrat watch close <id>\n", exitUsage)
+	}
+	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
+	pull := fs.Int("pull", 0, "")
+	asJSON := fs.Bool("json", false, "")
+	words, err := parseInterleaved(fs, args[1:])
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat watch: %v\n", err), exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat watch: %v\n", err), exitUsage)
+	}
+	switch {
+	case args[0] == "list" && len(words) == 0:
+		watches, err := client.Watches(context.Background(), query.Where{App: *app}, *pull)
+		if err == nil {
+			if *asJSON {
+				err = report.WatchesJSON(stdout, watches)
+			} else {
+				err = report.Watches(stdout, watches)
+			}
+		}
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat watch list: %v\n", err), exitFailed)
+		}
+		return exitOK
+	case args[0] == "close" && len(words) == 1:
+		watch, err := client.CloseWatch(context.Background(), words[0])
+		if err == nil {
+			err = report.WatchJSON(stdout, watch)
+		}
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat watch close: %v\n", err), exitFailed)
+		}
+		return exitOK
+	default:
+		return say(stderr, "packrat watch: the commands are packrat watch list and packrat watch close <id>\n", exitUsage)
+	}
+}
+
+func runOpen(w world, args []string, stdout, stderr io.Writer) int {
+	address := anyURL.FindString(strings.Join(args, " "))
+	if address == "" {
+		return say(stderr, "packrat open: give a Packrat URL, or the line from a Packrat mail that holds one\n", exitUsage)
+	}
+	if pullURL.MatchString(address) {
+		return runPR(w, []string{address}, stdout, stderr)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat open: %v\n", err), exitUsage)
+	}
+	body, _, err := client.Page(context.Background(), address, client.BaseURL, siteURL(w))
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat open: %v\n", err), exitFailed)
+	}
+	if _, err := stdout.Write(body); err != nil {
+		return say(stderr, fmt.Sprintf("packrat open: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+// pullRef reads a pull request's URL or number. The app is --app, else the repository of the URL,
+// else the repository of this checkout's origin remote.
+func pullRef(w world, ref, app string) (int, query.Where, bool) {
+	var repo, digits string
+	if found := pullURL.FindStringSubmatch(ref); found != nil {
+		repo, digits = found[1], found[2]
+	} else if found := pullNum.FindStringSubmatch(ref); found != nil {
+		digits = found[1]
+		if found := originRe.FindStringSubmatch(strings.TrimSpace(w.origin())); found != nil {
+			repo = found[1]
+		}
+	} else {
+		return 0, query.Where{}, false
+	}
+	number, err := strconv.Atoi(digits)
+	if err != nil {
+		return 0, query.Where{}, false
+	}
+	return number, query.Where{App: app, Repo: repo}, true
+}
+
+func siteURL(w world) string {
+	if base := w.getenv("PACKRAT_URL"); base != "" {
+		return base
+	}
+	return query.DefaultSiteURL
+}
+
+func siteClient(w world, key string) query.Client {
+	return query.Client{BaseURL: siteURL(w), Key: key, HTTP: w.http}
+}
+
+func gitOrigin() string {
+	ctx, cancel := context.WithTimeout(context.Background(), httpLimit)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", "remote", "get-url", "origin").Output()
+	if err != nil {
+		return ""
+	}
+	return string(out)
+}
+
+// browse opens the sign-in page in the person's browser.
+func browse(address string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), httpLimit)
+	defer cancel()
+	var command *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		command = exec.CommandContext(ctx, "open", address) // #nosec G204 -- the sign-in page the API named
+	case "windows":
+		command = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", address) // #nosec G204 -- as above
+	default:
+		command = exec.CommandContext(ctx, "xdg-open", address) // #nosec G204 -- as above
+	}
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("opening a browser: %w", err)
+	}
+	return nil
+}

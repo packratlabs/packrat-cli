@@ -2,8 +2,15 @@
 
 [![check](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml/badge.svg)](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml)
 
-`packrat` has four commands:
+`packrat` reads a repository, and asks Packrat what production did.
 
+- `packrat login` signs this machine in to one of your orgs, in your browser. `packrat logout` and
+  `packrat auth status` go with it.
+- `packrat pr` says how a pull request went in production: the analyst's verdict on each deploy that
+  shipped it, the evidence, and its watches. `packrat pr … watch` asks the analyst to verify
+  something for it later, and `packrat watch` lists or closes watches.
+- `packrat open` reads a Packrat URL: a page, a report, or the URL in a line from a Packrat mail.
+- `packrat sql` runs SQL against an app.
 - `packrat detect` reads a repository and says what observability it has now. Ruby on Rails is the
   only stack yet.
 - `packrat plan` says how each signal (exceptions, traces, logs, replays) gets from that repository
@@ -135,10 +142,62 @@ that sent them, so a second source would not be kept.
 Exit status: `0` when there is a plan, `1` when the repository is not a supported stack or the path
 cannot be read, `2` for a usage error.
 
+### The key
+
+Every command that asks Packrat uses `PACKRAT_API_KEY` when it is set, as in CI, and otherwise the
+key of `packrat login`.
+
+```
+$ packrat login
+Your browser opened https://packrat.sh/cli/activate.
+Check that it shows the code BCDF-GHJK, choose the org, and sign in.
+Waiting...
+Signed in to Acme as dana@example.com.
+```
+
+The key that `login` makes is yours, for this machine. The org's keys page lists it with your name,
+and you or anyone in the org can revoke it there. It stops when you leave the org. On macOS it is
+kept in the login Keychain; elsewhere in `~/.config/packrat/credentials.json` (mode `0600`).
+`credentials.json` keeps the org and your address, and on macOS nothing more. Sign in to a second org
+and that one becomes the one used; `packrat auth status` says which.
+
+`packrat logout` revokes the key and forgets it. It does not touch `PACKRAT_API_KEY`.
+
+### pr, watch, open and sql
+
+```
+$ packrat pr https://github.com/acme/shop/pull/482
+packrat pr  #482  shop/production
+
+Deploy 9f2c41e8, live 2026-10-14 16:02 UTC: worked in part  Cache the cart total
+  Asked for: A faster cart page.
+  Evidence: p95 went from 840 ms to 210 ms. 37 checkouts with a gift card show the wrong total.
+  Next: Key the cache on gift cards.
+  Report: packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha
+
+Watches
+  wch_7ha5k2m9x0qv #482 due 2026-10-20 21:00 UTC
+    Gift card checkouts charge the total the page shows.
+```
+
+- The app is `--app` (or `PACKRAT_APP`), else the app whose analyst is connected to the pull
+  request's repository: the one in the URL, or the `origin` remote of the current checkout for a
+  number. `--json` prints the answer of the API.
+- `packrat pr 482 watch --due 2026-10-20T21:00Z < watch.txt` asks the analyst to verify something at
+  that time. The text says what must be true and the SQL that shows it. The answer is mailed in the
+  thread of the pull request's verdict.
+- `packrat watch list` lists the app's watches, `--pull 482` only that pull request's.
+  `packrat watch close wch_…` closes one before it is verified.
+- `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML
+  where it does not. Give it a whole pasted line: it reads the first URL in it. The key is sent only to
+  `https://packrat.sh` and its subdomains, and to `PACKRAT_URL` and `PACKRAT_QUERY_URL` when they are
+  set. A GitHub pull request URL is the same as `packrat pr`.
+- `packrat sql "select …"` (or `-f file`, or stdin) prints NDJSON rows, and a line on stderr that
+  names the app that answered. `--quiet` leaves that line out.
+
 ### apps and status
 
-These two commands ask `https://query.packrat.sh` with your API key. They take the key from
-`PACKRAT_API_KEY` in the environment, or from the `.env` file of the current directory.
+These two commands ask `https://query.packrat.sh` with your key.
 
 ```
 $ packrat apps
@@ -186,8 +245,8 @@ last hour, when a kept source stopped while a different source sends the same si
 got no new data, or when the API refused the request; `2` for a usage error or no key.
 
 What these commands send: the API key, as the `Authorization` header, and the name of the app.
-They send nothing else, read no other value from `.env`, and never print the key. `PACKRAT_QUERY_URL`
-replaces the address of the API.
+They send nothing else, and never print the key. `PACKRAT_QUERY_URL` replaces the address of the
+API, and `PACKRAT_URL` the address of the site, where `login` and pages are.
 
 ## What detect reads, and what it never reads
 

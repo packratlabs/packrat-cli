@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/packratlabs/packrat-cli/internal/auth"
 	"github.com/packratlabs/packrat-cli/internal/report"
 )
 
@@ -152,11 +153,11 @@ func TestStatusAndApps(t *testing.T) {
 		{name: "an app that stopped", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{old}, code: 1, stdout: "Nothing has arrived for 29 hours.", asked: 1},
 		{name: "plan leaves out what the app already sends", args: []string{"plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "3 steps. Packrat already receives 1 signal.\n", asked: 1},
 		{name: "plan as JSON names the app", args: []string{"plan", "--json", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"arrives": true`, asked: 1},
-		{name: "plan for an app needs a key", args: []string{"plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "no PACKRAT_API_KEY"},
+		{name: "plan for an app needs a key", args: []string{"plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "plan for an app that is not there", args: []string{"plan", "--app", "shop/staging", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
 		{name: "no app", args: []string{"status"}, key: statusKey, code: 2, stderr: "packrat apps"},
 		{name: "the app as an argument", args: []string{"status", "shop/production"}, key: statusKey, code: 2, stderr: "--app service/env"},
-		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "no PACKRAT_API_KEY in the environment or in .env"},
+		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "a refused key", args: []string{"status", "--app", "shop/production"}, key: "wrong", bodies: []string{fresh}, code: 1, stderr: "the key was refused (401)"},
 		{name: "an app that is not there", args: []string{"status", "--app", "shop/staging"}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
 		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, fresh, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 3, sleeps: 2},
@@ -168,7 +169,8 @@ func TestStatusAndApps(t *testing.T) {
 			server, asked := answers(t, tc.bodies...)
 			sleeps := 0
 			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL}
-			w := world{getenv: func(name string) string { return env[name] }, dir: t.TempDir(), sleep: func(time.Duration) { sleeps++ }}
+			w := world{getenv: func(name string) string { return env[name] }, sleep: func(time.Duration) { sleeps++ },
+				store: auth.Store{Dir: t.TempDir()}, http: &http.Client{}}
 			var stdout, stderr bytes.Buffer
 
 			code := runIn(w, tc.args, &stdout, &stderr)

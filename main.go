@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"runtime"
 	"time"
 
+	"github.com/packratlabs/packrat-cli/internal/auth"
 	"github.com/packratlabs/packrat-cli/internal/detect"
 	"github.com/packratlabs/packrat-cli/internal/host"
 	"github.com/packratlabs/packrat-cli/internal/query"
@@ -25,39 +27,48 @@ const (
 	exitUsage  = 2
 )
 
-const usage = `packrat reads a repository and says what observability it has, and asks Packrat what it receives.
+const usage = `packrat reads a repository and says what observability it has, and asks Packrat what production did.
 
 Usage:
-  packrat detect [path] [--verbose] [--json] [--host]
-  packrat plan [path] [--app service/env] [--verbose] [--json]
+  packrat login [--no-browser]
+  packrat logout
+  packrat auth status
+  packrat pr <number or URL> [--app service] [--json]
+  packrat pr <number or URL> watch --due <time> [--app service]   < what must be true, and its SQL
+  packrat watch list [--app service] [--pull number] [--json]
+  packrat watch close <watch id>
+  packrat open <Packrat URL, or the line from a Packrat mail>
+  packrat sql [--app service] [-f file] [SQL]
   packrat apps [--json]
   packrat status --app service/env [--wait] [--json]
+  packrat detect [path] [--verbose] [--json] [--host]
+  packrat plan [path] [--app service/env] [--verbose] [--json]
 
-detect says what the repository has now
-  path     directory to read (default: the current directory)
-  -v, --verbose  also print where each thing was found
-  --json   print the JSON document, which always holds everything
-  --host   also probe this machine for a Datadog Agent; it opens one local socket
+login     signs this machine in to one of your orgs, in your browser. The key it makes is yours, for
+          this machine, and is kept in the macOS Keychain or in ~/.config/packrat/credentials.json.
+logout    revokes that key and forgets it.
+auth status  says which org and which key the commands use.
 
-plan says how each signal gets to Packrat
-  path     directory to read (default: the current directory)
-  --app    leave out the signals that Packrat already receives for this app
-  -v, --verbose  also print the reason for each step
-  --json   print the JSON document
+pr        how a pull request went in production: each deploy that shipped it, the analyst's verdict
+          and evidence, and its watches. The app is --app, else the one connected to the pull
+          request's repository: the URL's, or the origin remote of this checkout.
+pr watch  asks the analyst to verify something for the pull request at a later time, in UTC
+          (--due 2026-10-20T21:00Z). The text on stdin says what must be true and the SQL that shows it.
+watch     lists the app's watches, or closes one before it is verified.
+open      reads a Packrat page, a report, or the URL in a pasted curl line, with your key. A GitHub
+          pull request's URL is the same as packrat pr. The key is sent only to Packrat.
+sql       runs SQL against an app and prints NDJSON rows. A summary goes to stderr.
 
-detect and plan are read-only. They write no file. They send nothing and open no socket, with
-two exceptions: detect --host opens one local socket, and plan --app asks query.packrat.sh.
+apps      lists the apps that your key opens, with the time of their last data.
+status    says what Packrat receives for one app.
+  --wait  wait until new data arrives, for 5 minutes at most
 
-apps
-  lists the apps that your API key opens, with the time of their last data
+detect    says what the repository has now. --host also probes this machine for a Datadog Agent.
+plan      says how each signal gets to Packrat. --app leaves out what Packrat already receives.
+          detect and plan send nothing and write no file; plan --app asks query.packrat.sh.
 
-status
-  --app    the app, as service/env; packrat apps lists them
-  --wait   wait until new data arrives, for 5 minutes at most
-  --json   print the answer of the API
-
-apps and status ask query.packrat.sh with PACKRAT_API_KEY, from the environment or from .env in
-the current directory. They send the key and the name of the app. They send nothing else.
+The commands that ask Packrat use PACKRAT_API_KEY when it is set, as in CI, and otherwise the key
+of packrat login. PACKRAT_APP names the app when the org has more than one.
 `
 
 const (
@@ -68,9 +79,14 @@ const (
 
 // world is what a command reads from outside its arguments. Tests give their own.
 type world struct {
-	getenv func(string) string
-	dir    string
-	sleep  func(time.Duration)
+	getenv   func(string) string
+	sleep    func(time.Duration)
+	store    auth.Store
+	stdin    io.Reader
+	http     *http.Client
+	hostname func() (string, error)
+	origin   func() string
+	browse   func(string) error
 }
 
 func main() {
@@ -78,7 +94,17 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
-	return runIn(world{getenv: os.Getenv, dir: ".", sleep: time.Sleep}, args, stdout, stderr)
+	w := world{getenv: os.Getenv, sleep: time.Sleep, stdin: os.Stdin, http: &http.Client{Timeout: httpLimit},
+		hostname: os.Hostname, origin: gitOrigin, browse: browse}
+	dir, err := auth.Dir(os.Getenv)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat: %v\n", err), exitFailed)
+	}
+	w.store = auth.Store{Dir: dir}
+	if runtime.GOOS == "darwin" {
+		w.store.Secrets = auth.Keychain{}
+	}
+	return runIn(w, args, stdout, stderr)
 }
 
 func runIn(w world, args []string, stdout, stderr io.Writer) int {
@@ -94,6 +120,20 @@ func runIn(w world, args []string, stdout, stderr io.Writer) int {
 		return runApps(w, args[1:], stdout, stderr)
 	case "status":
 		return runStatus(w, args[1:], stdout, stderr)
+	case "login":
+		return runLogin(w, args[1:], stdout, stderr)
+	case "logout":
+		return runLogout(w, args[1:], stdout, stderr)
+	case "auth":
+		return runAuth(w, args[1:], stdout, stderr)
+	case "sql":
+		return runSQL(w, args[1:], stdout, stderr)
+	case "pr":
+		return runPR(w, args[1:], stdout, stderr)
+	case "watch":
+		return runWatch(w, args[1:], stdout, stderr)
+	case "open":
+		return runOpen(w, args[1:], stdout, stderr)
 	case "help", "-h", "-help", "--help":
 		return say(stdout, usage, exitOK)
 	default:
@@ -205,7 +245,7 @@ func awaitData(w world, client query.Client, app string) (query.Status, error) {
 }
 
 func newClient(w world) (query.Client, error) {
-	key, err := query.Key(w.getenv, w.dir)
+	key, err := query.Key(w.getenv, w.store)
 	if err != nil {
 		return query.Client{}, fmt.Errorf("finding the key: %w", err)
 	}
@@ -213,7 +253,7 @@ func newClient(w world) (query.Client, error) {
 	if base == "" {
 		base = query.DefaultURL
 	}
-	return query.Client{BaseURL: base, Key: key, HTTP: &http.Client{Timeout: httpLimit}}, nil
+	return query.Client{BaseURL: base, Key: key, HTTP: w.http}, nil
 }
 
 func runPlan(w world, args []string, stdout, stderr io.Writer) int {
