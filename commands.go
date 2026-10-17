@@ -182,26 +182,22 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("pr", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
-	due := fs.String("due", "", "")
 	asJSON := fs.Bool("json", false, "")
 	words, err := parseInterleaved(fs, args)
-	if err != nil || len(words) == 0 || len(words) > 2 || (len(words) == 2 && words[1] != "check" && words[1] != "watch") {
-		return say(stderr, "packrat pr: give a pull request's number or URL, and optionally check --due <time>\n", exitUsage)
+	if err != nil || len(words) != 2 || words[0] != "show" {
+		return say(stderr, prUsage, exitUsage)
 	}
-	number, where, ok := pullRef(w, words[0], *app)
+	number, where, ok := pullRef(w, words[1], *app)
 	if !ok {
-		return say(stderr, fmt.Sprintf("packrat pr: %q is not a pull request's number or URL\n", words[0]), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat pr show: %q is not a pull request's number or URL\n", words[1]), exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitUsage)
-	}
-	if len(words) == 2 {
-		return askCheck(w, client, where, query.Ask{Pull: number}, *due, "pr check", "pr "+words[0]+" check --due "+*due+" --app %s", stdout, stderr)
+		return say(stderr, fmt.Sprintf("packrat pr show: %v\n", err), exitUsage)
 	}
 	pull, err := client.Pull(context.Background(), number, where)
 	if err != nil {
-		return fail(stderr, "pr", "pr "+words[0]+" --app %s", err)
+		return fail(stderr, "pr show", "pr show "+words[1]+" --app %s", err)
 	}
 	if *asJSON {
 		err = report.PullJSON(stdout, pull)
@@ -209,10 +205,12 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 		err = report.Pull(stdout, pull, client.BaseURL, width(w))
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat pr: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat pr show: %v\n", err), exitFailed)
 	}
 	return exitOK
 }
+
+const prUsage = "packrat pr: the command is show, with a pull request's number or URL. Run packrat help pr.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, due, name, usage string, stdout, stderr io.Writer) int {
 	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
@@ -258,7 +256,11 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 	}
 	switch {
 	case args[0] == "add" && len(words) == 0:
-		return askCheck(w, client, query.Where{App: *app}, query.Ask{Pull: *pull, Report: *reportID}, *due, "check add", "check add --due "+*due+" --app %s", stdout, stderr)
+		where := query.Where{App: *app}
+		if *pull > 0 {
+			_, where, _ = pullRef(w, strconv.Itoa(*pull), *app)
+		}
+		return askCheck(w, client, where, query.Ask{Pull: *pull, Report: *reportID}, *due, "check add", "check add --due "+*due+" --app %s", stdout, stderr)
 	case args[0] == "list" && len(words) == 0:
 		checks, err := client.Checks(context.Background(), query.Where{App: *app}, *pull)
 		if err == nil {
@@ -273,19 +275,18 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	case args[0] == "show" && len(words) == 1:
-		checks, err := client.Checks(context.Background(), query.Where{App: *app}, 0)
-		if err != nil {
-			return fail(stderr, "check show", "check show "+words[0]+" --app %s", err)
-		}
-		for _, check := range checks.Checks {
-			if check.ID == words[0] {
-				if err := report.Check(stdout, check, width(w)); err != nil {
-					return say(stderr, fmt.Sprintf("packrat check show: %v\n", err), exitFailed)
-				}
-				return exitOK
+		check, err := client.ReadCheck(context.Background(), words[0])
+		if err == nil {
+			if *asJSON {
+				err = report.CheckJSON(stdout, check)
+			} else {
+				err = report.Check(stdout, check, width(w))
 			}
 		}
-		return say(stderr, fmt.Sprintf("packrat check show: %s is not open, and did not close this week, on %s\n", words[0], checks.App), exitFailed)
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat check show: %v\n", err), exitFailed)
+		}
+		return exitOK
 	case args[0] == "close" && len(words) == 1:
 		check, err := client.CloseCheck(context.Background(), words[0])
 		if err == nil {
@@ -316,7 +317,7 @@ func runOpen(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, "packrat open: give a Packrat URL, or the line from a Packrat mail that holds one\n", exitUsage)
 	}
 	if pullURL.MatchString(address) {
-		return runPR(w, []string{address}, stdout, stderr)
+		return runPR(w, []string{"show", address}, stdout, stderr)
 	}
 	client, err := newClient(w)
 	if err != nil {

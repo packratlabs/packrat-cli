@@ -3,7 +3,9 @@ package report
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,39 +27,41 @@ var verdicts = map[string]string{
 	"too_early": "too early to say", "not_observable": "not observable", "": "not judged yet",
 }
 
-// Pull writes each deploy of a pull request with the analyst's verdict, then its checks.
+// Pull writes the pull request's deploys, each with the analyst's verdict, then its checks, in the
+// layout of heroku apps:info.
 func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "packrat pr  #%d  %s\n\n", p.Pull, p.App)
+	heading := fmt.Sprintf("=== #%d", p.Pull)
+	for _, deploy := range p.Deploys {
+		if deploy.Pull == p.Pull && deploy.Title != "" {
+			heading += " " + deploy.Title
+			break
+		}
+	}
+	b.WriteString(heading + "\n" + p.App + "\n\n")
 	switch {
 	case len(p.Deploys) == 0 && p.Repository == "":
-		b.WriteString(NotConnected + "\n")
+		b.WriteString(NotConnected + "\n\n")
 	case len(p.Deploys) == 0:
-		b.WriteString(NoDeploy + "\n")
+		b.WriteString(NoDeploy + "\n\n")
 	}
 	if !p.Analysed {
-		b.WriteString(NotAnalysed + "\n")
+		b.WriteString(NotAnalysed + "\n\n")
 	}
 	for _, deploy := range p.Deploys {
-		title := ""
-		if deploy.Pull == p.Pull && deploy.Title != "" {
-			title = "  " + deploy.Title
-		}
-		fmt.Fprintf(&b, "Deploy %s, live %s: %s%s\n", short(deploy.Version), stamp(deploy.DeployedAt), verdicts[deploy.Verdict], title)
-		for _, line := range [][2]string{{"Asked for", deploy.Intent}, {"Evidence", deploy.Evidence}, {"Next", deploy.NextStep}} {
-			if line[1] != "" {
-				fmt.Fprintf(&b, "  %s: %s\n", line[0], line[1])
-			}
-		}
+		fmt.Fprintf(&b, "Deploy    %s, live %s\nVerdict   %s\n", short(deploy.Version), stamp(deploy.DeployedAt), verdicts[deploy.Verdict])
 		if deploy.Report != "" {
-			fmt.Fprintf(&b, "  Report: packrat open %s/reports/%s\n", reports, deploy.Report)
+			fmt.Fprintf(&b, "Report    packrat open %s/reports/%s\n", reports, deploy.Report)
+		}
+		for _, part := range [][2]string{{"Asked for", deploy.Intent}, {"Evidence", deploy.Evidence}, {"Next", deploy.NextStep}} {
+			if part[1] != "" {
+				b.WriteString("\n" + part[0] + "\n" + fold(part[1], width-2, "  "))
+			}
 		}
 		b.WriteString("\n")
 	}
-	if len(p.Checks) > 0 {
-		b.WriteString("Checks\n\n")
-	}
-	b.WriteString(checkTable(p.Checks, "No check for this pull request.", width))
+	b.WriteString("=== Checks\n")
+	b.WriteString(checkTable(p.Checks, false, "No check for this pull request.", width))
 	return put(w, b.String())
 }
 
@@ -66,7 +70,7 @@ func PullJSON(w io.Writer, p query.Pull) error { return putJSON(w, p) }
 
 // Checks writes the open checks of an app, and the asked ones closed this week.
 func Checks(w io.Writer, ws query.Checks, width int) error {
-	return put(w, "=== "+ws.App+" checks\n\n"+checkTable(ws.Checks, "No check is open, and none closed this week.", width))
+	return put(w, "=== "+ws.App+" checks\n\n"+checkTable(ws.Checks, true, "No check is open, and none closed this week.", width))
 }
 
 // ChecksJSON writes the answer of the API as it was read.
@@ -77,7 +81,7 @@ func CheckJSON(w io.Writer, check query.Check) error { return putJSON(w, check) 
 
 // CheckTable writes checks one to a line: open ones first, soonest due, then closed ones, newest
 // first. What is cut to fit width; packrat check show gives the whole text.
-func checkTable(checks []query.Check, none string, width int) string {
+func checkTable(checks []query.Check, withPull bool, none string, width int) string {
 	if len(checks) == 0 {
 		return none + "\n"
 	}
@@ -97,19 +101,29 @@ func checkTable(checks []query.Check, none string, width int) string {
 	for _, check := range rows {
 		idWidth = max(idWidth, len(check.ID))
 	}
-	whatWidth := max(width-(5+2+status+2+2+idWidth), 20)
+	pullWidth := 0
+	if withPull {
+		pullWidth = 5 + 2
+	}
+	whatWidth := max(width-(pullWidth+status+2+2+idWidth), 20)
 	var b strings.Builder
-	fmt.Fprintf(&b, "%-5s  %-*s  %-*s  %s\n", "PR", status, "STATUS", whatWidth, "WHAT", "ID")
+	if withPull {
+		fmt.Fprintf(&b, "%-5s  ", "PR")
+	}
+	fmt.Fprintf(&b, "%-*s  %-*s  %s\n", status, "STATUS", whatWidth, "WHAT", "ID")
 	for _, check := range rows {
-		pull := "—"
-		if check.Pull > 0 {
-			pull = fmt.Sprintf("#%d", check.Pull)
+		if withPull {
+			pull := "—"
+			if check.Pull > 0 {
+				pull = fmt.Sprintf("#%d", check.Pull)
+			}
+			fmt.Fprintf(&b, "%-5s  ", pull)
 		}
 		state := "due " + day(check.DueAt)
 		if check.ClosedAt != nil {
 			state = "closed " + day(*check.ClosedAt)
 		}
-		fmt.Fprintf(&b, "%-5s  %-*s  %-*s  %s\n", pull, status, state, whatWidth, cut(oneLine(check.What), whatWidth), check.ID)
+		fmt.Fprintf(&b, "%-*s  %-*s  %s\n", status, state, whatWidth, cut(oneLine(withoutPull(check)), whatWidth), check.ID)
 	}
 	b.WriteString("\nTimes are UTC. packrat check show <ID> prints the whole text.\n")
 	return b.String()
@@ -132,6 +146,19 @@ func Check(w io.Writer, check query.Check, width int) error {
 		b.WriteString("\nResult\n" + fold(check.Outcome, width-2, "  "))
 	}
 	return put(w, b.String())
+}
+
+// pullPrefix is how the analyst starts a check's text, "PR #542 (39428589, web live 17:44):", which the
+// table's PR column already says.
+var pullPrefix = regexp.MustCompile(`^\s*PR #(\d+)\s*(\([^)]*\))?[,:]?\s*`)
+
+// withoutPull is a check's text without that start, when it names the check's own pull request.
+func withoutPull(check query.Check) string {
+	found := pullPrefix.FindStringSubmatchIndex(check.What)
+	if found == nil || check.What[found[2]:found[3]] != strconv.Itoa(check.Pull) {
+		return check.What
+	}
+	return check.What[found[1]:]
 }
 
 func day(at time.Time) string { return at.UTC().Format("2 Jan 15:04") }

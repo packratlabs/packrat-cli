@@ -62,6 +62,8 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","checks":[`+
 				`{"id":"chk_9","what":"PR #541 (merge 93428404) makes the check skip a moved item.","due_at":"2026-10-12T20:00:00Z","closed_at":"2026-10-12T20:43:00Z","outcome":"Held: 10 lines."},`+
 				`{"id":"chk_1","what":"Gift card totals are right.","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
+		case r.URL.Path == "/checks/chk_0":
+			answer(404, `{"type":"error","message":"No check chk_0 in your org."}`)
 		case r.URL.Path == "/checks/chk_1":
 			answer(200, `{"id":"chk_1","what":"x","due_at":"2026-10-20T21:00:00Z","closed_at":"2026-10-16T10:00:00Z","outcome":"Closed by a developer before it was verified."}`)
 		case r.URL.Path == "/sql":
@@ -98,23 +100,24 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "auth status says when PACKRAT_API_KEY is used", args: []string{"auth", "status"}, key: statusKey, login: true, code: 0, stdout: "from PACKRAT_API_KEY"},
 		{name: "logout revokes the key", args: []string{"logout"}, login: true, code: 0, stdout: "Signed out of Acme.", request: "DELETE /cli/token"},
 		{name: "logout with no sign-in", args: []string{"logout"}, code: 0, stdout: "Not signed in."},
-		{name: "no key", args: []string{"pr", "482"}, code: 2, stderr: "Run packrat login", none: true},
-		{name: "a pull request by URL asks by its repository", args: []string{"pr", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "Deploy 9f2c41e8, live 2026-10-14 16:02 UTC: worked in part  Cache the cart total", request: "GET /pulls/482?repo=acme%2Fshop"},
-		{name: "a pull request by number asks by the origin remote", args: []string{"pr", "#482"}, login: true, origin: "git@github.com:acme/shop.git\n", code: 0, stdout: "packrat open http", request: "GET /pulls/482?repo=acme%2Fshop"},
-		{name: "--app wins over the repository", args: []string{"pr", "482", "--app", "shop"}, login: true, origin: "git@github.com:acme/shop.git", code: 0, stdout: "#482   due 20 Oct 21:00     Gift card totals are right.", request: "GET /pulls/482?app=shop"},
-		{name: "a pull request as JSON", args: []string{"pr", "482", "--json"}, login: true, code: 0, stdout: `"verdict": "partly"`},
-		{name: "a pull request with no deploy and no repository", args: []string{"pr", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
-		{name: "not a pull request", args: []string{"pr", "main"}, login: true, code: 2, stderr: "is not a pull request's number or URL", none: true},
-		{name: "a check for a pull request", args: []string{"pr", "482", "check", "--due", "2026-10-20T21:00Z", "--app", "shop"}, login: true, stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?app=shop&due=2026-10-20T21%3A00Z&pull=482 Gift card totals are right."},
-		{name: "a check needs a time", args: []string{"pr", "482", "check"}, login: true, stdin: "x", code: 2, stderr: "--due is the first time", none: true},
-		{name: "a check needs a text", args: []string{"pr", "482", "check", "--due", "2026-10-20T21:00Z"}, login: true, code: 2, stderr: "on stdin", none: true},
+		{name: "no key", args: []string{"pr", "show", "482"}, code: 2, stderr: "Run packrat login", none: true},
+		{name: "a pull request by URL asks by its repository", args: []string{"pr", "show", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total\nshop/production\n\nDeploy    9f2c41e8, live 2026-10-14 16:02 UTC\nVerdict   worked in part\n", request: "GET /pulls/482?repo=acme%2Fshop"},
+		{name: "a pull request by number asks by the origin remote", args: []string{"pr", "show", "#482"}, login: true, origin: "git@github.com:acme/shop.git\n", code: 0, stdout: "Report    packrat open http", request: "GET /pulls/482?repo=acme%2Fshop"},
+		{name: "--app wins over the repository", args: []string{"pr", "show", "482", "--app", "shop"}, login: true, origin: "git@github.com:acme/shop.git", code: 0, stdout: "due 20 Oct 21:00     Gift card totals are right.", request: "GET /pulls/482?app=shop"},
+		{name: "a pull request as JSON", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"verdict": "partly"`},
+		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
+		{name: "not a pull request", args: []string{"pr", "show", "main"}, login: true, code: 2, stderr: "is not a pull request's number or URL", none: true},
+		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "the command is show", none: true},
+		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?due=2026-10-20T21%3A00Z&pull=482&repo=acme%2Fshop Gift card totals are right."},
+		{name: "a check needs a time", args: []string{"check", "add", "--pull", "482"}, login: true, stdin: "x", code: 2, stderr: "--due is the first time", none: true},
+		{name: "a check needs a text", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, code: 2, stderr: "on stdin", none: true},
 		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1", "--due", "2026-10-20T21:00Z"}, login: true, stdin: "It held.", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?app=shop&due=2026-10-20T21%3A00Z&report=rep_1 It held."},
 		{name: "check with no command", args: []string{"check"}, login: true, code: 2, stderr: "Run packrat help check", none: true},
 		{name: "check list puts open ones first", args: []string{"check", "list", "--app", "shop"}, login: true, code: 0,
 			stdout: "chk_1\n—      closed 12 Oct 20:43  PR #541 (merge 93428404) makes the check skip"},
-		{name: "check show prints the whole check", args: []string{"check", "show", "chk_9", "--app", "shop"}, login: true, code: 0,
-			stdout: "chk_9 · closed 2026-10-12 20:43 UTC\n\nAsked\n  PR #541 (merge 93428404) makes the check skip a moved item.\n\nResult\n  Held: 10 lines.\n"},
-		{name: "check show of one that is not there", args: []string{"check", "show", "chk_0", "--app", "shop"}, login: true, code: 1, stderr: "chk_0 is not open, and did not close this week, on shop/production"},
+		{name: "check show reads the check by its id", args: []string{"check", "show", "chk_1"}, login: true, code: 0,
+			stdout: "chk_1 · closed 2026-10-16 10:00 UTC\n\nAsked\n  x\n\nResult\n  Closed by a developer before it was verified.\n", request: "GET /checks/chk_1"},
+		{name: "check show of one that is not there", args: []string{"check", "show", "chk_0"}, login: true, code: 1, stderr: "packrat check show: No check chk_0 in your org."},
 		{name: "check list", args: []string{"check", "list", "--app", "shop", "--pull", "482"}, login: true, code: 0, stdout: "=== shop/production checks\n\nPR     STATUS", request: "GET /checks?app=shop&pull=482"},
 		{name: "no app, with more than one", args: []string{"check", "list"}, login: true, code: 2, stderr: "Error: No app specified. This key opens claude-code and colorbook.\nUSAGE: packrat check list --app <app-name>\n"},
 		{name: "check close", args: []string{"check", "close", "chk_1"}, login: true, code: 0, stdout: "Closed by a developer", request: "DELETE /checks/chk_1"},
@@ -123,7 +126,7 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "sql with no script", args: []string{"sql"}, login: true, code: 2, stderr: "the script is empty", none: true},
 		{name: "open a pasted curl line reads the report", args: []string{"open", `curl -sS QUERY/reports/rep_1 -H "Authorization: Bearer $(sed -nE 's/^PACKRAT_(API|QUERY)_KEY=//p' .env | tail -1)"`}, login: true, code: 0, stdout: "# Worked in part: #482", request: "GET /reports/rep_1"},
 		{name: "open a page", args: []string{"open", "SITE/orgs/org_a/apps/shop/production/analyst"}, login: true, code: 0, stdout: "<h1>Analyst</h1>"},
-		{name: "open a pull request", args: []string{"open", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "packrat pr  #482", request: "GET /pulls/482?repo=acme%2Fshop"},
+		{name: "open a pull request", args: []string{"open", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total", request: "GET /pulls/482?repo=acme%2Fshop"},
 		{name: "open never sends the key elsewhere", args: []string{"open", "https://example.com/orgs/x"}, login: true, code: 1, stderr: "not a Packrat address", none: true},
 		{name: "open over plain http to packrat.sh is refused", args: []string{"open", "http://packrat.sh/orgs/x"}, login: true, code: 1, stderr: "not a Packrat address", none: true},
 	}

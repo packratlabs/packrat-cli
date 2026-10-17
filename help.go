@@ -30,6 +30,7 @@ func topics() map[string]topic {
 		"auth":  {summary: "manage your sign-in to Packrat"},
 		"setup": {summary: "set up Packrat in a project"},
 		"check": {summary: "manage PR verifications"},
+		"pr":    {summary: "show pull requests in production"},
 	}
 }
 
@@ -98,20 +99,17 @@ func commands() map[string]command {
 			description: "It sends nothing, except with --app, when it asks query.packrat.sh.",
 			examples:    []string{"packrat setup plan", "packrat setup plan --app shop/production"},
 		},
-		"pr": {
+		"pr show": {
 			summary: "show how a pull request went in production",
-			usage:   "packrat pr NUMBER|URL [--app SERVICE] [--json]\n  $ packrat pr NUMBER|URL check --due TIME [--app SERVICE] < check.txt",
+			usage:   "packrat pr show NUMBER|URL [--app SERVICE] [--json]",
 			args:    [][2]string{{"NUMBER|URL", "the pull request: its number, or its GitHub URL"}},
 			flags: [][2]string{
 				{"--app=<value>", "the app (default: the one connected to the pull request's repository)"},
-				{"--due=<value>", "with check: the first time it can be verified, in UTC"},
 				{"--json", "print the answer of the API"},
 			},
 			description: "Each deploy that shipped it, the analyst's verdict and evidence, and its checks. With a number,\n" +
-				"the repository is this checkout's origin remote.\n\n" +
-				"check asks the analyst to verify something for it later. The text on stdin says what must be true\n" +
-				"and the SQL that shows it. The answer is mailed in the thread of the pull request's verdict.",
-			examples: []string{"packrat pr 482", "packrat pr https://github.com/acme/shop/pull/482", "packrat pr 482 check --due 2026-10-20T21:00Z < check.txt"},
+				"the repository is this checkout's origin remote.",
+			examples: []string{"packrat pr show 482", "packrat pr show https://github.com/acme/shop/pull/482"},
 		},
 		"sql": {
 			summary: "query telemetry data",
@@ -142,11 +140,11 @@ func commands() map[string]command {
 			flags: [][2]string{
 				{"--due=<value>", "the first time it can be verified, in UTC, at most 30 days ahead"},
 				{"--app=<value>", "the app, when the org has more than one"},
-				{"--pull=<value>", "the pull request it is for"},
+				{"--pull=<value>", "the pull request it is for (the app defaults to the one connected to this checkout's origin remote)"},
 				{"--report=<value>", "the analyst's mail whose thread the answer joins"},
 			},
 			description: "The text on stdin says what must be true and the SQL that shows it.",
-			examples:    []string{"packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt"},
+			examples:    []string{"packrat check add --due 2026-10-20T21:00Z --pull 482 < check.txt", "packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt"},
 		},
 		"check close": {
 			summary:  "cancel a check before Packrat verifies it",
@@ -156,11 +154,11 @@ func commands() map[string]command {
 		},
 		"check show": {
 			summary:     "show detailed check information",
-			usage:       "packrat check show ID [--app SERVICE]",
-			args:        [][2]string{{"ID", "the check, as packrat check list prints it"}},
-			flags:       [][2]string{{"--app=<value>", "the app, when the org has more than one"}},
-			description: "What was asked, and what the data showed once it closed. It finds open checks, and the ones\nthat closed in the last week.",
-			examples:    []string{"packrat check show chk_7ha5k2m9x0qv --app shop"},
+			usage:       "packrat check show ID [--json]",
+			args:        [][2]string{{"ID", "the check, as packrat check list or packrat pr show prints it"}},
+			flags:       [][2]string{{"--json", "print the answer of the API"}},
+			description: "What was asked, and what the data showed once it closed.",
+			examples:    []string{"packrat check show chk_7ha5k2m9x0qv"},
 		},
 		"check list": {
 			summary: "list the checks",
@@ -176,7 +174,7 @@ func commands() map[string]command {
 	}
 }
 
-// helpAsked says whether args ask for help, and for what: `packrat help pr`, `packrat pr --help`.
+// helpAsked says whether args ask for help, and for what: `packrat help pr show`, `packrat pr show --help`.
 func helpAsked(args []string) ([]string, bool) {
 	if len(args) > 0 && args[0] == "help" {
 		return args[1:], true

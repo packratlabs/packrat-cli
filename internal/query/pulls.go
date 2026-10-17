@@ -132,6 +132,12 @@ func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) 
 	return check, decode(c.BaseURL, body, &check)
 }
 
+// ReadCheck reads one check, open or closed.
+func (c Client) ReadCheck(ctx context.Context, id string) (Check, error) {
+	var check Check
+	return check, c.get(ctx, "/checks/"+url.PathEscape(id), &check)
+}
+
 // CloseCheck closes a check before it is verified.
 func (c Client) CloseCheck(ctx context.Context, id string) (Check, error) {
 	var check Check
