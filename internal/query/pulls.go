@@ -64,13 +64,13 @@ type Pull struct {
 	Analysed   bool     `json:"analysed"`
 	Repository string   `json:"repository"`
 	Deploys    []Deploy `json:"deploys"`
-	Checkes    []Check  `json:"checkes"`
+	Checks     []Check  `json:"checks"`
 }
 
-// Checkes is the answer of GET /checkes.
-type Checkes struct {
-	App     string  `json:"app"`
-	Checkes []Check `json:"checkes"`
+// Checks is the answer of GET /checks.
+type Checks struct {
+	App    string  `json:"app"`
+	Checks []Check `json:"checks"`
 }
 
 // Pull is how pull request number went in production.
@@ -82,27 +82,27 @@ func (c Client) Pull(ctx context.Context, number int, where Where) (Pull, error)
 	if pull.Deploys == nil {
 		pull.Deploys = []Deploy{}
 	}
-	if pull.Checkes == nil {
-		pull.Checkes = []Check{}
+	if pull.Checks == nil {
+		pull.Checks = []Check{}
 	}
 	return pull, nil
 }
 
-// Checkes lists the app's open checkes, and the asked ones closed this week. A pull above 0 keeps the
+// Checks lists the app's open checks, and the asked ones closed this week. A pull above 0 keeps the
 // ones asked for that pull request.
-func (c Client) Checkes(ctx context.Context, where Where, pull int) (Checkes, error) {
+func (c Client) Checks(ctx context.Context, where Where, pull int) (Checks, error) {
 	values := where.values()
 	if pull > 0 {
 		values.Set("pull", strconv.Itoa(pull))
 	}
-	var checkes Checkes
-	if err := c.get(ctx, "/checkes"+query(values), &checkes); err != nil {
-		return Checkes{}, err
+	var checks Checks
+	if err := c.get(ctx, "/checks"+query(values), &checks); err != nil {
+		return Checks{}, err
 	}
-	if checkes.Checkes == nil {
-		checkes.Checkes = []Check{}
+	if checks.Checks == nil {
+		checks.Checks = []Check{}
 	}
-	return checkes, nil
+	return checks, nil
 }
 
 // Ask is a check to ask for: what must be true and the SQL that shows it, from when, and the pull
@@ -125,7 +125,7 @@ func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) 
 		values.Set("report", ask.Report)
 	}
 	var check Check
-	body, err := c.send(ctx, "POST", "/checkes"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
+	body, err := c.send(ctx, "POST", "/checks"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
 	if err != nil {
 		return Check{}, err
 	}
@@ -135,7 +135,7 @@ func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) 
 // CloseCheck closes a check before it is verified.
 func (c Client) CloseCheck(ctx context.Context, id string) (Check, error) {
 	var check Check
-	body, err := c.send(ctx, "DELETE", "/checkes/"+url.PathEscape(id), "", "application/json", nil)
+	body, err := c.send(ctx, "DELETE", "/checks/"+url.PathEscape(id), "", "application/json", nil)
 	if err != nil {
 		return Check{}, err
 	}

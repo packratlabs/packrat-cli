@@ -107,7 +107,7 @@ func commands() map[string]command {
 				{"--due=<value>", "with check: the first time it can be verified, in UTC"},
 				{"--json", "print the answer of the API"},
 			},
-			description: "Each deploy that shipped it, the analyst's verdict and evidence, and its checkes. With a number,\n" +
+			description: "Each deploy that shipped it, the analyst's verdict and evidence, and its checks. With a number,\n" +
 				"the repository is this checkout's origin remote.\n\n" +
 				"check asks the analyst to verify something for it later. The text on stdin says what must be true\n" +
 				"and the SQL that shows it. The answer is mailed in the thread of the pull request's verdict.",
@@ -159,18 +159,18 @@ func commands() map[string]command {
 			usage:       "packrat check show ID [--app SERVICE]",
 			args:        [][2]string{{"ID", "the check, as packrat check list prints it"}},
 			flags:       [][2]string{{"--app=<value>", "the app, when the org has more than one"}},
-			description: "What was asked, and what the data showed once it closed. It finds open checkes, and the ones\nthat closed in the last week.",
+			description: "What was asked, and what the data showed once it closed. It finds open checks, and the ones\nthat closed in the last week.",
 			examples:    []string{"packrat check show chk_7ha5k2m9x0qv --app shop"},
 		},
 		"check list": {
-			summary: "list the checkes",
+			summary: "list the checks",
 			usage:   "packrat check list [--app SERVICE] [--pull NUMBER] [--json]",
 			flags: [][2]string{
 				{"--app=<value>", "the app, when the org has more than one"},
-				{"--pull=<value>", "only the checkes of this pull request"},
+				{"--pull=<value>", "only the checks of this pull request"},
 				{"--json", "print the answer of the API"},
 			},
-			description: "One line for each: the pull request, when it is due or when it closed (UTC), and the start of\nwhat was asked. Open checkes come first. packrat check show prints the whole text.",
+			description: "One line for each: the pull request, when it is due or when it closed (UTC), and the start of\nwhat was asked. Open checks come first. packrat check show prints the whole text.",
 			examples:    []string{"packrat check list", "packrat check list --pull 482"},
 		},
 	}

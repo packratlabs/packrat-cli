@@ -25,7 +25,7 @@ var verdicts = map[string]string{
 	"too_early": "too early to say", "not_observable": "not observable", "": "not judged yet",
 }
 
-// Pull writes each deploy of a pull request with the analyst's verdict, then its checkes.
+// Pull writes each deploy of a pull request with the analyst's verdict, then its checks.
 func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "packrat pr  #%d  %s\n\n", p.Pull, p.App)
@@ -54,34 +54,34 @@ func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 		}
 		b.WriteString("\n")
 	}
-	if len(p.Checkes) > 0 {
-		b.WriteString("Checkes\n\n")
+	if len(p.Checks) > 0 {
+		b.WriteString("Checks\n\n")
 	}
-	b.WriteString(checkTable(p.Checkes, "No check for this pull request.", width))
+	b.WriteString(checkTable(p.Checks, "No check for this pull request.", width))
 	return put(w, b.String())
 }
 
 // PullJSON writes the answer of the API as it was read.
 func PullJSON(w io.Writer, p query.Pull) error { return putJSON(w, p) }
 
-// Checkes writes the open checkes of an app, and the asked ones closed this week.
-func Checkes(w io.Writer, ws query.Checkes, width int) error {
-	return put(w, "=== "+ws.App+" checkes\n\n"+checkTable(ws.Checkes, "No check is open, and none closed this week.", width))
+// Checks writes the open checks of an app, and the asked ones closed this week.
+func Checks(w io.Writer, ws query.Checks, width int) error {
+	return put(w, "=== "+ws.App+" checks\n\n"+checkTable(ws.Checks, "No check is open, and none closed this week.", width))
 }
 
-// CheckesJSON writes the answer of the API as it was read.
-func CheckesJSON(w io.Writer, ws query.Checkes) error { return putJSON(w, ws) }
+// ChecksJSON writes the answer of the API as it was read.
+func ChecksJSON(w io.Writer, ws query.Checks) error { return putJSON(w, ws) }
 
 // CheckJSON writes one check as the API gave it.
 func CheckJSON(w io.Writer, check query.Check) error { return putJSON(w, check) }
 
-// CheckTable writes checkes one to a line: open ones first, soonest due, then closed ones, newest
+// CheckTable writes checks one to a line: open ones first, soonest due, then closed ones, newest
 // first. What is cut to fit width; packrat check show gives the whole text.
-func checkTable(checkes []query.Check, none string, width int) string {
-	if len(checkes) == 0 {
+func checkTable(checks []query.Check, none string, width int) string {
+	if len(checks) == 0 {
 		return none + "\n"
 	}
-	rows := append([]query.Check(nil), checkes...)
+	rows := append([]query.Check(nil), checks...)
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
 		if (a.ClosedAt == nil) != (b.ClosedAt == nil) {

@@ -260,12 +260,12 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 	case args[0] == "add" && len(words) == 0:
 		return askCheck(w, client, query.Where{App: *app}, query.Ask{Pull: *pull, Report: *reportID}, *due, "check add", "check add --due "+*due+" --app %s", stdout, stderr)
 	case args[0] == "list" && len(words) == 0:
-		checkes, err := client.Checkes(context.Background(), query.Where{App: *app}, *pull)
+		checks, err := client.Checks(context.Background(), query.Where{App: *app}, *pull)
 		if err == nil {
 			if *asJSON {
-				err = report.CheckesJSON(stdout, checkes)
+				err = report.ChecksJSON(stdout, checks)
 			} else {
-				err = report.Checkes(stdout, checkes, width(w))
+				err = report.Checks(stdout, checks, width(w))
 			}
 		}
 		if err != nil {
@@ -273,11 +273,11 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	case args[0] == "show" && len(words) == 1:
-		checkes, err := client.Checkes(context.Background(), query.Where{App: *app}, 0)
+		checks, err := client.Checks(context.Background(), query.Where{App: *app}, 0)
 		if err != nil {
 			return fail(stderr, "check show", "check show "+words[0]+" --app %s", err)
 		}
-		for _, check := range checkes.Checkes {
+		for _, check := range checks.Checks {
 			if check.ID == words[0] {
 				if err := report.Check(stdout, check, width(w)); err != nil {
 					return say(stderr, fmt.Sprintf("packrat check show: %v\n", err), exitFailed)
@@ -285,7 +285,7 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 				return exitOK
 			}
 		}
-		return say(stderr, fmt.Sprintf("packrat check show: %s is not open, and did not close this week, on %s\n", words[0], checkes.App), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat check show: %s is not open, and did not close this week, on %s\n", words[0], checks.App), exitFailed)
 	case args[0] == "close" && len(words) == 1:
 		check, err := client.CloseCheck(context.Background(), words[0])
 		if err == nil {

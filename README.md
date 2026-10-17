@@ -7,8 +7,8 @@
 - `packrat login` signs this machine in to one of your orgs, in your browser. `packrat logout` and
   `packrat auth status` go with it.
 - `packrat pr` says how a pull request went in production: the analyst's verdict on each deploy that
-  shipped it, the evidence, and its checkes. `packrat pr … check` asks the analyst to verify
-  something for it later, and `packrat check` lists or closes checkes.
+  shipped it, the evidence, and its checks. `packrat pr … check` asks the analyst to verify
+  something for it later, and `packrat check` lists or closes checks.
 - `packrat open` reads a Packrat URL: a page, a report, or the URL in a line from a Packrat mail.
 - `packrat sql` runs SQL against an app.
 - `packrat setup detect` reads a repository and says what observability it has now. Ruby on Rails is the
@@ -175,7 +175,7 @@ Deploy 9f2c41e8, live 2026-10-14 16:02 UTC: worked in part  Cache the cart total
   Next: Key the cache on gift cards.
   Report: packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha
 
-Checkes
+Checks
   chk_7ha5k2m9x0qv #482 due 2026-10-20 21:00 UTC
     Gift card checkouts charge the total the page shows.
 ```
@@ -188,7 +188,7 @@ Checkes
   thread of the pull request's verdict.
 - `packrat check add --due 2026-10-20T21:00Z --report rep_… < check.txt` asks for a check that is not
   for a pull request; `--report` puts the answer in the thread of that analyst mail.
-- `packrat check list` lists the app's checkes, `--pull 482` only that pull request's.
+- `packrat check list` lists the app's checks, `--pull 482` only that pull request's.
   `packrat check close chk_…` closes one before it is verified.
 - `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML
   where it does not. Give it a whole pasted line: it reads the first URL in it. The key is sent only to

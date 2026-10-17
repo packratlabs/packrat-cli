@@ -51,18 +51,18 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/cli/whoami":
 			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","org":"org_a","org_name":"Acme","email":"dana@example.com"}`)
 		case r.URL.Path == "/pulls/482":
-			answer(200, `{"app":"shop/production","pull":482,"analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checkes":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
+			answer(200, `{"app":"shop/production","pull":482,"analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
 		case r.URL.Path == "/pulls/7":
-			answer(200, `{"app":"shop/production","pull":7,"analysed":false,"repository":"","deploys":[],"checkes":[]}`)
-		case r.URL.Path == "/checkes" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
+			answer(200, `{"app":"shop/production","pull":7,"analysed":false,"repository":"","deploys":[],"checks":[]}`)
+		case r.URL.Path == "/checks" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
 			answer(400, `{"type":"error","message":"No app specified. This key opens claude-code and colorbook. Add app=<service>.","apps":["claude-code","colorbook"]}`)
-		case r.URL.Path == "/checkes" && r.Method == http.MethodPost:
+		case r.URL.Path == "/checks" && r.Method == http.MethodPost:
 			answer(201, `{"id":"chk_2","what":"x","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}`)
-		case r.URL.Path == "/checkes":
-			answer(200, `{"app":"shop/production","checkes":[`+
+		case r.URL.Path == "/checks":
+			answer(200, `{"app":"shop/production","checks":[`+
 				`{"id":"chk_9","what":"PR #541 (merge 93428404) makes the check skip a moved item.","due_at":"2026-10-12T20:00:00Z","closed_at":"2026-10-12T20:43:00Z","outcome":"Held: 10 lines."},`+
 				`{"id":"chk_1","what":"Gift card totals are right.","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
-		case r.URL.Path == "/checkes/chk_1":
+		case r.URL.Path == "/checks/chk_1":
 			answer(200, `{"id":"chk_1","what":"x","due_at":"2026-10-20T21:00:00Z","closed_at":"2026-10-16T10:00:00Z","outcome":"Closed by a developer before it was verified."}`)
 		case r.URL.Path == "/sql":
 			answer(200, "{\"type\":\"schema\"}\n{\"type\":\"row\",\"values\":[1]}\n{\"type\":\"end\",\"rows\":1,\"seconds\":0.01,\"app\":\"shop/production\"}\n")
@@ -105,19 +105,19 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request as JSON", args: []string{"pr", "482", "--json"}, login: true, code: 0, stdout: `"verdict": "partly"`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
 		{name: "not a pull request", args: []string{"pr", "main"}, login: true, code: 2, stderr: "is not a pull request's number or URL", none: true},
-		{name: "a check for a pull request", args: []string{"pr", "482", "check", "--due", "2026-10-20T21:00Z", "--app", "shop"}, login: true, stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checkes?app=shop&due=2026-10-20T21%3A00Z&pull=482 Gift card totals are right."},
+		{name: "a check for a pull request", args: []string{"pr", "482", "check", "--due", "2026-10-20T21:00Z", "--app", "shop"}, login: true, stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?app=shop&due=2026-10-20T21%3A00Z&pull=482 Gift card totals are right."},
 		{name: "a check needs a time", args: []string{"pr", "482", "check"}, login: true, stdin: "x", code: 2, stderr: "--due is the first time", none: true},
 		{name: "a check needs a text", args: []string{"pr", "482", "check", "--due", "2026-10-20T21:00Z"}, login: true, code: 2, stderr: "on stdin", none: true},
-		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1", "--due", "2026-10-20T21:00Z"}, login: true, stdin: "It held.", code: 0, stdout: `"id": "chk_2"`, request: "POST /checkes?app=shop&due=2026-10-20T21%3A00Z&report=rep_1 It held."},
+		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1", "--due", "2026-10-20T21:00Z"}, login: true, stdin: "It held.", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?app=shop&due=2026-10-20T21%3A00Z&report=rep_1 It held."},
 		{name: "check with no command", args: []string{"check"}, login: true, code: 2, stderr: "Run packrat help check", none: true},
 		{name: "check list puts open ones first", args: []string{"check", "list", "--app", "shop"}, login: true, code: 0,
 			stdout: "chk_1\n—      closed 12 Oct 20:43  PR #541 (merge 93428404) makes the check skip"},
 		{name: "check show prints the whole check", args: []string{"check", "show", "chk_9", "--app", "shop"}, login: true, code: 0,
 			stdout: "chk_9 · closed 2026-10-12 20:43 UTC\n\nAsked\n  PR #541 (merge 93428404) makes the check skip a moved item.\n\nResult\n  Held: 10 lines.\n"},
 		{name: "check show of one that is not there", args: []string{"check", "show", "chk_0", "--app", "shop"}, login: true, code: 1, stderr: "chk_0 is not open, and did not close this week, on shop/production"},
-		{name: "check list", args: []string{"check", "list", "--app", "shop", "--pull", "482"}, login: true, code: 0, stdout: "=== shop/production checkes\n\nPR     STATUS", request: "GET /checkes?app=shop&pull=482"},
+		{name: "check list", args: []string{"check", "list", "--app", "shop", "--pull", "482"}, login: true, code: 0, stdout: "=== shop/production checks\n\nPR     STATUS", request: "GET /checks?app=shop&pull=482"},
 		{name: "no app, with more than one", args: []string{"check", "list"}, login: true, code: 2, stderr: "Error: No app specified. This key opens claude-code and colorbook.\nUSAGE: packrat check list --app <app-name>\n"},
-		{name: "check close", args: []string{"check", "close", "chk_1"}, login: true, code: 0, stdout: "Closed by a developer", request: "DELETE /checkes/chk_1"},
+		{name: "check close", args: []string{"check", "close", "chk_1"}, login: true, code: 0, stdout: "Closed by a developer", request: "DELETE /checks/chk_1"},
 		{name: "sql prints rows and a summary", args: []string{"sql", "--app", "shop", "select 1"}, login: true, code: 0, stdout: `"values":[1]`, stderr: "1 rows in 0.01s from shop/production", request: "POST /sql?app=shop select 1"},
 		{name: "sql from stdin", args: []string{"sql"}, login: true, stdin: "select 2", code: 0, request: "POST /sql select 2"},
 		{name: "sql with no script", args: []string{"sql"}, login: true, code: 2, stderr: "the script is empty", none: true},
