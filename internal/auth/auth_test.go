@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -55,8 +56,9 @@ func TestStore(t *testing.T) {
 			if strings.Contains(string(data), "packrat_api_") != tc.inFile {
 				t.Errorf("token in the file is %v, want %v:\n%s", !tc.inFile, tc.inFile, data)
 			}
+			// Windows keeps no Unix mode; the file's ACL is the user profile's.
 			info, err := os.Stat(filepath.Join(store.Dir, "credentials.json"))
-			if err != nil || info.Mode().Perm() != 0o600 {
+			if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
 				t.Errorf("the file's mode is %v (%v), want 0600", info.Mode().Perm(), err)
 			}
 

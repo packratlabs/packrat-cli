@@ -6,9 +6,9 @@
 
 - `packrat login` signs this machine in to one of your orgs, in your browser. `packrat logout` and
   `packrat auth status` go with it.
-- `packrat pr` says how a pull request went in production: the analyst's verdict on each deploy that
-  shipped it, the evidence, and its checkes. `packrat pr … check` asks the analyst to verify
-  something for it later, and `packrat check` lists or closes checkes.
+- `packrat pr show` says how a pull request went in production: the analyst's verdict on each deploy
+  that shipped it, the evidence, and its checks. `packrat check add --pull …` asks the analyst to
+  verify something for it later, and `packrat check` lists or closes checks.
 - `packrat open` reads a Packrat URL: a page, a report, or the URL in a line from a Packrat mail.
 - `packrat sql` runs SQL against an app.
 - `packrat setup detect` reads a repository and says what observability it has now. Ruby on Rails is the
@@ -163,37 +163,48 @@ and that one becomes the one used; `packrat auth status` says which.
 
 `packrat logout` revokes the key and forgets it. It does not touch `PACKRAT_API_KEY`.
 
-### pr, check, open and sql
+### pr show, check, open and sql
 
 ```
-$ packrat pr https://github.com/acme/shop/pull/482
-packrat pr  #482  shop/production
+$ packrat pr show https://github.com/acme/shop/pull/482
+=== #482 Cache the cart total
+shop/production
 
-Deploy 9f2c41e8, live 2026-10-14 16:02 UTC: worked in part  Cache the cart total
-  Asked for: A faster cart page.
-  Evidence: p95 went from 840 ms to 210 ms. 37 checkouts with a gift card show the wrong total.
-  Next: Key the cache on gift cards.
-  Report: packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha
+Deploy    9f2c41e8, live 2026-10-14 16:02 UTC
+Verdict   worked in part
+Report    packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha
 
-Checkes
-  chk_7ha5k2m9x0qv #482 due 2026-10-20 21:00 UTC
-    Gift card checkouts charge the total the page shows.
+Asked for
+  A faster cart page.
+
+Evidence
+  p95 went from 840 ms to 210 ms. 37 checkouts with a gift card show the wrong total.
+
+Next
+  Key the cache on gift cards.
+
+=== Checks
+STATUS               WHAT                                                     ID
+due 20 Oct 21:00     Gift card checkouts charge the total the page shows.     chk_7ha5k2m9x0qv
+
+Times are UTC. packrat check show <ID> prints the whole text.
 ```
 
 - The app is `--app` (or `PACKRAT_APP`), else the app whose analyst is connected to the pull
   request's repository: the one in the URL, or the `origin` remote of the current checkout for a
   number. `--json` prints the answer of the API.
-- `packrat pr 482 check --due 2026-10-20T21:00Z < check.txt` asks the analyst to verify something at
-  that time. The text says what must be true and the SQL that shows it. The answer is mailed in the
+- `packrat check add --pull 482 --due 2026-10-20T21:00Z < check.txt` asks the analyst to verify
+  something for that pull request at that time; with no `--app`, the app is the one connected to the
+  `origin` remote. The text says what must be true and the SQL that shows it. The answer is mailed in the
   thread of the pull request's verdict.
 - `packrat check add --due 2026-10-20T21:00Z --report rep_… < check.txt` asks for a check that is not
   for a pull request; `--report` puts the answer in the thread of that analyst mail.
-- `packrat check list` lists the app's checkes, `--pull 482` only that pull request's.
+- `packrat check list` lists the app's checks, `--pull 482` only that pull request's.
   `packrat check close chk_…` closes one before it is verified.
 - `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML
   where it does not. Give it a whole pasted line: it reads the first URL in it. The key is sent only to
   `https://packrat.sh` and its subdomains, and to `PACKRAT_URL` and `PACKRAT_QUERY_URL` when they are
-  set. A GitHub pull request URL is the same as `packrat pr`.
+  set. A GitHub pull request URL is the same as `packrat pr show`.
 - `packrat sql "select …"` (or `-f file`, or stdin) prints NDJSON rows, and a line on stderr that
   names the app that answered. `--quiet` leaves that line out.
 
