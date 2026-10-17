@@ -1,4 +1,4 @@
-// Command packrat detects a repository's observability and asks Packrat what it receives. It only reads.
+// Command packrat is the CLI to interact with Packrat.
 package main
 
 import (
@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/packratlabs/packrat-cli/internal/auth"
@@ -26,52 +27,6 @@ const (
 	exitFailed = 1
 	exitUsage  = 2
 )
-
-const usage = `packrat reads a repository and says what observability it has, and asks Packrat what production did.
-
-Usage:
-  packrat login [--no-browser]
-  packrat logout
-  packrat auth status
-  packrat pr <number or URL> [--app service] [--json]
-  packrat pr <number or URL> watch --due <time> [--app service]   < what must be true, and its SQL
-  packrat watch add --due <time> [--app service] [--pull number] [--report id]   < what must be true, and its SQL
-  packrat watch list [--app service] [--pull number] [--json]
-  packrat watch close <watch id>
-  packrat open <Packrat URL, or the line from a Packrat mail>
-  packrat sql [--app service] [-f file] [SQL]
-  packrat apps [--json]
-  packrat status --app service/env [--wait] [--json]
-  packrat detect [path] [--verbose] [--json] [--host]
-  packrat plan [path] [--app service/env] [--verbose] [--json]
-
-login     signs this machine in to one of your orgs, in your browser. The key it makes is yours, for
-          this machine, and is kept in the macOS Keychain or in ~/.config/packrat/credentials.json.
-logout    revokes that key and forgets it.
-auth status  says which org and which key the commands use.
-
-pr        how a pull request went in production: each deploy that shipped it, the analyst's verdict
-          and evidence, and its watches. The app is --app, else the one connected to the pull
-          request's repository: the URL's, or the origin remote of this checkout.
-pr watch  asks the analyst to verify something for the pull request at a later time, in UTC
-          (--due 2026-10-20T21:00Z). The text on stdin says what must be true and the SQL that shows it.
-watch     asks the analyst to verify something at a later time (add), lists the app's watches, or
-          closes one before it is verified. --report puts the answer in the thread of that mail.
-open      reads a Packrat page, a report, or the URL in a pasted curl line, with your key. A GitHub
-          pull request's URL is the same as packrat pr. The key is sent only to Packrat.
-sql       runs SQL against an app and prints NDJSON rows. A summary goes to stderr.
-
-apps      lists the apps that your key opens, with the time of their last data.
-status    says what Packrat receives for one app.
-  --wait  wait until new data arrives, for 5 minutes at most
-
-detect    says what the repository has now. --host also probes this machine for a Datadog Agent.
-plan      says how each signal gets to Packrat. --app leaves out what Packrat already receives.
-          detect and plan send nothing and write no file; plan --app asks query.packrat.sh.
-
-The commands that ask Packrat use PACKRAT_API_KEY when it is set, as in CI, and otherwise the key
-of packrat login. PACKRAT_APP names the app when the org has more than one.
-`
 
 const (
 	pollEvery = 3 * time.Second
@@ -111,13 +66,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 func runIn(w world, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		return say(stderr, usage, exitUsage)
+		return say(stderr, topLevelHelp(), exitUsage)
+	}
+	if words, asked := helpAsked(args); asked {
+		text, found := helpFor(words)
+		if !found {
+			return say(stderr, fmt.Sprintf("packrat: no help for %q. Run packrat help for the commands.\n", strings.Join(words, " ")), exitUsage)
+		}
+		return say(stdout, text, exitOK)
 	}
 	switch args[0] {
-	case "detect":
-		return runDetect(args[1:], stdout, stderr)
-	case "plan":
-		return runPlan(w, args[1:], stdout, stderr)
+	case "setup":
+		return runSetup(w, args[1:], stdout, stderr)
 	case "apps":
 		return runApps(w, args[1:], stdout, stderr)
 	case "status":
@@ -132,14 +92,13 @@ func runIn(w world, args []string, stdout, stderr io.Writer) int {
 		return runSQL(w, args[1:], stdout, stderr)
 	case "pr":
 		return runPR(w, args[1:], stdout, stderr)
-	case "watch":
-		return runWatch(w, args[1:], stdout, stderr)
+	// watch is the name before 2026-10-17.
+	case "check", "watch":
+		return runCheck(w, args[1:], stdout, stderr)
 	case "open":
 		return runOpen(w, args[1:], stdout, stderr)
-	case "help", "-h", "-help", "--help":
-		return say(stdout, usage, exitOK)
 	default:
-		return say(stderr, fmt.Sprintf("packrat: unknown command %q\n\n%s", args[0], usage), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat: unknown command %q. Run packrat help for the commands.\n", args[0]), exitUsage)
 	}
 }
 
@@ -149,7 +108,7 @@ func runApps(w world, args []string, stdout, stderr io.Writer) int {
 	asJSON := fs.Bool("json", false, "")
 	extra, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
-		return say(stdout, usage, exitOK)
+		return say(stdout, topLevelHelp(), exitOK)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat apps: %v\n", err), exitUsage)
@@ -183,7 +142,7 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	asJSON := fs.Bool("json", false, "")
 	extra, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
-		return say(stdout, usage, exitOK)
+		return say(stdout, topLevelHelp(), exitOK)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitUsage)
@@ -258,6 +217,18 @@ func newClient(w world) (query.Client, error) {
 	return query.Client{BaseURL: base, Key: key, HTTP: w.http}, nil
 }
 
+// runSetup is the setup topic: detect and plan, which read a project before it sends anything.
+func runSetup(w world, args []string, stdout, stderr io.Writer) int {
+	switch {
+	case len(args) > 0 && args[0] == "detect":
+		return runDetect(args[1:], stdout, stderr)
+	case len(args) > 0 && args[0] == "plan":
+		return runPlan(w, args[1:], stdout, stderr)
+	default:
+		return say(stderr, "packrat setup: the commands are detect and plan. Run packrat help setup.\n", exitUsage)
+	}
+}
+
 func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -267,13 +238,13 @@ func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(verbose, "v", false, "")
 	paths, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
-		return say(stdout, usage, exitOK)
+		return say(stdout, topLevelHelp(), exitOK)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitUsage)
 	}
 	if len(paths) > 1 {
-		return say(stderr, "packrat plan: takes one path\n", exitUsage)
+		return say(stderr, "packrat setup plan: takes one path\n", exitUsage)
 	}
 	path := "."
 	if len(paths) == 1 {
@@ -281,23 +252,23 @@ func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 	}
 	result, err := detect.Run(path, rails.DetectOptions())
 	if errors.Is(err, detect.ErrNotDirectory) {
-		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitUsage)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitFailed)
 	}
 	if !report.Planned(result) {
-		return say(stderr, fmt.Sprintf("packrat plan: %s\n", report.NoPlan), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat setup plan: %s\n", report.NoPlan), exitFailed)
 	}
 	var status *query.Status
 	if *app != "" {
 		client, err := newClient(w)
 		if err != nil {
-			return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitUsage)
+			return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitUsage)
 		}
 		answer, err := client.Status(context.Background(), *app)
 		if err != nil {
-			return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+			return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitFailed)
 		}
 		status = &answer
 	}
@@ -307,7 +278,7 @@ func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 		err = report.PlanFor(stdout, result, status, *verbose)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat plan: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitFailed)
 	}
 	return exitOK
 }
@@ -321,13 +292,13 @@ func runDetect(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(verbose, "v", false, "")
 	paths, err := parseInterleaved(fs, args)
 	if errors.Is(err, flag.ErrHelp) {
-		return say(stdout, usage, exitOK)
+		return say(stdout, topLevelHelp(), exitOK)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat detect: %v\n", err), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat setup detect: %v\n", err), exitUsage)
 	}
 	if len(paths) > 1 {
-		return say(stderr, "packrat detect: takes one path\n", exitUsage)
+		return say(stderr, "packrat setup detect: takes one path\n", exitUsage)
 	}
 	path := "."
 	if len(paths) == 1 {
@@ -339,10 +310,10 @@ func runDetect(args []string, stdout, stderr io.Writer) int {
 	}
 	result, err := detect.Run(path, opts)
 	if errors.Is(err, detect.ErrNotDirectory) {
-		return say(stderr, fmt.Sprintf("packrat detect: %v\n", err), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat setup detect: %v\n", err), exitUsage)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat detect: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat setup detect: %v\n", err), exitFailed)
 	}
 	write := report.Text
 	switch {
@@ -352,7 +323,7 @@ func runDetect(args []string, stdout, stderr io.Writer) int {
 		write = report.Verbose
 	}
 	if err := write(stdout, result); err != nil {
-		return say(stderr, fmt.Sprintf("packrat detect: %v\n", err), exitFailed)
+		return say(stderr, fmt.Sprintf("packrat setup detect: %v\n", err), exitFailed)
 	}
 	return exitOK
 }

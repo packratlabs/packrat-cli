@@ -42,11 +42,11 @@ type Deploy struct {
 	NextStep   string     `json:"next_step"`
 	FollowUp   string     `json:"follow_up"`
 	Report     string     `json:"report"`
-	Check      string     `json:"check"`
+	Look       string     `json:"look"`
 }
 
-// Watch is a thing the analyst is due to verify.
-type Watch struct {
+// Check is a thing the analyst is due to verify.
+type Check struct {
 	ID       string     `json:"id"`
 	What     string     `json:"what"`
 	DueAt    time.Time  `json:"due_at"`
@@ -64,13 +64,13 @@ type Pull struct {
 	Analysed   bool     `json:"analysed"`
 	Repository string   `json:"repository"`
 	Deploys    []Deploy `json:"deploys"`
-	Watches    []Watch  `json:"watches"`
+	Checkes    []Check  `json:"checkes"`
 }
 
-// Watches is the answer of GET /watches.
-type Watches struct {
+// Checkes is the answer of GET /checkes.
+type Checkes struct {
 	App     string  `json:"app"`
-	Watches []Watch `json:"watches"`
+	Checkes []Check `json:"checkes"`
 }
 
 // Pull is how pull request number went in production.
@@ -82,30 +82,30 @@ func (c Client) Pull(ctx context.Context, number int, where Where) (Pull, error)
 	if pull.Deploys == nil {
 		pull.Deploys = []Deploy{}
 	}
-	if pull.Watches == nil {
-		pull.Watches = []Watch{}
+	if pull.Checkes == nil {
+		pull.Checkes = []Check{}
 	}
 	return pull, nil
 }
 
-// Watches lists the app's open watches, and the asked ones closed this week. A pull above 0 keeps the
+// Checkes lists the app's open checkes, and the asked ones closed this week. A pull above 0 keeps the
 // ones asked for that pull request.
-func (c Client) Watches(ctx context.Context, where Where, pull int) (Watches, error) {
+func (c Client) Checkes(ctx context.Context, where Where, pull int) (Checkes, error) {
 	values := where.values()
 	if pull > 0 {
 		values.Set("pull", strconv.Itoa(pull))
 	}
-	var watches Watches
-	if err := c.get(ctx, "/watches"+query(values), &watches); err != nil {
-		return Watches{}, err
+	var checkes Checkes
+	if err := c.get(ctx, "/checkes"+query(values), &checkes); err != nil {
+		return Checkes{}, err
 	}
-	if watches.Watches == nil {
-		watches.Watches = []Watch{}
+	if checkes.Checkes == nil {
+		checkes.Checkes = []Check{}
 	}
-	return watches, nil
+	return checkes, nil
 }
 
-// Ask is a watch to ask for: what must be true and the SQL that shows it, from when, and the pull
+// Ask is a check to ask for: what must be true and the SQL that shows it, from when, and the pull
 // request or the analyst's mail it belongs to, if any.
 type Ask struct {
 	Text   string
@@ -114,8 +114,8 @@ type Ask struct {
 	Report string
 }
 
-// Watch asks the analyst to verify something at a later time.
-func (c Client) Watch(ctx context.Context, where Where, ask Ask) (Watch, error) {
+// Check asks the analyst to verify something at a later time.
+func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) {
 	values := where.values()
 	values.Set("due", ask.Due.UTC().Format("2006-01-02T15:04Z"))
 	if ask.Pull > 0 {
@@ -124,22 +124,22 @@ func (c Client) Watch(ctx context.Context, where Where, ask Ask) (Watch, error) 
 	if ask.Report != "" {
 		values.Set("report", ask.Report)
 	}
-	var watch Watch
-	body, err := c.send(ctx, "POST", "/watches"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
+	var check Check
+	body, err := c.send(ctx, "POST", "/checkes"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
 	if err != nil {
-		return Watch{}, err
+		return Check{}, err
 	}
-	return watch, decode(c.BaseURL, body, &watch)
+	return check, decode(c.BaseURL, body, &check)
 }
 
-// CloseWatch closes a watch before it is verified.
-func (c Client) CloseWatch(ctx context.Context, id string) (Watch, error) {
-	var watch Watch
-	body, err := c.send(ctx, "DELETE", "/watches/"+url.PathEscape(id), "", "application/json", nil)
+// CloseCheck closes a check before it is verified.
+func (c Client) CloseCheck(ctx context.Context, id string) (Check, error) {
+	var check Check
+	body, err := c.send(ctx, "DELETE", "/checkes/"+url.PathEscape(id), "", "application/json", nil)
 	if err != nil {
-		return Watch{}, err
+		return Check{}, err
 	}
-	return watch, decode(c.BaseURL, body, &watch)
+	return check, decode(c.BaseURL, body, &check)
 }
 
 // SQL runs a script against app and copies the NDJSON answer to out, and answers with its last line.

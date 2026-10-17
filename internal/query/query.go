@@ -26,6 +26,19 @@ var ErrRefused = errors.New("the key was refused (401). It is wrong or revoked. 
 // UserAgent names this program to the API.
 const UserAgent = "packrat-cli"
 
+// AppRequiredError is a request that named no app when the key opens more than one. Apps are the
+// services to choose from.
+type AppRequiredError struct{ Apps []string }
+
+func (e *AppRequiredError) Error() string {
+	apps := e.Apps
+	list := strings.Join(apps, ", ")
+	if len(apps) > 1 {
+		list = strings.Join(apps[:len(apps)-1], ", ") + " and " + apps[len(apps)-1]
+	}
+	return "No app specified. This key opens " + list + "."
+}
+
 // NotFoundError is an app that is not there. Message is the API's sentence, which names the apps that are.
 type NotFoundError struct{ Message string }
 
@@ -161,6 +174,12 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 		}
 		return body, "", fmt.Errorf("%s has no %s (404). The API is older than this command", where, strings.SplitN(path, "?", 2)[0])
 	default:
+		var choose struct {
+			Apps []string `json:"apps"`
+		}
+		if response.StatusCode == http.StatusBadRequest && json.Unmarshal(body, &choose) == nil && len(choose.Apps) > 0 {
+			return body, "", &AppRequiredError{Apps: choose.Apps}
+		}
 		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))
 	}
 }

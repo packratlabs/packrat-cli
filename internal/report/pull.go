@@ -3,6 +3,7 @@ package report
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,15 +18,15 @@ const NoDeploy = "No deploy has shipped it yet."
 const NotConnected = "The app's GitHub repository is not connected in Packrat, so no deploy names a pull request. Connect it on the app's Analyst page."
 
 // NotAnalysed is printed when the analyst does not look at the app.
-const NotAnalysed = "The analyst is off for this app, so no deploy gets a verdict and no watch is read."
+const NotAnalysed = "The analyst is off for this app, so no deploy gets a verdict and no check is read."
 
 var verdicts = map[string]string{
 	"confirmed": "worked", "partly": "worked in part", "refuted": "did not work",
 	"too_early": "too early to say", "not_observable": "not observable", "": "not judged yet",
 }
 
-// Pull writes each deploy of a pull request with the analyst's verdict, then its watches.
-func Pull(w io.Writer, p query.Pull, reports string) error {
+// Pull writes each deploy of a pull request with the analyst's verdict, then its checkes.
+func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "packrat pr  #%d  %s\n\n", p.Pull, p.App)
 	switch {
@@ -53,40 +54,114 @@ func Pull(w io.Writer, p query.Pull, reports string) error {
 		}
 		b.WriteString("\n")
 	}
-	b.WriteString(watchLines(p.Watches, "No watch for this pull request."))
+	if len(p.Checkes) > 0 {
+		b.WriteString("Checkes\n\n")
+	}
+	b.WriteString(checkTable(p.Checkes, "No check for this pull request.", width))
 	return put(w, b.String())
 }
 
 // PullJSON writes the answer of the API as it was read.
 func PullJSON(w io.Writer, p query.Pull) error { return putJSON(w, p) }
 
-// Watches writes the open watches of an app, and the asked ones closed this week.
-func Watches(w io.Writer, ws query.Watches) error {
-	return put(w, "packrat watch list  "+ws.App+"\n\n"+watchLines(ws.Watches, "No watch is open."))
+// Checkes writes the open checkes of an app, and the asked ones closed this week.
+func Checkes(w io.Writer, ws query.Checkes, width int) error {
+	return put(w, "=== "+ws.App+" checkes\n\n"+checkTable(ws.Checkes, "No check is open, and none closed this week.", width))
 }
 
-// WatchesJSON writes the answer of the API as it was read.
-func WatchesJSON(w io.Writer, ws query.Watches) error { return putJSON(w, ws) }
+// CheckesJSON writes the answer of the API as it was read.
+func CheckesJSON(w io.Writer, ws query.Checkes) error { return putJSON(w, ws) }
 
-// WatchJSON writes one watch as the API gave it.
-func WatchJSON(w io.Writer, watch query.Watch) error { return putJSON(w, watch) }
+// CheckJSON writes one check as the API gave it.
+func CheckJSON(w io.Writer, check query.Check) error { return putJSON(w, check) }
 
-func watchLines(watches []query.Watch, none string) string {
-	if len(watches) == 0 {
+// CheckTable writes checkes one to a line: open ones first, soonest due, then closed ones, newest
+// first. What is cut to fit width; packrat check show gives the whole text.
+func checkTable(checkes []query.Check, none string, width int) string {
+	if len(checkes) == 0 {
 		return none + "\n"
 	}
+	rows := append([]query.Check(nil), checkes...)
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if (a.ClosedAt == nil) != (b.ClosedAt == nil) {
+			return a.ClosedAt == nil
+		}
+		if a.ClosedAt == nil {
+			return a.DueAt.Before(b.DueAt)
+		}
+		return a.ClosedAt.After(*b.ClosedAt)
+	})
+	const status = len("closed 15 Oct 15:07")
+	idWidth := len("ID")
+	for _, check := range rows {
+		idWidth = max(idWidth, len(check.ID))
+	}
+	whatWidth := max(width-(5+2+status+2+2+idWidth), 20)
 	var b strings.Builder
-	b.WriteString("Watches\n")
-	for _, watch := range watches {
-		state := "due " + stamp(watch.DueAt)
-		if watch.ClosedAt != nil {
-			state = "closed " + stamp(*watch.ClosedAt) + ": " + watch.Outcome
+	fmt.Fprintf(&b, "%-5s  %-*s  %-*s  %s\n", "PR", status, "STATUS", whatWidth, "WHAT", "ID")
+	for _, check := range rows {
+		pull := "—"
+		if check.Pull > 0 {
+			pull = fmt.Sprintf("#%d", check.Pull)
 		}
-		pull := ""
-		if watch.Pull > 0 {
-			pull = fmt.Sprintf(" #%d", watch.Pull)
+		state := "due " + day(check.DueAt)
+		if check.ClosedAt != nil {
+			state = "closed " + day(*check.ClosedAt)
 		}
-		fmt.Fprintf(&b, "  %s%s %s\n    %s\n", watch.ID, pull, state, firstLine(watch.What))
+		fmt.Fprintf(&b, "%-5s  %-*s  %-*s  %s\n", pull, status, state, whatWidth, cut(oneLine(check.What), whatWidth), check.ID)
+	}
+	b.WriteString("\nTimes are UTC. packrat check show <ID> prints the whole text.\n")
+	return b.String()
+}
+
+// Check writes one check in full: what was asked and, once it closed, what the data showed.
+func Check(w io.Writer, check query.Check, width int) error {
+	var b strings.Builder
+	head := []string{check.ID}
+	if check.Pull > 0 {
+		head = append(head, fmt.Sprintf("PR #%d", check.Pull))
+	}
+	if check.ClosedAt != nil {
+		head = append(head, "closed "+stamp(*check.ClosedAt))
+	} else {
+		head = append(head, "due "+stamp(check.DueAt))
+	}
+	b.WriteString(strings.Join(head, " · ") + "\n\nAsked\n" + fold(check.What, width-2, "  "))
+	if check.Outcome != "" {
+		b.WriteString("\nResult\n" + fold(check.Outcome, width-2, "  "))
+	}
+	return put(w, b.String())
+}
+
+func day(at time.Time) string { return at.UTC().Format("2 Jan 15:04") }
+
+func oneLine(text string) string { return strings.Join(strings.Fields(text), " ") }
+
+func cut(text string, width int) string {
+	runes := []rune(text)
+	if len(runes) <= width {
+		return text
+	}
+	return string(runes[:width-1]) + "…"
+}
+
+// fold breaks each paragraph of text at spaces to fit width, and indents every line.
+func fold(text string, width int, indent string) string {
+	var b strings.Builder
+	for _, paragraph := range strings.Split(strings.TrimSpace(text), "\n") {
+		line := ""
+		for _, word := range strings.Fields(paragraph) {
+			if line != "" && len([]rune(line))+1+len([]rune(word)) > width {
+				b.WriteString(indent + line + "\n")
+				line = ""
+			}
+			if line != "" {
+				line += " "
+			}
+			line += word
+		}
+		b.WriteString(strings.TrimRight(indent+line, " ") + "\n")
 	}
 	return b.String()
 }
@@ -119,8 +194,3 @@ func SignedIn(w io.Writer, who query.Who, fromEnv bool, current string, all []au
 func short(version string) string { return version[:min(8, len(version))] }
 
 func stamp(at time.Time) string { return at.UTC().Format("2006-01-02 15:04 UTC") }
-
-func firstLine(text string) string {
-	line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
-	return line
-}

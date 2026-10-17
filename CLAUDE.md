@@ -2,14 +2,14 @@
 
 Report to the owner in ASD-STE100 Simplified Technical English. Short sentences, one idea each.
 
-`packrat detect` reads a repository and says what observability it has. `packrat plan` says how
+`packrat setup detect` reads a repository and says what observability it has. `packrat setup plan` says how
 Packrat would take each signal. `detect` prints facts only; a suggestion, a state or a step belongs
 in `plan` (`internal/report/plan.go`). Both are read-only: no network call, no file written, no
 environment value read. These
 three are promises checked by tests (`internal/detect/canary_test.go`, `nonetwork_test.go`); do not
 weaken a test to make a change pass.
 
-`login`, `logout`, `auth`, `pr`, `watch`, `open`, `sql`, `apps` and `status` are the other half:
+`login`, `logout`, `auth`, `pr`, `check`, `open`, `sql`, `apps` and `status` are the other half:
 they ask Packrat. `internal/query` is the only package that sends a request. The key is
 `PACKRAT_API_KEY` from the environment, else the sign-in that `internal/auth` keeps (the macOS
 Keychain, or `credentials.json`); no env file is read for it. A key must never reach stdout, stderr

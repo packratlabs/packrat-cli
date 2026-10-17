@@ -7,13 +7,13 @@
 - `packrat login` signs this machine in to one of your orgs, in your browser. `packrat logout` and
   `packrat auth status` go with it.
 - `packrat pr` says how a pull request went in production: the analyst's verdict on each deploy that
-  shipped it, the evidence, and its watches. `packrat pr … watch` asks the analyst to verify
-  something for it later, and `packrat watch` lists or closes watches.
+  shipped it, the evidence, and its checkes. `packrat pr … check` asks the analyst to verify
+  something for it later, and `packrat check` lists or closes checkes.
 - `packrat open` reads a Packrat URL: a page, a report, or the URL in a line from a Packrat mail.
 - `packrat sql` runs SQL against an app.
-- `packrat detect` reads a repository and says what observability it has now. Ruby on Rails is the
+- `packrat setup detect` reads a repository and says what observability it has now. Ruby on Rails is the
   only stack yet.
-- `packrat plan` says how each signal (exceptions, traces, logs, replays) gets from that repository
+- `packrat setup plan` says how each signal (exceptions, traces, logs, replays) gets from that repository
   into [Packrat](https://packrat.sh).
 - `packrat apps` lists the apps that Packrat has data from.
 - `packrat status` says what Packrat receives for one app: each signal, each source that sends it,
@@ -32,7 +32,7 @@ There is no release yet. Until the first one, build from this repository with Go
 git clone git@github.com:packratlabs/packrat-cli.git
 cd packrat-cli
 make build              # writes bin/packrat
-bin/packrat detect ~/projects/my-app
+bin/packrat setup detect ~/projects/my-app
 ```
 
 `packrat` is one file with no dependencies. Copy `bin/packrat` to a directory on your `PATH`, such
@@ -64,8 +64,8 @@ script is written. Do not run it until this note is removed.
 ## Usage
 
 ```
-packrat detect [path] [--verbose] [--json] [--host]
-packrat plan [path] [--verbose] [--json]
+packrat setup detect [path] [--verbose] [--json] [--host]
+packrat setup plan [path] [--verbose] [--json]
 packrat apps [--json]
 packrat status --app service/env [--wait] [--json]
 ```
@@ -73,7 +73,7 @@ packrat status --app service/env [--wait] [--json]
 ### detect
 
 ```
-packrat detect  shop  Rails 8.1.1, Ruby 3.3.8
+packrat setup detect  shop  Rails 8.1.1, Ruby 3.3.8
 
   SIGNAL      FOUND
   Exceptions  Sentry
@@ -97,7 +97,7 @@ Exit status: `0` when the detection ran, `1` when the path cannot be read, `2` f
 ### plan
 
 ```
-packrat plan  shop  Rails 8.1.1, Ruby 3.3.8
+packrat setup plan  shop  Rails 8.1.1, Ruby 3.3.8
 
   SIGNAL      SOURCE          INSTALLED  STEP
   Exceptions  Sentry          ✓          dual-ship to Packrat
@@ -123,8 +123,8 @@ already ships to Packrat gets the same steps. `--app service/env` asks Packrat w
 that app, as `packrat status` does, and a signal that Packrat already keeps has no step:
 
 ```
-$ packrat plan --app colorbook/production
-packrat plan  colorbook  Rails 8.0.2, Ruby 3.3.6
+$ packrat setup plan --app colorbook/production
+packrat setup plan  colorbook  Rails 8.0.2, Ruby 3.3.6
 
   SIGNAL      SOURCE                         INSTALLED  STEP
   Exceptions  OpenTelemetry                  ✓          none: Packrat receives it
@@ -150,7 +150,7 @@ key of `packrat login`.
 ```
 $ packrat login
 Your browser opened https://packrat.sh/cli/activate.
-Check that it shows the code BCDF-GHJK, choose the org, and sign in.
+Check that it shows the code BCDF-GHJK and sign in.
 Waiting...
 Signed in to Acme as dana@example.com.
 ```
@@ -163,7 +163,7 @@ and that one becomes the one used; `packrat auth status` says which.
 
 `packrat logout` revokes the key and forgets it. It does not touch `PACKRAT_API_KEY`.
 
-### pr, watch, open and sql
+### pr, check, open and sql
 
 ```
 $ packrat pr https://github.com/acme/shop/pull/482
@@ -175,21 +175,21 @@ Deploy 9f2c41e8, live 2026-10-14 16:02 UTC: worked in part  Cache the cart total
   Next: Key the cache on gift cards.
   Report: packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha
 
-Watches
-  wch_7ha5k2m9x0qv #482 due 2026-10-20 21:00 UTC
+Checkes
+  chk_7ha5k2m9x0qv #482 due 2026-10-20 21:00 UTC
     Gift card checkouts charge the total the page shows.
 ```
 
 - The app is `--app` (or `PACKRAT_APP`), else the app whose analyst is connected to the pull
   request's repository: the one in the URL, or the `origin` remote of the current checkout for a
   number. `--json` prints the answer of the API.
-- `packrat pr 482 watch --due 2026-10-20T21:00Z < watch.txt` asks the analyst to verify something at
+- `packrat pr 482 check --due 2026-10-20T21:00Z < check.txt` asks the analyst to verify something at
   that time. The text says what must be true and the SQL that shows it. The answer is mailed in the
   thread of the pull request's verdict.
-- `packrat watch add --due 2026-10-20T21:00Z --report rep_… < watch.txt` asks for a watch that is not
+- `packrat check add --due 2026-10-20T21:00Z --report rep_… < check.txt` asks for a check that is not
   for a pull request; `--report` puts the answer in the thread of that analyst mail.
-- `packrat watch list` lists the app's watches, `--pull 482` only that pull request's.
-  `packrat watch close wch_…` closes one before it is verified.
+- `packrat check list` lists the app's checkes, `--pull 482` only that pull request's.
+  `packrat check close chk_…` closes one before it is verified.
 - `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML
   where it does not. Give it a whole pasted line: it reads the first URL in it. The key is sent only to
   `https://packrat.sh` and its subdomains, and to `PACKRAT_URL` and `PACKRAT_QUERY_URL` when they are
@@ -361,7 +361,7 @@ pattern that matched.
 
 ### The plan document
 
-`packrat plan --json` prints one document. The schema is `packrat.plan/1`.
+`packrat setup plan --json` prints one document. The schema is `packrat.plan/1`.
 
 ```json
 {
