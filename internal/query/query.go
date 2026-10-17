@@ -1,5 +1,6 @@
-// Package query asks query.packrat.sh what Packrat receives. It is the only code that sends a
-// request, and it sends one thing of the caller's: the API key, as the Authorization header.
+// Package query asks Packrat: query.packrat.sh for data, and packrat.sh for its pages and to sign
+// in. It is the only code that sends a request. Of the caller's, it sends the API key, as the
+// Authorization header, and only to a Packrat host.
 package query
 
 import (
@@ -20,7 +21,23 @@ const DefaultURL = "https://query.packrat.sh"
 const maxBody = 4 << 20
 
 // ErrRefused is a key that the API does not accept.
-var ErrRefused = errors.New("the key was refused (401). It is wrong or revoked. Copy it again from the setup screen")
+var ErrRefused = errors.New("the key was refused (401). It is wrong or revoked. Run packrat login again")
+
+// UserAgent names this program to the API.
+const UserAgent = "packrat-cli"
+
+// AppRequiredError is a request that named no app when the key opens more than one. Apps are the
+// services to choose from.
+type AppRequiredError struct{ Apps []string }
+
+func (e *AppRequiredError) Error() string {
+	apps := e.Apps
+	list := strings.Join(apps, ", ")
+	if len(apps) > 1 {
+		list = strings.Join(apps[:len(apps)-1], ", ") + " and " + apps[len(apps)-1]
+	}
+	return "No app specified. This key opens " + list + "."
+}
 
 // NotFoundError is an app that is not there. Message is the API's sentence, which names the apps that are.
 type NotFoundError struct{ Message string }
@@ -102,42 +119,74 @@ func (c Client) Status(ctx context.Context, app string) (Status, error) {
 	return status, nil
 }
 
-func (c Client) get(ctx context.Context, path string, into any) (err error) {
-	address := strings.TrimRight(c.BaseURL, "/") + path
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, http.NoBody)
+func (c Client) get(ctx context.Context, path string, into any) error {
+	body, err := c.send(ctx, http.MethodGet, path, "", "application/json", nil)
 	if err != nil {
-		return fmt.Errorf("building the request to %s: %w", c.BaseURL, err)
+		return err
 	}
-	request.Header.Set("Authorization", "Bearer "+c.Key)
-	request.Header.Set("Accept", "application/json")
-	response, err := c.HTTP.Do(request)
+	return decode(c.BaseURL, body, into)
+}
+
+// send asks the API. On an error the body is the API's answer, when there was one.
+func (c Client) send(ctx context.Context, method, path, contentType, accept string, payload io.Reader) ([]byte, error) {
+	address := strings.TrimRight(c.BaseURL, "/") + path
+	if payload == nil {
+		payload = http.NoBody
+	}
+	request, err := http.NewRequestWithContext(ctx, method, address, payload)
 	if err != nil {
-		return fmt.Errorf("asking %s: %w", c.BaseURL, err)
+		return nil, fmt.Errorf("building the request to %s: %w", c.BaseURL, err)
+	}
+	body, _, err := c.do(request, contentType, accept, path)
+	return body, err
+}
+
+func (c Client) do(request *http.Request, contentType, accept, path string) (body []byte, kind string, err error) {
+	where := request.URL.Scheme + "://" + request.URL.Host
+	request.Header.Set("Authorization", "Bearer "+c.Key)
+	request.Header.Set("Accept", accept)
+	request.Header.Set("User-Agent", UserAgent)
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	response, err := c.HTTP.Do(request) // #nosec G704 -- a base URL, or an address Page has checked is Packrat's
+	if err != nil {
+		return nil, "", fmt.Errorf("asking %s: %w", where, err)
 	}
 	defer func() {
 		if closeErr := response.Body.Close(); closeErr != nil && err == nil {
-			err = fmt.Errorf("closing the answer of %s: %w", c.BaseURL, closeErr)
+			err = fmt.Errorf("closing the answer of %s: %w", where, closeErr)
 		}
 	}()
-	body, err := io.ReadAll(io.LimitReader(response.Body, maxBody))
+	body, err = io.ReadAll(io.LimitReader(response.Body, maxBody))
 	if err != nil {
-		return fmt.Errorf("reading the answer of %s: %w", c.BaseURL, err)
+		return nil, "", fmt.Errorf("reading the answer of %s: %w", where, err)
 	}
-	switch response.StatusCode {
-	case http.StatusOK:
-	case http.StatusUnauthorized:
-		return ErrRefused
-	case http.StatusNotFound:
+	switch {
+	case response.StatusCode >= 200 && response.StatusCode < 300:
+		return body, response.Header.Get("Content-Type"), nil
+	case response.StatusCode == http.StatusUnauthorized:
+		return body, "", ErrRefused
+	case response.StatusCode == http.StatusNotFound:
 		// The API says in words which apps there are. A 404 with no sentence is an address it does not have.
 		if said := message(body, ""); said != "" {
-			return &NotFoundError{Message: said}
+			return body, "", &NotFoundError{Message: said}
 		}
-		return fmt.Errorf("%s has no %s (404). The API is older than this command", c.BaseURL, strings.SplitN(path, "?", 2)[0])
+		return body, "", fmt.Errorf("%s has no %s (404). The API is older than this command", where, strings.SplitN(path, "?", 2)[0])
 	default:
-		return fmt.Errorf("%s answered %d: %s", c.BaseURL, response.StatusCode, message(body, "no reason given"))
+		var choose struct {
+			Apps []string `json:"apps"`
+		}
+		if response.StatusCode == http.StatusBadRequest && json.Unmarshal(body, &choose) == nil && len(choose.Apps) > 0 {
+			return body, "", &AppRequiredError{Apps: choose.Apps}
+		}
+		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))
 	}
+}
+
+func decode(base string, body []byte, into any) error {
 	if err := json.Unmarshal(body, into); err != nil {
-		return fmt.Errorf("reading the answer of %s: %w", c.BaseURL, err)
+		return fmt.Errorf("reading the answer of %s: %w", base, err)
 	}
 	return nil
 }

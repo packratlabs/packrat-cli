@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/packratlabs/packrat-cli/internal/auth"
 	"github.com/packratlabs/packrat-cli/internal/report"
 )
 
@@ -27,33 +28,39 @@ func TestRun(t *testing.T) {
 		lastStdout string
 		absent     string
 	}{
-		{name: "empty directory", args: []string{"detect", empty}, code: 0, stdout: report.NoStack, lastStdout: report.NoStack},
-		{name: "flag after path", args: []string{"detect", empty, "--json"}, code: 0, stdout: `"schema": "packrat.detect/1"`},
-		{name: "flag before path", args: []string{"detect", "--json", empty}, code: 0, stdout: `"schema": "packrat.detect/1"`},
-		{name: "no host without the flag", args: []string{"detect", "--json", empty}, code: 0, stdout: `"host": null`},
-		{name: "host flag", args: []string{"detect", "--host", empty}, code: 0, stdout: report.HostHeading, absent: "Nothing was sent"},
-		{name: "host flag with JSON", args: []string{"detect", "--host", "--json", empty}, code: 0, stdout: `"trace_listener":`},
-		{name: "short table has no evidence", args: []string{"detect", agent}, code: 0, stdout: report.NoStack, absent: "docker-compose.yml"},
-		{name: "verbose", args: []string{"detect", "--verbose", agent}, code: 0, stdout: "docker-compose.yml:3", absent: "Nothing was sent"},
-		{name: "verbose, short flag after path", args: []string{"detect", agent, "-v"}, code: 0, stdout: report.FoundHeading},
-		{name: "JSON ignores verbose", args: []string{"detect", "--json", "-v", agent}, code: 0, stdout: `"vendor": "OpenTelemetry Collector"`, absent: report.FoundHeading},
-		{name: "help", args: []string{"--help"}, code: 0, stdout: "packrat detect [path]"},
-		{name: "help names status", args: []string{"help"}, code: 0, stdout: "packrat status --app service/env"},
-		{name: "detect help", args: []string{"detect", "--help"}, code: 0, stdout: "packrat detect [path]"},
-		{name: "plan", args: []string{"plan", railsOnly}, code: 0, stdout: "Exceptions  OpenTelemetry              subscribe to Rails.error", lastStdout: report.AppHint, absent: "Nothing was sent"},
-		{name: "plan, verbose", args: []string{"plan", "-v", railsOnly}, code: 0, stdout: "setup adds the OpenTelemetry SDK"},
-		{name: "plan as JSON", args: []string{"plan", railsOnly, "--json"}, code: 0, stdout: `"schema": "packrat.plan/1"`},
-		{name: "plan with no stack", args: []string{"plan", empty}, code: 1, stderr: report.NoPlan},
-		{name: "plan says that the repository cannot show what arrives", args: []string{"plan", railsOnly}, code: 0, stdout: report.AppHint},
-		{name: "plan has no host flag", args: []string{"plan", "--host", empty}, code: 2, stderr: "flag provided but not defined"},
-		{name: "detect gives no steps", args: []string{"detect", "--json", railsOnly}, code: 0, stdout: `"sdks"`, absent: `"signals"`},
-		{name: "detect names what it found", args: []string{"detect", railsOnly}, code: 0, stdout: "Exceptions  none", absent: "needs setup"},
-		{name: "no command", args: nil, code: 2, stderr: "Usage:"},
-		{name: "unknown command", args: []string{"setup"}, code: 2, stderr: `unknown command "setup"`},
-		{name: "unknown flag", args: []string{"detect", "--yaml"}, code: 2, stderr: "flag provided but not defined"},
-		{name: "two paths", args: []string{"detect", empty, empty}, code: 2, stderr: "takes one path"},
-		{name: "path is a file", args: []string{"detect", file}, code: 2, stderr: "not a directory"},
-		{name: "path is missing", args: []string{"detect", filepath.Join("testdata", "absent")}, code: 2, stderr: "not a directory"},
+		{name: "empty directory", args: []string{"setup", "detect", empty}, code: 0, stdout: report.NoStack, lastStdout: report.NoStack},
+		{name: "flag after path", args: []string{"setup", "detect", empty, "--json"}, code: 0, stdout: `"schema": "packrat.detect/1"`},
+		{name: "flag before path", args: []string{"setup", "detect", "--json", empty}, code: 0, stdout: `"schema": "packrat.detect/1"`},
+		{name: "no host without the flag", args: []string{"setup", "detect", "--json", empty}, code: 0, stdout: `"host": null`},
+		{name: "host flag", args: []string{"setup", "detect", "--host", empty}, code: 0, stdout: report.HostHeading, absent: "Nothing was sent"},
+		{name: "host flag with JSON", args: []string{"setup", "detect", "--host", "--json", empty}, code: 0, stdout: `"trace_listener":`},
+		{name: "short table has no evidence", args: []string{"setup", "detect", agent}, code: 0, stdout: report.NoStack, absent: "docker-compose.yml"},
+		{name: "verbose", args: []string{"setup", "detect", "--verbose", agent}, code: 0, stdout: "docker-compose.yml:3", absent: "Nothing was sent"},
+		{name: "verbose, short flag after path", args: []string{"setup", "detect", agent, "-v"}, code: 0, stdout: report.FoundHeading},
+		{name: "JSON ignores verbose", args: []string{"setup", "detect", "--json", "-v", agent}, code: 0, stdout: `"vendor": "OpenTelemetry Collector"`, absent: report.FoundHeading},
+		{name: "help", args: []string{"--help"}, code: 0, stdout: "CLI to interact with Packrat\n\nVERSION\n  packrat/dev "},
+		{name: "help lists the commands", args: []string{"help"}, code: 0, stdout: "COMMANDS\n  apps "},
+		{name: "detect help", args: []string{"setup", "detect", "--help"}, code: 0, stdout: "USAGE\n  $ packrat setup detect [PATH]"},
+		{name: "help after a path", args: []string{"setup", "detect", empty, "-h"}, code: 0, stdout: "scan a project to determine existing observability tools\n"},
+		{name: "a topic's help", args: []string{"help", "check"}, code: 0, stdout: "COMMANDS\n  check add    ask Packrat to verify"},
+		{name: "a subcommand's help", args: []string{"check", "close", "--help"}, code: 0, stdout: "USAGE\n  $ packrat check close ID"},
+		{name: "setup with no command", args: []string{"setup"}, code: 2, stderr: "the commands are detect and plan"},
+		{name: "the old name is gone", args: []string{"detect"}, code: 2, stderr: `unknown command "detect"`},
+		{name: "no help for nothing", args: []string{"help", "nope"}, code: 2, stderr: `no help for "nope"`},
+		{name: "plan", args: []string{"setup", "plan", railsOnly}, code: 0, stdout: "Exceptions  OpenTelemetry              subscribe to Rails.error", lastStdout: report.AppHint, absent: "Nothing was sent"},
+		{name: "plan, verbose", args: []string{"setup", "plan", "-v", railsOnly}, code: 0, stdout: "setup adds the OpenTelemetry SDK"},
+		{name: "plan as JSON", args: []string{"setup", "plan", railsOnly, "--json"}, code: 0, stdout: `"schema": "packrat.plan/1"`},
+		{name: "plan with no stack", args: []string{"setup", "plan", empty}, code: 1, stderr: report.NoPlan},
+		{name: "plan says that the repository cannot show what arrives", args: []string{"setup", "plan", railsOnly}, code: 0, stdout: report.AppHint},
+		{name: "plan has no host flag", args: []string{"setup", "plan", "--host", empty}, code: 2, stderr: "flag provided but not defined"},
+		{name: "detect gives no steps", args: []string{"setup", "detect", "--json", railsOnly}, code: 0, stdout: `"sdks"`, absent: `"signals"`},
+		{name: "detect names what it found", args: []string{"setup", "detect", railsOnly}, code: 0, stdout: "Exceptions  none", absent: "needs setup"},
+		{name: "no command", args: nil, code: 2, stderr: "CLI to interact with Packrat"},
+		{name: "unknown command", args: []string{"deploy"}, code: 2, stderr: `unknown command "deploy". Run packrat help`},
+		{name: "unknown flag", args: []string{"setup", "detect", "--yaml"}, code: 2, stderr: "flag provided but not defined"},
+		{name: "two paths", args: []string{"setup", "detect", empty, empty}, code: 2, stderr: "takes one path"},
+		{name: "path is a file", args: []string{"setup", "detect", file}, code: 2, stderr: "not a directory"},
+		{name: "path is missing", args: []string{"setup", "detect", filepath.Join("testdata", "absent")}, code: 2, stderr: "not a directory"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,9 +87,22 @@ func TestRun(t *testing.T) {
 	}
 }
 
+// Every command has a summary, a usage line and an example, and each one answers --help.
+func TestEveryCommandHasHelp(t *testing.T) {
+	for name, c := range commands() {
+		if c.summary == "" || !strings.HasPrefix(c.usage, "packrat "+name) || len(c.examples) == 0 {
+			t.Errorf("%s: help is missing a summary, a usage line that names it, or an example", name)
+		}
+		var stdout, stderr bytes.Buffer
+		if code := run(append(strings.Fields(name), "--help"), &stdout, &stderr); code != 0 || !strings.HasPrefix(stdout.String(), c.summary+"\n") {
+			t.Errorf("%s --help: exit %d\n%s%s", name, code, stdout.String(), stderr.String())
+		}
+	}
+}
+
 func TestJSONEmptyHasNoNullLists(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"detect", "--json", filepath.Join("testdata", "empty")}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"setup", "detect", "--json", filepath.Join("testdata", "empty")}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	var doc map[string]json.RawMessage
@@ -150,13 +170,13 @@ func TestStatusAndApps(t *testing.T) {
 		{name: "status", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is arriving.", asked: 1},
 		{name: "status as JSON", args: []string{"status", "--json", "--app=shop/production"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"source": "otel"`, asked: 1},
 		{name: "an app that stopped", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{old}, code: 1, stdout: "Nothing has arrived for 29 hours.", asked: 1},
-		{name: "plan leaves out what the app already sends", args: []string{"plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "3 steps. Packrat already receives 1 signal.\n", asked: 1},
-		{name: "plan as JSON names the app", args: []string{"plan", "--json", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"arrives": true`, asked: 1},
-		{name: "plan for an app needs a key", args: []string{"plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "no PACKRAT_API_KEY"},
-		{name: "plan for an app that is not there", args: []string{"plan", "--app", "shop/staging", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
+		{name: "plan leaves out what the app already sends", args: []string{"setup", "plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "3 steps. Packrat already receives 1 signal.\n", asked: 1},
+		{name: "plan as JSON names the app", args: []string{"setup", "plan", "--json", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"arrives": true`, asked: 1},
+		{name: "plan for an app needs a key", args: []string{"setup", "plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
+		{name: "plan for an app that is not there", args: []string{"setup", "plan", "--app", "shop/staging", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
 		{name: "no app", args: []string{"status"}, key: statusKey, code: 2, stderr: "packrat apps"},
 		{name: "the app as an argument", args: []string{"status", "shop/production"}, key: statusKey, code: 2, stderr: "--app service/env"},
-		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "no PACKRAT_API_KEY in the environment or in .env"},
+		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "a refused key", args: []string{"status", "--app", "shop/production"}, key: "wrong", bodies: []string{fresh}, code: 1, stderr: "the key was refused (401)"},
 		{name: "an app that is not there", args: []string{"status", "--app", "shop/staging"}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
 		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, fresh, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 3, sleeps: 2},
@@ -168,7 +188,8 @@ func TestStatusAndApps(t *testing.T) {
 			server, asked := answers(t, tc.bodies...)
 			sleeps := 0
 			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL}
-			w := world{getenv: func(name string) string { return env[name] }, dir: t.TempDir(), sleep: func(time.Duration) { sleeps++ }}
+			w := world{getenv: func(name string) string { return env[name] }, sleep: func(time.Duration) { sleeps++ },
+				store: auth.Store{Dir: t.TempDir()}, http: &http.Client{}}
 			var stdout, stderr bytes.Buffer
 
 			code := runIn(w, tc.args, &stdout, &stderr)
