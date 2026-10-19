@@ -35,7 +35,7 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(io.Discard)
 	noBrowser := fs.Bool("no-browser", false, "")
 	if extra, err := parseInterleaved(fs, args); err != nil || len(extra) > 0 {
-		return say(stderr, "packrat login: takes only --no-browser\n", exitUsage)
+		return say(stderr, "packrat login: the only option is --no-browser\n", exitUsage)
 	}
 	site := siteClient(w, "")
 	name, err := w.hostname()
@@ -47,9 +47,9 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
 	}
-	msg := fmt.Sprintf("Open %s and type the code %s\n", started.VerificationURI, started.UserCode)
+	msg := fmt.Sprintf("Open %s and enter the code %s\n", started.VerificationURI, started.UserCode)
 	if !*noBrowser && strings.HasPrefix(started.Complete, strings.TrimRight(siteURL(w), "/")+"/") && w.browse(started.Complete) == nil {
-		msg = fmt.Sprintf("Your browser opened %s.\nCheck that it shows the code %s and sign in.\n", started.VerificationURI, started.UserCode)
+		msg = fmt.Sprintf("Opened %s in your browser.\nConfirm that it shows the code %s, then sign in.\n", started.VerificationURI, started.UserCode)
 	}
 	if code := say(stdout, msg+"Waiting...\n", exitOK); code != exitOK {
 		return code
@@ -83,11 +83,11 @@ func awaitToken(w world, site query.Client, started query.Started) (query.Token,
 
 func runLogout(w world, args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 {
-		return say(stderr, "packrat logout: takes no argument\n", exitUsage)
+		return say(stderr, "packrat logout: this command takes no arguments\n", exitUsage)
 	}
 	signIn, err := w.store.Current()
 	if errors.Is(err, auth.ErrNotSignedIn) {
-		return say(stdout, "Not signed in.\n", exitOK)
+		return say(stdout, "You're not signed in.\n", exitOK)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat logout: %v\n", err), exitFailed)
@@ -98,7 +98,7 @@ func runLogout(w world, args []string, stdout, stderr io.Writer) int {
 	if err := w.store.Remove(signIn.Org); err != nil {
 		return say(stderr, fmt.Sprintf("packrat logout: %v\n", err), exitFailed)
 	}
-	msg := fmt.Sprintf("Signed out of %s. Its key is revoked.\n", signIn.OrgName)
+	msg := fmt.Sprintf("Signed out of %s. The key for this machine is revoked.\n", signIn.OrgName)
 	if w.getenv(query.KeyName) != "" {
 		msg += query.KeyName + " is still set, and commands still use it.\n"
 	}
@@ -107,7 +107,7 @@ func runLogout(w world, args []string, stdout, stderr io.Writer) int {
 
 func runAuth(w world, args []string, stdout, stderr io.Writer) int {
 	if len(args) != 1 || args[0] != "status" {
-		return say(stderr, "packrat auth: the command is packrat auth status\n", exitUsage)
+		return say(stderr, "packrat auth: specify a command: status. Run packrat help auth for details.\n", exitUsage)
 	}
 	key, err := query.Key(w.getenv, w.store)
 	if err != nil {
@@ -135,7 +135,7 @@ func runSQL(w world, args []string, stdout, stderr io.Writer) int {
 	quiet := fs.Bool("quiet", false, "")
 	scripts, err := parseInterleaved(fs, args)
 	if err != nil || len(scripts) > 1 || (len(scripts) == 1 && *file != "") {
-		return say(stderr, "packrat sql: give one script, as an argument, with -f file, or on stdin\n", exitUsage)
+		return say(stderr, "packrat sql: specify one query, as an argument, with -f FILE, or on stdin\n", exitUsage)
 	}
 	var script []byte
 	switch {
@@ -147,10 +147,10 @@ func runSQL(w world, args []string, stdout, stderr io.Writer) int {
 		script, err = io.ReadAll(w.stdin)
 	}
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat sql: reading the script: %v\n", err), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat sql: reading the query: %v\n", err), exitUsage)
 	}
 	if len(bytes.TrimSpace(script)) == 0 {
-		return say(stderr, "packrat sql: the script is empty\n", exitUsage)
+		return say(stderr, "packrat sql: the query is empty\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -189,7 +189,7 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	}
 	number, where, ok := pullRef(w, words[1], *app)
 	if !ok {
-		return say(stderr, fmt.Sprintf("packrat pr show: %q is not a pull request's number or URL\n", words[1]), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat pr show: %q is not a pull request number or URL\n", words[1]), exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -210,7 +210,7 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-const prUsage = "packrat pr: the command is show, with a pull request's number or URL. Run packrat help pr.\n"
+const prUsage = "packrat pr: specify a command: show NUMBER|URL. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, due, name, usage string, stdout, stderr io.Writer) int {
 	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
@@ -218,11 +218,11 @@ func askCheck(w world, client query.Client, where query.Where, ask query.Ask, du
 		at, err = time.Parse(time.RFC3339, due)
 	}
 	if err != nil {
-		return say(stderr, "packrat "+name+": --due is the first time it can be verified, in UTC: --due 2026-10-20T21:00Z\n", exitUsage)
+		return say(stderr, "packrat "+name+": specify --due, the earliest time the check can pass, in UTC. For example: --due 2026-10-20T21:00Z\n", exitUsage)
 	}
 	text, err := io.ReadAll(w.stdin)
 	if err != nil || len(bytes.TrimSpace(text)) == 0 {
-		return say(stderr, "packrat "+name+": write what must be true, and the SQL that shows it, on stdin\n", exitUsage)
+		return say(stderr, "packrat "+name+": provide the check on stdin: what must be true, and the SQL that shows it\n", exitUsage)
 	}
 	ask.Due, ask.Text = at, string(text)
 	check, err := client.Check(context.Background(), where, ask)
@@ -301,7 +301,7 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-const checkUsage = "packrat check: the commands are add, list, show and close. Run packrat help check.\n"
+const checkUsage = "packrat check: specify a command: add, list, show or close. Run packrat help check for details.\n"
 
 // width is the terminal's, from COLUMNS, which shells set; 100 where nothing says.
 func width(w world) int {
@@ -314,7 +314,7 @@ func width(w world) int {
 func runOpen(w world, args []string, stdout, stderr io.Writer) int {
 	address := anyURL.FindString(strings.Join(args, " "))
 	if address == "" {
-		return say(stderr, "packrat open: give a Packrat URL, or the line from a Packrat mail that holds one\n", exitUsage)
+		return say(stderr, "packrat open: specify a Packrat URL, or a pasted line that contains one\n", exitUsage)
 	}
 	if pullURL.MatchString(address) {
 		return runPR(w, []string{"show", address}, stdout, stderr)

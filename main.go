@@ -71,7 +71,7 @@ func runIn(w world, args []string, stdout, stderr io.Writer) int {
 	if words, asked := helpAsked(args); asked {
 		text, found := helpFor(words)
 		if !found {
-			return say(stderr, fmt.Sprintf("packrat: no help for %q. Run packrat help for the commands.\n", strings.Join(words, " ")), exitUsage)
+			return say(stderr, fmt.Sprintf("packrat: no help for %q. Run packrat help to see all commands.\n", strings.Join(words, " ")), exitUsage)
 		}
 		return say(stdout, text, exitOK)
 	}
@@ -98,7 +98,7 @@ func runIn(w world, args []string, stdout, stderr io.Writer) int {
 	case "open":
 		return runOpen(w, args[1:], stdout, stderr)
 	default:
-		return say(stderr, fmt.Sprintf("packrat: unknown command %q. Run packrat help for the commands.\n", args[0]), exitUsage)
+		return say(stderr, fmt.Sprintf("packrat: %q is not a packrat command. Run packrat help to see all commands.\n", args[0]), exitUsage)
 	}
 }
 
@@ -114,7 +114,7 @@ func runApps(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat apps: %v\n", err), exitUsage)
 	}
 	if len(extra) > 0 {
-		return say(stderr, "packrat apps: takes no argument\n", exitUsage)
+		return say(stderr, "packrat apps: this command takes no arguments\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -148,7 +148,7 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitUsage)
 	}
 	if len(extra) > 0 || *app == "" {
-		return say(stderr, "packrat status: give an app with --app service/env. To list them: packrat apps\n", exitUsage)
+		return say(stderr, "packrat status: specify an app with --app SERVICE/ENV. Run packrat apps to list your apps.\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -157,7 +157,7 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	var status query.Status
 	if *wait {
 		if !*asJSON {
-			if code := say(stdout, fmt.Sprintf("Waiting for data from %s. Start the app and load a page.\n\n", *app), exitOK); code != exitOK {
+			if code := say(stdout, fmt.Sprintf("Waiting for data from %s. Start your app and load a page.\n\n", *app), exitOK); code != exitOK {
 				return code
 			}
 		}
@@ -181,7 +181,7 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-var errNoNewData = errors.New("no new data arrived in 5 minutes")
+var errNoNewData = errors.New("no new data arrived within 5 minutes")
 
 // awaitData asks until the sources of the app differ from the first answer, which is the proof
 // that something arrived after the command started. An app that is not there yet is an empty answer.
@@ -225,7 +225,7 @@ func runSetup(w world, args []string, stdout, stderr io.Writer) int {
 	case len(args) > 0 && args[0] == "plan":
 		return runPlan(w, args[1:], stdout, stderr)
 	default:
-		return say(stderr, "packrat setup: the commands are detect and plan. Run packrat help setup.\n", exitUsage)
+		return say(stderr, "packrat setup: specify a command: detect or plan. Run packrat help setup for details.\n", exitUsage)
 	}
 }
 
@@ -244,7 +244,7 @@ func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat setup plan: %v\n", err), exitUsage)
 	}
 	if len(paths) > 1 {
-		return say(stderr, "packrat setup plan: takes one path\n", exitUsage)
+		return say(stderr, "packrat setup plan: specify at most one path\n", exitUsage)
 	}
 	path := "."
 	if len(paths) == 1 {
@@ -298,7 +298,7 @@ func runDetect(args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat setup detect: %v\n", err), exitUsage)
 	}
 	if len(paths) > 1 {
-		return say(stderr, "packrat setup detect: takes one path\n", exitUsage)
+		return say(stderr, "packrat setup detect: specify at most one path\n", exitUsage)
 	}
 	path := "."
 	if len(paths) == 1 {

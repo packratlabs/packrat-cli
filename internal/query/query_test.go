@@ -58,7 +58,7 @@ func TestClient(t *testing.T) {
 		sources  int
 	}{
 		{name: "an answer", code: 200, body: `{"app":"shop/production","signals":[{"signal":"traces","sources":[{"source":"otel","name":"OpenTelemetry","kept":true}]},{"signal":"logs"}]}`, sources: 1},
-		{name: "a refused key", code: 401, refused: true, wantErr: "refused"},
+		{name: "a refused key", code: 401, refused: true, wantErr: "rejected"},
 		{name: "an app that is not there", code: 404, body: `{"type":"error","message":"This key opens shop/production."}`, notFound: true, wantErr: "This key opens shop/production."},
 		{name: "an API that has no such address", code: 404, wantErr: "has no /status (404). The API is older than this command"},
 		{name: "a failure with no reason", code: 500, body: "<html>", wantErr: "answered 500: no reason given"},
