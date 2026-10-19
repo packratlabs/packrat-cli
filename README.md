@@ -2,46 +2,32 @@
 
 [![check](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml/badge.svg)](https://github.com/packratlabs/packrat-cli/actions/workflows/check.yml)
 
-`packrat` reads a repository, and asks Packrat what production did.
+The Packrat CLI lets you work with [Packrat](https://packrat.sh) from your terminal. With it, you can:
 
-- `packrat login` signs this machine in to one of your orgs, in your browser. `packrat logout` and
-  `packrat auth status` go with it.
-- `packrat pr show` says how a pull request went in production: the analyst's verdict on each deploy
-  that shipped it, the evidence, and its checks. `packrat check add --pull …` asks the analyst to
-  verify something for it later, and `packrat check` lists or closes checks.
-- `packrat open` reads a Packrat URL: a page, a report, or the URL in a line from a Packrat mail.
-- `packrat sql` runs SQL against an app.
-- `packrat setup detect` reads a repository and says what observability it has now. Ruby on Rails is the
-  only stack yet.
-- `packrat setup plan` says how each signal (exceptions, traces, logs, replays) gets from that repository
-  into [Packrat](https://packrat.sh).
-- `packrat apps` lists the apps that Packrat has data from.
-- `packrat status` says what Packrat receives for one app: each signal, each source that sends it,
-  and whether Packrat keeps it.
-
-`detect` gives facts and `plan` gives steps. `detect` finds the stack, the observability gems and
-their configuration, agents and collectors, browser SDKs, and the names of environment variables.
-`plan` picks one route for each signal from these facts. It does not set anything up; its steps say
-what a later `packrat setup` would do.
+- See how a pull request performed in production, with the analyst's verdict for each deploy.
+- Schedule checks that the analyst runs later, such as "the nightly job ran without errors".
+- Read Packrat pages, including reports linked from Packrat emails.
+- Query your traces and logs with SQL.
+- Scan a Rails project to see which observability tools it uses, and how to send each signal to
+  Packrat.
 
 ## Install
 
-There is no release yet. Until the first one, build from this repository with Go 1.26:
+There's no release yet. Until the first release, build the CLI from this repository with Go 1.26:
 
 ```
 git clone git@github.com:packratlabs/packrat-cli.git
 cd packrat-cli
 make build              # writes bin/packrat
-bin/packrat setup detect ~/projects/my-app
 ```
 
-`packrat` is one file with no dependencies. Copy `bin/packrat` to a directory on your `PATH`, such
-as `/usr/local/bin`, to run it from anywhere.
+`packrat` is a single binary with no dependencies. To run it from anywhere, copy `bin/packrat` to a
+directory on your `PATH`, such as `/usr/local/bin`.
 
-After the first release, each release will have one archive for each of these, and a
-`checksums.txt` with the SHA-256 of each archive:
+Each release will include an archive for each platform below, and a `checksums.txt` file with the
+SHA-256 checksum of each archive:
 
-| System | Archive |
+| Platform | Archive |
 | --- | --- |
 | macOS, Apple silicon | `packrat_darwin_arm64.tar.gz` |
 | macOS, Intel | `packrat_darwin_amd64.tar.gz` |
@@ -49,121 +35,50 @@ After the first release, each release will have one archive for each of these, a
 | Linux, arm64 | `packrat_linux_arm64.tar.gz` |
 | Windows, x86-64 | `packrat_windows_amd64.zip` |
 
-Download the archive for your system, compare it with `checksums.txt`, unpack it, and put
-`packrat` on your `PATH`.
+To install a release, download the archive for your platform, verify it against `checksums.txt`,
+extract it, and move `packrat` to a directory on your `PATH`.
 
-### For an agent
+### Install script
 
 ```
 curl -fsSL https://packrat.sh/cli | sh
 ```
 
-This script does not exist yet. The line is here so that the install command is decided before the
-script is written. Do not run it until this note is removed.
+This script doesn't exist yet. The command is listed here so the install path is settled before the
+script is written. Don't run it until this note is removed.
 
-## Usage
+## Authenticate
 
-```
-packrat setup detect [path] [--verbose] [--json] [--host]
-packrat setup plan [path] [--verbose] [--json]
-packrat apps [--json]
-packrat status --app service/env [--wait] [--json]
-```
-
-### detect
-
-```
-packrat setup detect  shop  Rails 8.1.1, Ruby 3.3.8
-
-  SIGNAL      FOUND
-  Exceptions  Sentry
-  Traces      OpenTelemetry
-  Logs        none
-  Replays     Sentry browser
-```
-
-FOUND names each vendor in the repository that sends the signal in production. It includes a vendor
-that Packrat cannot receive from, such as New Relic. `none` means that nothing sends the signal.
-
-- `path` is the directory to read. The default is the current directory.
-- `--verbose`, or `-v`, adds everything that was found: each vendor, the file and line that configures it, its gems, agents, browser SDKs and the
-  names of environment variables.
-- `--json` prints the JSON document instead of the table. It always holds everything.
-- `--host` also probes the machine that runs the detection, and prints the result under "This machine,
-  not production". It is off by default, because that machine is usually a laptop.
-
-Exit status: `0` when the detection ran, `1` when the path cannot be read, `2` for a usage error.
-
-### plan
-
-```
-packrat setup plan  shop  Rails 8.1.1, Ruby 3.3.8
-
-  SIGNAL      SOURCE          INSTALLED  STEP
-  Exceptions  Sentry          ✓          dual-ship to Packrat
-  Traces      OpenTelemetry   ✓          dual-ship to Packrat
-  Logs        OpenTelemetry              add the OpenTelemetry logs gems
-  Replays     Sentry browser  ✓          dual-ship to Packrat
-
-Add --app service/env to detect if Packrat is receiving data from each signal.
-```
-
-- SOURCE is what Packrat will receive the signal from. The names are the names that
-  `packrat status` prints.
-- INSTALLED has a check mark when the repository has that source now.
-- STEP is what setup would do. "dual-ship" means that the source continues to send to its vendor
-  and also sends to Packrat.
-- A line under the table says why a usual route was not chosen, or why a signal has no route.
-- `--verbose`, or `-v`, adds the reason under each step. `--json` prints the plan document.
-- `plan` takes the same `path` as `detect`. It has no `--host`.
-
-The repository cannot show where a source sends: that address is usually a variable of the
-production environment, and `plan` never reads the value of a variable. So a repository that
-already ships to Packrat gets the same steps. `--app service/env` asks Packrat what it receives for
-that app, as `packrat status` does, and a signal that Packrat already keeps has no step:
-
-```
-$ packrat setup plan --app colorbook/production
-packrat setup plan  colorbook  Rails 8.0.2, Ruby 3.3.6
-
-  SIGNAL      SOURCE                         INSTALLED  STEP
-  Exceptions  OpenTelemetry                  ✓          none: Packrat receives it
-  Traces      OpenTelemetry, Sentry browser  ✓          none: Packrat receives it
-  Logs        OpenTelemetry                  ✓          none: Packrat receives it
-  Replays     Sentry browser                 ✓          none: Packrat receives it
-
-Nothing to do. Packrat already receives 4 signals.
-```
-
-With `--app`, SOURCE is the source that sends the signal now. It can be different from the source
-that the repository alone suggests: an app keeps its exceptions and its traces from the first source
-that sent them, so a second source would not be kept.
-
-Exit status: `0` when there is a plan, `1` when the repository is not a supported stack or the path
-cannot be read, `2` for a usage error.
-
-### The key
-
-Every command that asks Packrat uses `PACKRAT_API_KEY` when it is set, as in CI, and otherwise the
-key of `packrat login`.
+Run `packrat login` to sign in with your browser:
 
 ```
 $ packrat login
-Your browser opened https://packrat.sh/cli/activate.
-Check that it shows the code BCDF-GHJK and sign in.
+Opened https://packrat.sh/cli/activate in your browser.
+Confirm that it shows the code BCDF-GHJK, then sign in.
 Waiting...
 Signed in to Acme as dana@example.com.
 ```
 
-The key that `login` makes is yours, for this machine. The org's keys page lists it with your name,
-and you or anyone in the org can revoke it there. It stops when you leave the org. On macOS it is
-kept in the login Keychain; elsewhere in `~/.config/packrat/credentials.json` (mode `0600`).
-`credentials.json` keeps the org and your address, and on macOS nothing more. Sign in to a second org
-and that one becomes the one used; `packrat auth status` says which.
+Signing in creates an API key for you on this machine. On macOS, the key is stored in your login
+Keychain. On other platforms, it's stored in `~/.config/packrat/credentials.json` with mode `0600`.
+On macOS, `credentials.json` holds only the org and your email address.
 
-`packrat logout` revokes the key and forgets it. It does not touch `PACKRAT_API_KEY`.
+The key appears with your name on your org's API keys page, where you or anyone in the org can
+revoke it. It stops working if you leave the org. If you sign in to a second org, commands use that
+org. Run `packrat auth status` to see which org and key are in use.
 
-### pr show, check, open and sql
+To sign out and revoke the key, run `packrat logout`.
+
+In CI, set `PACKRAT_API_KEY` instead. Commands use `PACKRAT_API_KEY` if it's set, and the key from
+`packrat login` otherwise. `packrat logout` doesn't affect `PACKRAT_API_KEY`.
+
+## Commands
+
+Run `packrat help` for a list of commands, and `packrat help COMMAND` for a command's usage.
+
+### pr show
+
+`packrat pr show` shows how a pull request performed in production:
 
 ```
 $ packrat pr show https://github.com/acme/shop/pull/482
@@ -190,27 +105,61 @@ due 20 Oct 21:00     Gift card checkouts charge the total the page shows.     ch
 Times are UTC. packrat check show <ID> prints the whole text.
 ```
 
-- The app is `--app` (or `PACKRAT_APP`), else the app whose analyst is connected to the pull
-  request's repository: the one in the URL, or the `origin` remote of the current checkout for a
-  number. `--json` prints the answer of the API.
-- `packrat check add --pull 482 --due 2026-10-20T21:00Z < check.txt` asks the analyst to verify
-  something for that pull request at that time; with no `--app`, the app is the one connected to the
-  `origin` remote. The text says what must be true and the SQL that shows it. The answer is mailed in the
-  thread of the pull request's verdict.
-- `packrat check add --due 2026-10-20T21:00Z --report rep_… < check.txt` asks for a check that is not
-  for a pull request; `--report` puts the answer in the thread of that analyst mail.
-- `packrat check list` lists the app's checks, `--pull 482` only that pull request's.
-  `packrat check close chk_…` closes one before it is verified.
-- `packrat open <URL>` prints what a Packrat URL shows, as markdown where the page has it and as HTML
-  where it does not. Give it a whole pasted line: it reads the first URL in it. The key is sent only to
-  `https://packrat.sh` and its subdomains, and to `PACKRAT_URL` and `PACKRAT_QUERY_URL` when they are
-  set. A GitHub pull request URL is the same as `packrat pr show`.
-- `packrat sql "select …"` (or `-f file`, or stdin) prints NDJSON rows, and a line on stderr that
-  names the app that answered. `--quiet` leaves that line out.
+By default, the app is the one whose analyst is connected to the pull request's repository. For a
+URL, that's the repository in the URL. For a number, it's the `origin` remote of the current
+directory. To use a different app, pass `--app` or set `PACKRAT_APP`. Pass `--json` to output the API
+response.
 
-### apps and status
+### check
 
-These two commands ask `https://query.packrat.sh` with your key.
+A check asks Packrat's analyst to verify something at a later time. Write what must be true and the
+SQL that shows it in a file, then pass it on stdin:
+
+```
+packrat check add --pull 482 --due 2026-10-20T21:00Z < check.txt
+```
+
+The analyst runs the check after the `--due` time and emails the result in the thread of the pull
+request's verdict email. With `--pull` and no `--app`, the app is the one connected to the `origin`
+remote.
+
+For a check that isn't tied to a pull request, pass `--report` instead. The result is emailed in the
+thread of that analyst report:
+
+```
+packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt
+```
+
+To manage checks:
+
+- `packrat check list` lists the app's checks. Pass `--pull 482` to list only that pull request's checks.
+- `packrat check show chk_…` shows a check's full text, and its result once it has run.
+- `packrat check close chk_…` cancels a check before it runs.
+
+### open
+
+`packrat open URL` prints a Packrat page: as markdown when the page has a markdown version, and as
+HTML otherwise. You can pass a whole pasted line, such as the last line of a Packrat email, and
+`packrat open` reads the first URL in it. A GitHub pull request URL runs `packrat pr show`.
+
+`packrat open` only sends your key to `https://packrat.sh` and its subdomains, and to
+`PACKRAT_URL` and `PACKRAT_QUERY_URL` if they're set.
+
+### sql
+
+`packrat sql` runs a SQL query against an app:
+
+```
+packrat sql "select count(*) from packrat_spans(since := current_date)"
+```
+
+You can also pass the query with `-f FILE`, or on stdin. Rows are printed to stdout as NDJSON, and a
+summary line with the app that answered is printed to stderr. Pass `--quiet` to skip the summary
+line. For the tables and macros you can query, see the [API reference](https://packrat.sh/docs/api).
+
+### apps
+
+`packrat apps` lists the apps that have sent data to Packrat:
 
 ```
 $ packrat apps
@@ -219,8 +168,13 @@ shop/production   now
 shop/development  3 hours ago
 ```
 
-An app that you do not know is usually your app with a different name: a service name that was not
-set, or an environment that you did not expect.
+If you don't recognize an app, it's usually one of yours reporting under a different name, such as
+an unset service name or an unexpected environment.
+
+### status
+
+`packrat status` shows what Packrat receives from an app: each signal, the sources that send it, and
+whether Packrat keeps it.
 
 ```
 $ packrat status --app colorbook/production
@@ -243,41 +197,130 @@ packrat status  colorbook/production
 4 of 5 signals are arriving.
 ```
 
-- `--app` is necessary. It is `service/env`, as `packrat apps` prints it.
-- `no` under KEPT means that the source sends the signal, and Packrat does not store it, because the app
-  keeps that signal from a different source. Logs, metrics and all data from a browser are kept from
-  each source.
-- A time is exact to the minute. A time of less than two minutes is "now".
-- `--wait` asks again each 3 seconds until new data arrives, for 5 minutes at most. Use it during
-  setup: start the command, then start the app and load a page.
-- `--json` prints the answer of the API. The [API page](https://packrat.sh/docs/api#get-status)
-  describes it.
+- `--app` is required. Use the `SERVICE/ENV` name that `packrat apps` lists.
+- `no` in the KEPT column means a source sends the signal, but Packrat doesn't store it, because the
+  app already keeps that signal from another source. Logs, metrics and all browser data are kept
+  from every source.
+- Times are accurate to the minute. Anything under two minutes is shown as "now".
+- `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup:
+  run the command, then start your app and load a page.
+- `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
 
-Exit status of `status`: `0` when data arrived in the last hour; `1` when nothing arrived in the
-last hour, when a kept source stopped while a different source sends the same signal, when `--wait`
-got no new data, or when the API refused the request; `2` for a usage error or no key.
+`packrat status` exits with:
 
-What these commands send: the API key, as the `Authorization` header, and the name of the app.
-They send nothing else, and never print the key. `PACKRAT_QUERY_URL` replaces the address of the
-API, and `PACKRAT_URL` the address of the site, where `login` and pages are.
+- `0` if data arrived in the last hour.
+- `1` if no data arrived in the last hour, a kept source stopped while another source still sends
+  the same signal, `--wait` timed out, or the API rejected the request.
+- `2` for a usage error or a missing key.
 
-## What detect reads, and what it never reads
+### Network requests
 
-`detect` is read-only. It writes no file and sends nothing. It never reads the value of an
-environment variable from any file. Without `--host` it opens no socket; the test
+Commands that query Packrat send only your API key, in the `Authorization` header, and the app name.
+They never print your key. To use a different API host, set `PACKRAT_QUERY_URL`. To use a different
+site host (for `login` and `open`), set `PACKRAT_URL`.
+
+## Set up a project
+
+`packrat setup detect` and `packrat setup plan` scan a project and suggest how to send its data to
+Packrat. Ruby on Rails is the only supported stack.
+
+`detect` reports what the project uses now: the stack, observability gems and their configuration,
+agents and collectors, browser SDKs, and the names of environment variables. `plan` uses those
+results to choose one route for each signal. Neither command changes anything. The steps in a plan
+describe what a future `packrat setup` command will do.
+
+### setup detect
+
+```
+$ packrat setup detect
+packrat setup detect  shop  Rails 8.1.1, Ruby 3.3.8
+
+  SIGNAL      FOUND
+  Exceptions  Sentry
+  Traces      OpenTelemetry
+  Logs        none
+  Replays     Sentry browser
+```
+
+FOUND lists each vendor in the project that sends the signal in production, including vendors that
+Packrat can't receive from, such as New Relic. `none` means nothing sends the signal.
+
+- `PATH` is the directory to scan. It defaults to the current directory.
+- `--verbose` (`-v`) shows everything that was found: each vendor, the file and line that configures
+  it, its gems, agents and browser SDKs, and the names of environment variables.
+- `--json` outputs the full results as a JSON document.
+- `--host` also checks the machine running the command, and shows the results under "This machine,
+  not production". It's off by default, because that machine is usually a laptop.
+
+`packrat setup detect` exits with `0` when the scan completes, `1` when the path can't be read, and
+`2` for a usage error.
+
+### setup plan
+
+```
+$ packrat setup plan
+packrat setup plan  shop  Rails 8.1.1, Ruby 3.3.8
+
+  SIGNAL      SOURCE          INSTALLED  STEP
+  Exceptions  Sentry          ✓          dual-ship to Packrat
+  Traces      OpenTelemetry   ✓          dual-ship to Packrat
+  Logs        OpenTelemetry              add the OpenTelemetry logs gems
+  Replays     Sentry browser  ✓          dual-ship to Packrat
+
+Add --app service/env to detect if Packrat is receiving data from each signal.
+```
+
+- SOURCE is where Packrat will receive the signal from. The names match the ones `packrat status`
+  shows.
+- INSTALLED has a check mark if the project already includes that source.
+- STEP is what setup would do. "Dual-ship" means the source keeps sending to its current vendor and
+  also sends to Packrat.
+- A note below the table explains when the usual route wasn't chosen, or why a signal has no route.
+- `--verbose` (`-v`) shows the reason for each step. `--json` outputs the plan as JSON.
+- `plan` takes the same `PATH` as `detect`, but has no `--host` option.
+
+A project's files can't show where a source sends its data, because that address is usually set in
+a production environment variable, and `plan` never reads variable values. So a project that already
+sends to Packrat gets the same steps. To skip signals that Packrat already receives, pass
+`--app SERVICE/ENV`. `plan` then checks with Packrat, as `packrat status` does:
+
+```
+$ packrat setup plan --app colorbook/production
+packrat setup plan  colorbook  Rails 8.0.2, Ruby 3.3.6
+
+  SIGNAL      SOURCE                         INSTALLED  STEP
+  Exceptions  OpenTelemetry                  ✓          none: Packrat receives it
+  Traces      OpenTelemetry, Sentry browser  ✓          none: Packrat receives it
+  Logs        OpenTelemetry                  ✓          none: Packrat receives it
+  Replays     Sentry browser                 ✓          none: Packrat receives it
+
+Nothing to do. Packrat already receives 4 signals.
+```
+
+With `--app`, SOURCE is the source that sends the signal now. This can differ from what the project
+files suggest: an app keeps its exceptions and traces from the first source that sent them, so
+Packrat wouldn't keep data from a second source.
+
+`packrat setup plan` exits with `0` when it produces a plan, `1` when the project isn't a supported
+stack or the path can't be read, and `2` for a usage error.
+
+## What detect reads
+
+`detect` is read-only. It doesn't write files or make network requests, and it never reads the value
+of an environment variable from a file. Without `--host`, it opens no sockets. The test
 `internal/detect/nonetwork_test.go` enforces this.
 
-With `--host` it also looks at three things on the machine:
+With `--host`, it also checks three things on the machine:
 
 - whether `/etc/datadog-agent/datadog.yaml` or `/opt/datadog-agent` exists
   (`C:\ProgramData\Datadog\datadog.yaml` on Windows);
 - whether something accepts a TCP connection on `localhost:8126`, the port of the Datadog trace
-  Agent. The detection opens the connection and closes it. It sends no byte. This is the only socket
-  the detection ever opens;
-- whether `DD_AGENT_HOST` or `OTEL_EXPORTER_OTLP_ENDPOINT` has a value in the environment. Only
-  the name is kept.
+  Agent. It opens the connection and closes it without sending any data. This is the only socket
+  `detect` ever opens;
+- whether `DD_AGENT_HOST` or `OTEL_EXPORTER_OTLP_ENDPOINT` is set in the environment. Only the name
+  is recorded.
 
-What it reads:
+It reads these files:
 
 - `Gemfile.lock`, `Gemfile` and `.ruby-version`, for the stack and the gems.
 - `config/application.rb`, `config/environments/*.rb`, `config/initializers/*.rb`, and the Ruby
@@ -288,27 +331,27 @@ What it reads:
 - `config/importmap.rb`, `package.json`, `app/javascript/**` and `app/views/**`, for browser SDKs.
 - `.env`, `.env.*`, `.env_*`, `.env-*` and the deploy files above, for the **names** of environment variables.
 
-What it never reads or prints:
+It never reads or prints:
 
-- The value of an environment variable. The detection keeps what is left of the first `=` or `:` and
-  does not look at the rest. It keeps a name only when the name begins with `DD_`, `DATADOG_`,
+- The value of an environment variable. `detect` keeps the text before the first `=` or `:` and
+  ignores the rest. It keeps a name only if it begins with `DD_`, `DATADOG_`,
   `SENTRY_`, `NEW_RELIC_`, `OTEL_`, `HONEYBADGER_`, `BUGSNAG_`, `ROLLBAR_`, `SCOUT_`, `APPSIGNAL_`,
   `ELASTIC_APM_`, `POSTHOG_` or `PACKRAT_`.
-- A line of an env file or a deploy file. Evidence from these files is the path and the line
-  number, with no text.
+- A line of an env file or a deploy file. Evidence from these files is only the path and the line
+  number.
 - A symlink, a file over 2 MB, or anything under `.git`, `node_modules`, `vendor/bundle`, `tmp`,
   `log`, `storage`, `public/assets` and `public/packs`.
 
-The test `internal/detect/canary_test.go` enforces this. It plants a marker value in every such file
-of `testdata/canary` and fails if the marker reaches the output.
+The test `internal/detect/canary_test.go` enforces this. It puts a marker value in each of these files
+in `testdata/canary`, and fails if the marker appears in the output.
 
 ## The JSON
 
 ### The detect document
 
-`--json` prints one document. The schema is `packrat.detect/1`. A change that removes or renames a
-key, or changes what a value means, will change the schema name. Two runs on the same files print
-the same bytes. A list is never `null`; an empty list is `[]`.
+`packrat setup detect --json` outputs one document with the schema `packrat.detect/1`. Removing or
+renaming a key, or changing what a value means, changes the schema name. Two runs on the same files
+produce identical output. Lists are never `null`; an empty list is `[]`.
 
 ```json
 {
@@ -372,7 +415,7 @@ pattern that matched.
 
 ### The plan document
 
-`packrat setup plan --json` prints one document. The schema is `packrat.plan/1`.
+`packrat setup plan --json` outputs one document with the schema `packrat.plan/1`.
 
 ```json
 {
@@ -419,19 +462,19 @@ make build    # bin/packrat
 make check    # gofmt, vet, staticcheck, golangci-lint, tests
 ```
 
-`make release-dry` runs [GoReleaser](https://goreleaser.com) from `.goreleaser.yaml` in snapshot
-mode. It builds the five release binaries, their archives and `checksums.txt` into `dist/`. It
-publishes nothing and makes no tag. The first run compiles GoReleaser and takes some minutes.
+`make release-dry` runs [GoReleaser](https://goreleaser.com) with `.goreleaser.yaml` in snapshot
+mode. It builds the five release binaries, their archives and `checksums.txt` in `dist/`, without
+publishing anything or creating a tag. The first run compiles GoReleaser, which takes a few minutes.
 
-Each directory in `testdata/` is a small repository for one behaviour. The output that `detect` and
-`plan` must give for it is in `internal/detect/testdata/golden/`. `UPDATE=1 go test ./internal/detect -run Golden`
-rewrites those files; read the diff before you commit it.
+Each directory in `testdata/` is a small repository that tests one behavior. The expected `detect` and
+`plan` output for each is in `internal/detect/testdata/golden/`. To regenerate those files, run
+`UPDATE=1 go test ./internal/detect -run Golden`, and review the diff before you commit it.
 
 ## The corpus
 
-The rules are tuned against nine real Rails repositories. `corpus/repos.txt` lists them with a
-pinned commit. `corpus/expected/` holds the two JSON documents that `detect` and `plan` must give for each.
-`corpus/NOTES.md` says what each repository taught.
+The detection rules are tuned against nine real Rails repositories. `corpus/repos.txt` lists them, each
+pinned to a commit. `corpus/expected/` holds the expected `detect` and `plan` JSON for each, and
+`corpus/NOTES.md` describes what each repository taught us.
 
 ```
 make corpus                                       # clone the public ones into corpus/src (2 GB)
@@ -439,7 +482,7 @@ go test ./internal/detect -run Corpus -v           # compare each with its expec
 UPDATE=1 go test ./internal/detect -run Corpus     # rewrite the expected files
 ```
 
-`make corpus` is the only command here that uses the network. The test skips a repository that is
-not on the machine, so it does nothing in CI.
+`make corpus` is the only command here that uses the network. The test skips any repository that
+isn't cloned, so it does nothing in CI.
 
 Go 1.26, standard library only.

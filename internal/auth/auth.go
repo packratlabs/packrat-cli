@@ -14,7 +14,7 @@ import (
 )
 
 // ErrNotSignedIn is no sign-in kept.
-var ErrNotSignedIn = errors.New("not signed in. Run packrat login")
+var ErrNotSignedIn = errors.New("you're not signed in. Run packrat login")
 
 // SignIn is one org a person signed in to. Token is empty in the file when Secrets keeps it.
 type SignIn struct {

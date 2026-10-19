@@ -21,7 +21,7 @@ const DefaultURL = "https://query.packrat.sh"
 const maxBody = 4 << 20
 
 // ErrRefused is a key that the API does not accept.
-var ErrRefused = errors.New("the key was refused (401). It is wrong or revoked. Run packrat login again")
+var ErrRefused = errors.New("your key was rejected (401). It may be invalid or revoked. Run packrat login again")
 
 // UserAgent names this program to the API.
 const UserAgent = "packrat-cli"
@@ -36,7 +36,7 @@ func (e *AppRequiredError) Error() string {
 	if len(apps) > 1 {
 		list = strings.Join(apps[:len(apps)-1], ", ") + " and " + apps[len(apps)-1]
 	}
-	return "No app specified. This key opens " + list + "."
+	return "No app specified. This key has access to " + list + "."
 }
 
 // NotFoundError is an app that is not there. Message is the API's sentence, which names the apps that are.

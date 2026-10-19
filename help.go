@@ -27,10 +27,10 @@ type command struct {
 
 func topics() map[string]topic {
 	return map[string]topic{
-		"auth":  {summary: "manage your sign-in to Packrat"},
+		"auth":  {summary: "manage your Packrat sign-in"},
 		"setup": {summary: "set up Packrat in a project"},
-		"check": {summary: "manage PR verifications"},
-		"pr":    {summary: "show pull requests in production"},
+		"check": {summary: "schedule checks that verify a change in production"},
+		"pr":    {summary: "see how pull requests performed in production"},
 	}
 }
 
@@ -39,137 +39,141 @@ func commands() map[string]command {
 		"apps": {
 			summary: "list your apps",
 			usage:   "packrat apps [--json]",
-			flags:   [][2]string{{"--json", "print the answer of the API"}},
-			description: "Each app is a service and an environment that has sent data, with the time of its last data.\n" +
-				"An app you do not know is usually yours under another name.",
+			flags:   [][2]string{{"--json", "output the API response as JSON"}},
+			description: "Lists each app that has sent data to Packrat, with the time of its most recent data. An app\n" +
+				"is a service name and an environment. If you don't recognize an app, it's usually one of yours\n" +
+				"reporting under a different service name or environment.",
 			examples: []string{"packrat apps"},
 		},
 		"auth status": {
-			summary:     "show which org and which key the commands use",
+			summary:     "show the org and key that commands use",
 			usage:       "packrat auth status",
-			description: "PACKRAT_API_KEY is used when it is set, and otherwise the key of packrat login.",
+			description: "Commands use PACKRAT_API_KEY if it's set. Otherwise, they use the key from packrat login.",
 			examples:    []string{"packrat auth status"},
 		},
 		"setup detect": {
-			summary: "scan a project to determine existing observability tools",
+			summary: "scan a project for existing observability tools",
 			usage:   "packrat setup detect [PATH] [-v] [--json] [--host]",
-			args:    [][2]string{{"PATH", "the directory to read (default: the current directory)"}},
+			args:    [][2]string{{"PATH", "directory to scan (default: the current directory)"}},
 			flags: [][2]string{
-				{"-v, --verbose", "also print where each thing was found"},
-				{"--json", "print the JSON document, which always holds everything"},
-				{"--host", "also probe this machine for a Datadog Agent; it opens one local socket"},
+				{"-v, --verbose", "show where each result was found"},
+				{"--json", "output the full results as JSON"},
+				{"--host", "also check this machine for a Datadog Agent (opens one local socket)"},
 			},
-			description: "It reads files only. It writes no file and sends nothing. Ruby on Rails is the only stack yet.",
+			description: "Reads files only. It doesn't write files or make network requests. Supports Ruby on Rails.",
 			examples:    []string{"packrat setup detect", "packrat setup detect ~/projects/shop --verbose"},
 		},
 		"login": {
 			summary: "sign in to Packrat in your browser",
 			usage:   "packrat login [--no-browser]",
-			flags:   [][2]string{{"--no-browser", "print the address and the code instead of opening the browser"}},
-			description: "The key it makes is yours, for this machine. It is kept in the macOS Keychain, or elsewhere in\n" +
-				"~/.config/packrat/credentials.json. The org's keys page lists it, and it can be revoked there.",
+			flags:   [][2]string{{"--no-browser", "print the sign-in URL and code instead of opening a browser"}},
+			description: "Creates an API key for you on this machine. The key is stored in the macOS Keychain, or in\n" +
+				"~/.config/packrat/credentials.json on other platforms. You can see and revoke it on your org's\n" +
+				"API keys page.",
 			examples: []string{"packrat login"},
 		},
 		"logout": {
 			summary:     "sign out and revoke this machine's key",
 			usage:       "packrat logout",
-			description: "It does not touch PACKRAT_API_KEY.",
+			description: "Doesn't affect PACKRAT_API_KEY.",
 			examples:    []string{"packrat logout"},
 		},
 		"open": {
-			summary: "read a packrat.sh URL",
+			summary: "read a Packrat page",
 			usage:   "packrat open URL",
-			args:    [][2]string{{"URL", "a Packrat address, or a whole pasted line that holds one"}},
-			description: "It prints markdown where the page has it, and otherwise the page's HTML. The key is sent only to\n" +
-				"packrat.sh and its subdomains. A GitHub pull request's URL is the same as packrat pr.",
+			args:    [][2]string{{"URL", "a Packrat URL, or a pasted line that contains one"}},
+			description: "Prints the page as markdown when it has a markdown version, and as HTML otherwise. Your key is\n" +
+				"only sent to packrat.sh and its subdomains. A GitHub pull request URL runs packrat pr show.",
 			examples: []string{
 				"packrat open https://query.packrat.sh/reports/rep_5k2m9x0qv7ha",
 				"packrat open 'curl -sS https://query.packrat.sh/reports/rep_5k2m9x0qv7ha -H …'",
 			},
 		},
 		"setup plan": {
-			summary: "scan a project and suggest observability tools",
+			summary: "suggest how to send each signal to Packrat",
 			usage:   "packrat setup plan [PATH] [--app SERVICE/ENV] [-v] [--json]",
-			args:    [][2]string{{"PATH", "the directory to read (default: the current directory)"}},
+			args:    [][2]string{{"PATH", "directory to scan (default: the current directory)"}},
 			flags: [][2]string{
-				{"--app=<value>", "leave out the signals that Packrat already receives for this app"},
-				{"-v, --verbose", "also print the reason for each step"},
-				{"--json", "print the JSON document"},
+				{"--app=<value>", "skip signals that Packrat already receives for this app"},
+				{"-v, --verbose", "show the reason for each step"},
+				{"--json", "output the plan as JSON"},
 			},
-			description: "It sends nothing, except with --app, when it asks query.packrat.sh.",
+			description: "Doesn't make network requests, unless you pass --app.",
 			examples:    []string{"packrat setup plan", "packrat setup plan --app shop/production"},
 		},
 		"pr show": {
-			summary: "show how a pull request went in production",
+			summary: "show how a pull request performed in production",
 			usage:   "packrat pr show NUMBER|URL [--app SERVICE] [--json]",
-			args:    [][2]string{{"NUMBER|URL", "the pull request: its number, or its GitHub URL"}},
+			args:    [][2]string{{"NUMBER|URL", "pull request number or GitHub URL"}},
 			flags: [][2]string{
-				{"--app=<value>", "the app (default: the one connected to the pull request's repository)"},
-				{"--json", "print the answer of the API"},
+				{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"},
+				{"--json", "output the API response as JSON"},
 			},
-			description: "Each deploy that shipped it, the analyst's verdict and evidence, and its checks. With a number,\n" +
-				"the repository is this checkout's origin remote.",
+			description: "Shows each deploy that included the pull request, with the analyst's verdict, the evidence and\n" +
+				"any checks. With a number, the repository is the origin remote of the current directory.",
 			examples: []string{"packrat pr show 482", "packrat pr show https://github.com/acme/shop/pull/482"},
 		},
 		"sql": {
-			summary: "query telemetry data",
+			summary: "query your telemetry with SQL",
 			usage:   "packrat sql [SQL] [--app SERVICE] [-f FILE] [--quiet]",
-			args:    [][2]string{{"SQL", "the script (default: -f, else stdin)"}},
+			args:    [][2]string{{"SQL", "query to run (default: read from -f or stdin)"}},
 			flags: [][2]string{
-				{"--app=<value>", "the app, when the org has more than one"},
-				{"-f=<value>", "read the script from a file"},
-				{"--quiet", "leave out the summary line on stderr"},
+				{"--app=<value>", "app to query, if your org has more than one"},
+				{"-f=<value>", "read the query from a file"},
+				{"--quiet", "don't print the summary line to stderr"},
 			},
-			description: "It prints NDJSON rows on stdout, and a line on stderr that names the app that answered.",
+			description: "Prints rows as NDJSON to stdout, and a summary line with the app that answered to stderr.",
 			examples:    []string{`packrat sql "select count(*) from packrat_spans(since := current_date)"`, "packrat sql --app shop -f question.sql"},
 		},
 		"status": {
-			summary: "verify Packrat is receiving data",
+			summary: "verify that Packrat is receiving data",
 			usage:   "packrat status --app SERVICE/ENV [--wait] [--json]",
 			flags: [][2]string{
-				{"--app=<value>", "the app, as packrat apps prints it"},
-				{"--wait", "wait until new data arrives, for 5 minutes at most"},
-				{"--json", "print the answer of the API"},
+				{"--app=<value>", "app to check, as packrat apps lists it"},
+				{"--wait", "wait up to 5 minutes for new data to arrive"},
+				{"--json", "output the API response as JSON"},
 			},
-			description: "Each signal, each source that sends it, and whether Packrat keeps it.",
+			description: "Shows each signal, the sources that send it, and whether Packrat keeps it.",
 			examples:    []string{"packrat status --app shop/production"},
 		},
 		"check add": {
-			summary: "ask Packrat to verify something at a later time",
+			summary: "schedule a check for Packrat's analyst",
 			usage:   "packrat check add --due TIME [--app SERVICE] [--pull NUMBER] [--report ID] < check.txt",
 			flags: [][2]string{
-				{"--due=<value>", "the first time it can be verified, in UTC, at most 30 days ahead"},
-				{"--app=<value>", "the app, when the org has more than one"},
-				{"--pull=<value>", "the pull request it is for (the app defaults to the one connected to this checkout's origin remote)"},
-				{"--report=<value>", "the analyst's mail whose thread the answer joins"},
+				{"--due=<value>", "earliest time the check can pass, in UTC (up to 30 days from now)"},
+				{"--app=<value>", "app to check, if your org has more than one"},
+				{"--pull=<value>", "pull request the check is for (sets the app from the origin remote)"},
+				{"--report=<value>", "analyst report whose email thread gets the result"},
 			},
-			description: "The text on stdin says what must be true and the SQL that shows it.",
-			examples:    []string{"packrat check add --due 2026-10-20T21:00Z --pull 482 < check.txt", "packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt"},
+			description: "Reads the check from stdin: what must be true, and the SQL that shows it. The analyst runs the\n" +
+				"check after the due time and emails the result.",
+			examples: []string{"packrat check add --due 2026-10-20T21:00Z --pull 482 < check.txt", "packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt"},
 		},
 		"check close": {
-			summary:  "cancel a check before Packrat verifies it",
+			summary:  "cancel a check before it runs",
 			usage:    "packrat check close ID",
-			args:     [][2]string{{"ID", "the check, as chk_…"}},
+			args:     [][2]string{{"ID", "check ID (chk_…)"}},
 			examples: []string{"packrat check close chk_7ha5k2m9x0qv"},
 		},
 		"check show": {
-			summary:     "show detailed check information",
+			summary:     "show a check's details",
 			usage:       "packrat check show ID [--json]",
-			args:        [][2]string{{"ID", "the check, as packrat check list or packrat pr show prints it"}},
-			flags:       [][2]string{{"--json", "print the answer of the API"}},
-			description: "What was asked, and what the data showed once it closed.",
+			args:        [][2]string{{"ID", "check ID, from packrat check list or packrat pr show"}},
+			flags:       [][2]string{{"--json", "output the API response as JSON"}},
+			description: "Shows what the check asks for, and the result once it has run.",
 			examples:    []string{"packrat check show chk_7ha5k2m9x0qv"},
 		},
 		"check list": {
-			summary: "list the checks",
+			summary: "list checks",
 			usage:   "packrat check list [--app SERVICE] [--pull NUMBER] [--json]",
 			flags: [][2]string{
-				{"--app=<value>", "the app, when the org has more than one"},
-				{"--pull=<value>", "only the checks of this pull request"},
-				{"--json", "print the answer of the API"},
+				{"--app=<value>", "app to list checks for, if your org has more than one"},
+				{"--pull=<value>", "only list checks for this pull request"},
+				{"--json", "output the API response as JSON"},
 			},
-			description: "One line for each: the pull request, when it is due or when it closed (UTC), and the start of\nwhat was asked. Open checks come first. packrat check show prints the whole text.",
-			examples:    []string{"packrat check list", "packrat check list --pull 482"},
+			description: "Shows one line per check: the pull request, when it's due or when it closed (in UTC), and the\n" +
+				"start of what it asks. Open checks are listed first. Run packrat check show for the full text.",
+			examples: []string{"packrat check list", "packrat check list --pull 482"},
 		},
 	}
 }

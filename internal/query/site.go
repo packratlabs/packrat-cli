@@ -17,11 +17,11 @@ var (
 	ErrPending  = errors.New("authorization_pending")
 	ErrSlowDown = errors.New("slow_down")
 	ErrDenied   = errors.New("the sign-in was denied in the browser")
-	ErrExpired  = errors.New("the code expired or was used. Run packrat login again")
+	ErrExpired  = errors.New("the code expired or was already used. Run packrat login again")
 )
 
 // ErrNotPackrat is an address that is not Packrat's, which is never sent the key.
-var ErrNotPackrat = errors.New("not a Packrat address, so it is not sent the key")
+var ErrNotPackrat = errors.New("not a Packrat URL. packrat only sends your key to https://packrat.sh and its subdomains")
 
 // Started is the answer of POST /cli/sign_ins.
 type Started struct {

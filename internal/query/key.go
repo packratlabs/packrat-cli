@@ -12,7 +12,7 @@ import (
 const KeyName = "PACKRAT_API_KEY"
 
 // ErrNoKey is no key in the environment and no sign-in.
-var ErrNoKey = errors.New("not signed in. Run packrat login, or set " + KeyName)
+var ErrNoKey = errors.New("you're not signed in. Run packrat login, or set " + KeyName)
 
 // SignIns is where packrat login keeps its sign-ins.
 type SignIns interface {
