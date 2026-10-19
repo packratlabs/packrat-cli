@@ -1,6 +1,6 @@
 # packrat-cli
 
-Report to the owner in ASD-STE100 Simplified Technical English. Short sentences, one idea each.
+Write like the developer docs of Heroku or Stripe: plain, direct and task-oriented, in the second person and the active voice, with exact names in code formatting. This applies to reports to me and to everything you write (docs, skills, READMEs, PR descriptions).
 
 `packrat setup detect` reads a repository and says what observability it has. `packrat setup plan` says how
 Packrat would take each signal. `detect` prints facts only; a suggestion, a state or a step belongs
