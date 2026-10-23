@@ -118,20 +118,27 @@ func TestJSONEmptyHasNoNullLists(t *testing.T) {
 
 const statusKey = "packrat_api_canary"
 
+const oneApp = `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"}]}`
+
 // answers is a fake of query.packrat.sh that gives the next body of its list on each request to
-// /status, and stays on the last one.
-func answers(t *testing.T, bodies ...string) (*httptest.Server, *int) {
+// /status, and of apps on each request to /apps, and stays on the last one of each.
+func answers(t *testing.T, apps []string, bodies ...string) (*httptest.Server, *int) {
 	t.Helper()
-	asked := 0
+	asked, listed := 0, 0
+	if len(apps) == 0 {
+		apps = []string{oneApp}
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer "+statusKey {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		body := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"}]}`
+		body := apps[min(listed, len(apps)-1)]
 		if r.URL.Path == "/status" {
 			body = bodies[min(asked, len(bodies)-1)]
 			asked++
+		} else {
+			listed++
 		}
 		if body == "" {
 			w.WriteHeader(http.StatusNotFound)
@@ -153,6 +160,10 @@ func statusBody(seen string) string {
 
 func TestStatusAndApps(t *testing.T) {
 	fresh, newer, old := statusBody("2026-10-13T14:59:00Z"), statusBody("2026-10-13T15:00:00Z"), statusBody("2026-10-12T10:00:00Z")
+	noApps := `{"now":"2026-10-13T15:00:00Z","apps":[]}`
+	devApp := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
+	twoApps := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-12T10:00:00Z"}]}`
+	twoAppsNewer := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
 	tests := []struct {
 		name   string
 		args   []string
@@ -163,6 +174,7 @@ func TestStatusAndApps(t *testing.T) {
 		stderr string
 		asked  int
 		sleeps int
+		apps   []string
 	}{
 		{name: "apps", args: []string{"apps"}, key: statusKey, code: 0, stdout: "APP              LAST DATA\nshop/production  now\n"},
 		{name: "apps as JSON", args: []string{"apps", "--json"}, key: statusKey, code: 0, stdout: `"app": "shop/production"`},
@@ -174,8 +186,13 @@ func TestStatusAndApps(t *testing.T) {
 		{name: "plan as JSON names the app", args: []string{"setup", "plan", "--json", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"arrives": true`, asked: 1},
 		{name: "plan for an app needs a key", args: []string{"setup", "plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "plan for an app that is not there", args: []string{"setup", "plan", "--app", "shop/staging", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
-		{name: "no app", args: []string{"status"}, key: statusKey, code: 2, stderr: "packrat apps"},
+		{name: "no app names the org's one app", args: []string{"status"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is arriving.", asked: 1},
+		{name: "no app when the org has several", args: []string{"status"}, key: statusKey, apps: []string{twoApps}, code: 2, stderr: "This key has access to shop/production and shop/development."},
+		{name: "no app when the org has none", args: []string{"status"}, key: statusKey, apps: []string{noApps}, code: 1, stderr: "no app has sent data yet"},
 		{name: "the app as an argument", args: []string{"status", "shop/production"}, key: statusKey, code: 2, stderr: "--app SERVICE/ENV"},
+		{name: "wait with no app ends when an app first sends", args: []string{"status", "--wait"}, key: statusKey, apps: []string{noApps, noApps, devApp}, bodies: []string{fresh}, code: 0, stdout: "Waiting for data from your app.", asked: 1, sleeps: 2},
+		{name: "wait with no app ends when a known app sends again", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps, twoAppsNewer}, bodies: []string{fresh}, code: 0, stdout: "OpenTelemetry", asked: 1, sleeps: 1},
+		{name: "wait with no app gives up", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100},
 		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "a refused key", args: []string{"status", "--app", "shop/production"}, key: "wrong", bodies: []string{fresh}, code: 1, stderr: "your key was rejected (401)"},
 		{name: "an app that is not there", args: []string{"status", "--app", "shop/staging"}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
@@ -185,7 +202,7 @@ func TestStatusAndApps(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			server, asked := answers(t, tc.bodies...)
+			server, asked := answers(t, tc.apps, tc.bodies...)
 			sleeps := 0
 			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL}
 			w := world{getenv: func(name string) string { return env[name] }, sleep: func(time.Duration) { sleeps++ },

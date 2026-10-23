@@ -197,13 +197,15 @@ packrat status  colorbook/production
 4 of 5 signals are arriving.
 ```
 
-- `--app` is required. Use the `SERVICE/ENV` name that `packrat apps` lists.
+- `--app` names the app, as `SERVICE/ENV` from `packrat apps`. You can leave it out if your org has
+  one app.
 - `no` in the KEPT column means a source sends the signal, but Packrat doesn't store it, because the
   app already keeps that signal from another source. Logs, metrics and all browser data are kept
   from every source.
 - Times are accurate to the minute. Anything under two minutes is shown as "now".
 - `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup:
-  run the command, then start your app and load a page.
+  run the command, then start your app and load a page. Without `--app`, it waits for any app to
+  send data, including one Packrat hasn't seen before, and then shows that app.
 - `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
 
 `packrat status` exits with:

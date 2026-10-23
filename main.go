@@ -147,23 +147,44 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitUsage)
 	}
-	if len(extra) > 0 || *app == "" {
-		return say(stderr, "packrat status: specify an app with --app SERVICE/ENV. Run packrat apps to list your apps.\n", exitUsage)
+	if len(extra) > 0 {
+		return say(stderr, "packrat status: specify the app with --app SERVICE/ENV, not as an argument. Run packrat apps to list your apps.\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitUsage)
 	}
 	var status query.Status
-	if *wait {
+	switch {
+	case *wait && *app == "":
+		if !*asJSON {
+			if code := say(stdout, "Waiting for data from your app. Start your app and load a page.\n\n", exitOK); code != exitOK {
+				return code
+			}
+		}
+		var name string
+		if name, err = awaitApp(w, client); err == nil {
+			status, err = client.Status(context.Background(), name)
+		}
+	case *wait:
 		if !*asJSON {
 			if code := say(stdout, fmt.Sprintf("Waiting for data from %s. Start your app and load a page.\n\n", *app), exitOK); code != exitOK {
 				return code
 			}
 		}
 		status, err = awaitData(w, client, *app)
-	} else {
-		status, err = client.Status(context.Background(), *app)
+	default:
+		name := *app
+		if name == "" {
+			if name, err = onlyApp(client); err != nil {
+				var choose *query.AppRequiredError
+				if errors.As(err, &choose) {
+					return say(stderr, fmt.Sprintf("Error: %v\nUSAGE: packrat status --app <app-name>\n", err), exitUsage)
+				}
+				return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
+			}
+		}
+		status, err = client.Status(context.Background(), name)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
@@ -181,7 +202,60 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-var errNoNewData = errors.New("no new data arrived within 5 minutes")
+var (
+	errNoNewData = errors.New("no new data arrived within 5 minutes")
+	errNoApps    = errors.New("no app has sent data yet. Run packrat status --wait, then start your app")
+)
+
+// onlyApp is the app status reports when none is named: the org's one app.
+func onlyApp(client query.Client) (string, error) {
+	apps, err := client.Apps(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("asking for your apps: %w", err)
+	}
+	switch len(apps.Apps) {
+	case 0:
+		return "", errNoApps
+	case 1:
+		return apps.Apps[0].App, nil
+	}
+	names := make([]string, len(apps.Apps))
+	for i, app := range apps.Apps {
+		names[i] = app.App
+	}
+	return "", &query.AppRequiredError{Apps: names}
+}
+
+// awaitApp asks for the org's apps until one is new or has sent data since the first answer, and
+// names it. That is the app being set up, whichever name it reports under.
+func awaitApp(w world, client query.Client) (string, error) {
+	var first map[string]time.Time
+	for waited := time.Duration(0); ; waited += pollEvery {
+		apps, err := client.Apps(context.Background())
+		if err != nil {
+			return "", fmt.Errorf("asking for your apps: %w", err)
+		}
+		seen := make(map[string]time.Time, len(apps.Apps))
+		for _, app := range apps.Apps {
+			if app.LastDataAt != nil {
+				seen[app.App] = *app.LastDataAt
+			}
+		}
+		if waited == 0 {
+			first = seen
+		} else {
+			for _, app := range apps.Apps {
+				if last, ok := seen[app.App]; ok && last.After(first[app.App]) {
+					return app.App, nil
+				}
+			}
+		}
+		if waited >= waitLimit {
+			return "", errNoNewData
+		}
+		w.sleep(pollEvery)
+	}
+}
 
 // awaitData asks until the sources of the app differ from the first answer, which is the proof
 // that something arrived after the command started. An app that is not there yet is an empty answer.
