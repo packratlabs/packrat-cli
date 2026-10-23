@@ -372,7 +372,7 @@ func siteURL(w world) string {
 }
 
 func siteClient(w world, key string) query.Client {
-	return query.Client{BaseURL: siteURL(w), Key: key, HTTP: w.http}
+	return query.Client{BaseURL: siteURL(w), Key: key, HTTP: w.http, Version: version, Heard: w.heard}
 }
 
 func gitOrigin() string {

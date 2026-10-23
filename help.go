@@ -78,6 +78,14 @@ func commands() map[string]command {
 			description: "Doesn't affect PACKRAT_API_KEY.",
 			examples:    []string{"packrat logout"},
 		},
+		"update": {
+			summary: "update packrat to the newest release",
+			usage:   "packrat update",
+			description: "Downloads the newest release from GitHub, checks it against the release's checksums.txt, and\n" +
+				"replaces this packrat with it. Packrat tells you when a newer release is out, at most once a\n" +
+				"day, after a command that asks it something. Set PACKRAT_NO_UPDATE_NOTICE=1 to stop the notice.",
+			examples: []string{"packrat update"},
+		},
 		"open": {
 			summary: "read a Packrat page",
 			usage:   "packrat open URL",
