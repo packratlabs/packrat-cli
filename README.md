@@ -13,18 +13,17 @@ The Packrat CLI lets you work with [Packrat](https://packrat.sh) from your termi
 
 ## Install
 
-There's no release yet. Until the first release, build the CLI from this repository with Go 1.26:
+Run the install script:
 
 ```
-git clone git@github.com:packratlabs/packrat-cli.git
-cd packrat-cli
-make build              # writes bin/packrat
+curl -fsSL https://packrat.sh/cli | sh
 ```
 
-`packrat` is a single binary with no dependencies. To run it from anywhere, copy `bin/packrat` to a
-directory on your `PATH`, such as `/usr/local/bin`.
+It downloads the newest release for your platform, verifies it against the release's
+`checksums.txt`, and puts `packrat` in `~/.local/bin`. To install somewhere else, set
+`PACKRAT_INSTALL_DIR`. `packrat` is a single binary with no dependencies.
 
-Each release will include an archive for each platform below, and a `checksums.txt` file with the
+Each release includes an archive for each platform below, and a `checksums.txt` file with the
 SHA-256 checksum of each archive:
 
 | Platform | Archive |
@@ -35,17 +34,29 @@ SHA-256 checksum of each archive:
 | Linux, arm64 | `packrat_linux_arm64.tar.gz` |
 | Windows, x86-64 | `packrat_windows_amd64.zip` |
 
-To install a release, download the archive for your platform, verify it against `checksums.txt`,
-extract it, and move `packrat` to a directory on your `PATH`.
+To install a release by hand, download the archive for your platform, verify it against
+`checksums.txt`, extract it, and move `packrat` to a directory on your `PATH`.
 
-### Install script
+To build from source instead, use Go 1.26: `make build` writes `bin/packrat`.
+
+### Update
 
 ```
-curl -fsSL https://packrat.sh/cli | sh
+packrat update
 ```
 
-This script doesn't exist yet. The command is listed here so the install path is settled before the
-script is written. Don't run it until this note is removed.
+`packrat update` downloads the newest release, verifies it against `checksums.txt`, and replaces
+the `packrat` you ran with it, wherever it's installed.
+
+When a newer release is out, a command that asks Packrat something ends with a notice on stderr, at
+most once a day:
+
+```
+packrat 0.2.0 is available (you have 0.1.0). Run: packrat update
+```
+
+To turn the notice off, set `PACKRAT_NO_UPDATE_NOTICE=1`. If Packrat stops accepting your version,
+commands fail with `packrat 0.1.0 is too old for this Packrat. Run packrat update.`
 
 ## Authenticate
 
@@ -197,13 +208,15 @@ packrat status  colorbook/production
 4 of 5 signals are arriving.
 ```
 
-- `--app` is required. Use the `SERVICE/ENV` name that `packrat apps` lists.
+- `--app` names the app, as `SERVICE/ENV` from `packrat apps`. You can leave it out if your org has
+  one app.
 - `no` in the KEPT column means a source sends the signal, but Packrat doesn't store it, because the
   app already keeps that signal from another source. Logs, metrics and all browser data are kept
   from every source.
 - Times are accurate to the minute. Anything under two minutes is shown as "now".
 - `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup:
-  run the command, then start your app and load a page.
+  run the command, then start your app and load a page. Without `--app`, it waits for any app to
+  send data, including one Packrat hasn't seen before, and then shows that app.
 - `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
 
 `packrat status` exits with:
@@ -215,8 +228,9 @@ packrat status  colorbook/production
 
 ### Network requests
 
-Commands that query Packrat send only your API key, in the `Authorization` header, and the app name.
-They never print your key. To use a different API host, set `PACKRAT_QUERY_URL`. To use a different
+Commands that query Packrat send only your API key, in the `Authorization` header, the app name, and
+the CLI's version, in the `User-Agent` header. They never print your key. `packrat update` asks
+GitHub for the newest release and sends no key. To use a different API host, set `PACKRAT_QUERY_URL`. To use a different
 site host (for `login` and `open`), set `PACKRAT_URL`.
 
 ## Set up a project

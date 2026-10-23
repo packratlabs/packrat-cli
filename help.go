@@ -78,6 +78,14 @@ func commands() map[string]command {
 			description: "Doesn't affect PACKRAT_API_KEY.",
 			examples:    []string{"packrat logout"},
 		},
+		"update": {
+			summary: "update packrat to the newest release",
+			usage:   "packrat update",
+			description: "Downloads the newest release from GitHub, checks it against the release's checksums.txt, and\n" +
+				"replaces this packrat with it. Packrat tells you when a newer release is out, at most once a\n" +
+				"day, after a command that asks it something. Set PACKRAT_NO_UPDATE_NOTICE=1 to stop the notice.",
+			examples: []string{"packrat update"},
+		},
 		"open": {
 			summary: "read a Packrat page",
 			usage:   "packrat open URL",
@@ -127,14 +135,14 @@ func commands() map[string]command {
 		},
 		"status": {
 			summary: "verify that Packrat is receiving data",
-			usage:   "packrat status --app SERVICE/ENV [--wait] [--json]",
+			usage:   "packrat status [--app SERVICE/ENV] [--wait] [--json]",
 			flags: [][2]string{
-				{"--app=<value>", "app to check, as packrat apps lists it"},
-				{"--wait", "wait up to 5 minutes for new data to arrive"},
+				{"--app=<value>", "app to check, as packrat apps lists it (needed if your org has more than one)"},
+				{"--wait", "wait up to 5 minutes for new data to arrive. Without --app, waits for any app"},
 				{"--json", "output the API response as JSON"},
 			},
 			description: "Shows each signal, the sources that send it, and whether Packrat keeps it.",
-			examples:    []string{"packrat status --app shop/production"},
+			examples:    []string{"packrat status --wait", "packrat status --app shop/production"},
 		},
 		"check add": {
 			summary: "schedule a check for Packrat's analyst",

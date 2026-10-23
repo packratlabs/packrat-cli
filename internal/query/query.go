@@ -1,6 +1,6 @@
 // Package query asks Packrat: query.packrat.sh for data, and packrat.sh for its pages and to sign
-// in. It is the only code that sends a request. Of the caller's, it sends the API key, as the
-// Authorization header, and only to a Packrat host.
+// in. It also asks GitHub for the CLI's releases, with no key. It is the only code that sends a
+// request. Of the caller's, it sends the API key, as the Authorization header, and only to a Packrat host.
 package query
 
 import (
@@ -23,8 +23,19 @@ const maxBody = 4 << 20
 // ErrRefused is a key that the API does not accept.
 var ErrRefused = errors.New("your key was rejected (401). It may be invalid or revoked. Run packrat login again")
 
-// UserAgent names this program to the API.
+// UserAgent names this program to the API, followed by /version.
 const UserAgent = "packrat-cli"
+
+// Heard is what the API's answers said about the CLI's releases. The newest answer wins.
+type Heard struct {
+	Latest  string
+	Minimum string
+}
+
+// TooOldError is the API refusing this version of the CLI (426). Message says how to update.
+type TooOldError struct{ Message string }
+
+func (e *TooOldError) Error() string { return e.Message }
 
 // AppRequiredError is a request that named no app when the key opens more than one. Apps are the
 // services to choose from.
@@ -83,11 +94,14 @@ type Status struct {
 	Warnings []string  `json:"warnings"`
 }
 
-// Client reads the API with one key.
+// Client reads the API with one key. Version goes in the User-Agent, and when Heard is set, the
+// release headers of each answer are kept in it.
 type Client struct {
 	BaseURL string
 	Key     string
 	HTTP    *http.Client
+	Version string
+	Heard   *Heard
 }
 
 // Apps lists the apps the key opens.
@@ -145,7 +159,7 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 	where := request.URL.Scheme + "://" + request.URL.Host
 	request.Header.Set("Authorization", "Bearer "+c.Key)
 	request.Header.Set("Accept", accept)
-	request.Header.Set("User-Agent", UserAgent)
+	request.Header.Set("User-Agent", UserAgent+"/"+c.version())
 	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}
@@ -162,11 +176,14 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 	if err != nil {
 		return nil, "", fmt.Errorf("reading the answer of %s: %w", where, err)
 	}
+	c.hear(response.Header)
 	switch {
 	case response.StatusCode >= 200 && response.StatusCode < 300:
 		return body, response.Header.Get("Content-Type"), nil
 	case response.StatusCode == http.StatusUnauthorized:
 		return body, "", ErrRefused
+	case response.StatusCode == http.StatusUpgradeRequired:
+		return body, "", &TooOldError{Message: message(body, "This packrat is too old for "+where+". Run packrat update.")}
 	case response.StatusCode == http.StatusNotFound:
 		// The API says in words which apps there are. A 404 with no sentence is an address it does not have.
 		if said := message(body, ""); said != "" {
@@ -181,6 +198,25 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 			return body, "", &AppRequiredError{Apps: choose.Apps}
 		}
 		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))
+	}
+}
+
+func (c Client) version() string {
+	if c.Version == "" {
+		return "dev"
+	}
+	return c.Version
+}
+
+func (c Client) hear(header http.Header) {
+	if c.Heard == nil {
+		return
+	}
+	if latest := header.Get("Packrat-CLI-Latest"); latest != "" {
+		c.Heard.Latest = latest
+	}
+	if minimum := header.Get("Packrat-CLI-Minimum"); minimum != "" {
+		c.Heard.Minimum = minimum
 	}
 }
 
