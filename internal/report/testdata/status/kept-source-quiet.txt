@@ -15,4 +15,4 @@ packrat status  shop/production
   Packrat keeps the first source of exceptions and of traces.
   To use a different source, ask us to switch it.
 
-3 of 5 signals are arriving.
+3 of 5 signals are connected.

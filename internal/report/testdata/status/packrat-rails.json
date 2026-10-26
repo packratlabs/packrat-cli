@@ -1,0 +1,57 @@
+{
+  "app": "colorbook-qa/production",
+  "service": "colorbook-qa",
+  "env": "production",
+  "first_seen_at": "2026-10-26T14:00:00Z",
+  "last_data_at": "2026-10-26T14:59:30Z",
+  "now": "2026-10-26T15:00:00Z",
+  "signals": [
+    {
+      "signal": "exceptions",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "packrat-rails",
+          "name": "packrat-rails",
+          "kept": true,
+          "last_seen_at": null
+        }
+      ]
+    },
+    {
+      "signal": "traces",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "packrat-rails",
+          "name": "packrat-rails",
+          "kept": true,
+          "last_seen_at": "2026-10-26T14:59:30Z"
+        }
+      ]
+    },
+    {
+      "signal": "logs",
+      "quiet": false,
+      "sources": [
+        {
+          "source": "packrat-rails",
+          "name": "packrat-rails",
+          "kept": true,
+          "last_seen_at": "2026-10-26T14:56:00Z"
+        }
+      ]
+    },
+    {
+      "signal": "metrics",
+      "quiet": false,
+      "sources": []
+    },
+    {
+      "signal": "replays",
+      "quiet": false,
+      "sources": []
+    }
+  ],
+  "warnings": []
+}

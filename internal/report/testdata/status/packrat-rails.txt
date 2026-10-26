@@ -1,0 +1,10 @@
+packrat status  colorbook-qa/production
+
+  SIGNAL      SOURCE           KEPT  LAST DATA
+  Exceptions  packrat-rails    yes   no exceptions yet
+  Traces      packrat-rails    yes   now
+  Logs        packrat-rails    yes   4 minutes ago
+  Metrics     nothing yet
+  Replays     nothing yet
+
+3 of 5 signals are connected.

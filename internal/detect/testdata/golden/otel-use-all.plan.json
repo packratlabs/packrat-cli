@@ -33,7 +33,7 @@
       "step": "dual-ship to Packrat",
       "route": "OpenTelemetry",
       "state": "already",
-      "reason": "already exports OTLP; setup points the exporter at Packrat",
+      "reason": "already exports OTLP; setup adds Packrat as a second OTLP destination, and the current one keeps receiving",
       "blocked": [],
       "arrives": false
     },

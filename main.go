@@ -189,18 +189,10 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 			}
 		}
 		status, err = awaitData(w, client, *app)
+	case *app == "":
+		return statusOfEach(client, *asJSON, stdout, stderr)
 	default:
-		name := *app
-		if name == "" {
-			if name, err = onlyApp(client); err != nil {
-				var choose *query.AppRequiredError
-				if errors.As(err, &choose) {
-					return say(stderr, fmt.Sprintf("Error: %v\nUSAGE: packrat status --app <app-name>\n", err), exitUsage)
-				}
-				return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
-			}
-		}
-		status, err = client.Status(context.Background(), name)
+		status, err = client.Status(context.Background(), *app)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
@@ -218,28 +210,59 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+// statusOfEach is packrat status with no app named: the status of every app the key opens, one
+// after another. With --json, one app is its status document and several are a list of them.
+func statusOfEach(client query.Client, asJSON bool, stdout, stderr io.Writer) int {
+	names, err := appNames(client)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
+	}
+	statuses := make([]query.Status, 0, len(names))
+	for _, name := range names {
+		status, err := client.Status(context.Background(), name)
+		if err != nil {
+			return say(stderr, fmt.Sprintf("packrat status: asking for %s: %v\n", name, err), exitFailed)
+		}
+		statuses = append(statuses, status)
+	}
+	switch {
+	case asJSON && len(statuses) == 1:
+		err = report.StatusJSON(stdout, statuses[0])
+	case asJSON:
+		err = report.StatusesJSON(stdout, statuses)
+	default:
+		err = report.Statuses(stdout, statuses)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat status: %v\n", err), exitFailed)
+	}
+	for _, status := range statuses {
+		if !report.Sending(status) {
+			return exitFailed
+		}
+	}
+	return exitOK
+}
+
 var (
 	errNoNewData = errors.New("no new data arrived within 5 minutes")
 	errNoApps    = errors.New("no app has sent data yet. Run packrat status --wait, then start your app")
 )
 
-// onlyApp is the app status reports when none is named: the org's one app.
-func onlyApp(client query.Client) (string, error) {
+// appNames are the apps status reports when none is named: every app the key opens.
+func appNames(client query.Client) ([]string, error) {
 	apps, err := client.Apps(context.Background())
 	if err != nil {
-		return "", fmt.Errorf("asking for your apps: %w", err)
+		return nil, fmt.Errorf("asking for your apps: %w", err)
 	}
-	switch len(apps.Apps) {
-	case 0:
-		return "", errNoApps
-	case 1:
-		return apps.Apps[0].App, nil
+	if len(apps.Apps) == 0 {
+		return nil, errNoApps
 	}
 	names := make([]string, len(apps.Apps))
 	for i, app := range apps.Apps {
 		names[i] = app.App
 	}
-	return "", &query.AppRequiredError{Apps: names}
+	return names, nil
 }
 
 // awaitApp asks for the org's apps until one is new or has sent data since the first answer, and

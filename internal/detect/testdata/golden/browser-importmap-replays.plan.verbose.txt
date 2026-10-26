@@ -7,7 +7,7 @@ packrat plan  browser-importmap-replays  Rails 8.0.2
       setup adds the OpenTelemetry SDK
   Logs        OpenTelemetry              add the OpenTelemetry logs gems
       setup adds the OpenTelemetry logs SDK
-  Replays     Sentry browser  ✓          dual-ship to Packrat
+  Replays     Sentry browser  ✓          copy to Packrat with a DSN
       replays on
 
 Add --app service/env to detect if Packrat is receiving data from each signal.

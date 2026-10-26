@@ -288,7 +288,32 @@ func found(a detect.Result, name detect.SignalName) string {
 		}
 		vendors = union(vendors, []string{sdk.Vendor})
 	}
-	return orNone(vendors)
+	return withPackratRails(a, vendors)
+}
+
+// withPackratRails names packrat-rails first, joined to the other senders with +. The
+// OpenTelemetry gems it depends on are not another sender, and Sentry is one only when configured,
+// as in plan.
+func withPackratRails(a detect.Result, vendors []string) string {
+	var others []string
+	rails := false
+	for _, vendor := range vendors {
+		switch vendor {
+		case packratRails:
+			rails = true
+		case openTelemetry:
+		case sentry:
+			if sentryConfigured(a) {
+				others = append(others, vendor)
+			}
+		default:
+			others = append(others, vendor)
+		}
+	}
+	if !rails {
+		return orNone(vendors)
+	}
+	return strings.Join(append([]string{packratRails}, others...), " + ")
 }
 
 func provides(sdk detect.Finding, signal string) bool {

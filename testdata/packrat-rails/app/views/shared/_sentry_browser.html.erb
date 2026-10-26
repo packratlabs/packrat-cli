@@ -1,0 +1,13 @@
+<% if (config = sentry_browser_config) %>
+  <script defer src="https://browser.sentry-cdn.com/11.3.0/bundle.tracing.replay.min.js" crossorigin="anonymous"></script>
+  <script type="module">
+    (() => {
+      const options = <%= raw json_escape(config.to_json) %>;
+      const integrations = [Sentry.browserTracingIntegration()];
+      if (options.replaysOnErrorSampleRate || options.replaysSessionSampleRate) {
+        integrations.push(Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false, maskAllInputs: true }));
+      }
+      Sentry.init({ ...options, integrations });
+    })();
+  </script>
+<% end %>

@@ -25,6 +25,7 @@ func TestStatus(t *testing.T) {
 		{name: "nothing-yet", sending: false},
 		{name: "stopped", sending: false},
 		{name: "claimed-not-seen", sending: true},
+		{name: "packrat-rails", sending: true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

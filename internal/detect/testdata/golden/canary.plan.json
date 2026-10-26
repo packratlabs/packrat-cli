@@ -54,7 +54,7 @@
       "name": "replays",
       "source": "Sentry browser",
       "installed": true,
-      "step": "dual-ship to Packrat",
+      "step": "copy to Packrat with a DSN",
       "route": "Sentry browser copy",
       "state": "route",
       "reason": "replays on",

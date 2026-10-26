@@ -153,13 +153,18 @@ func answers(t *testing.T, apps []string, bodies ...string) (*httptest.Server, *
 }
 
 func statusBody(seen string) string {
-	return `{"app":"shop/production","now":"2026-10-13T15:00:00Z","last_data_at":"` + seen + `","signals":[` +
+	return appStatusBody("shop/production", seen)
+}
+
+func appStatusBody(app, seen string) string {
+	return `{"app":"` + app + `","now":"2026-10-13T15:00:00Z","last_data_at":"` + seen + `","signals":[` +
 		`{"signal":"traces","quiet":false,"sources":[{"source":"otel","name":"OpenTelemetry","kept":true,"last_seen_at":"` + seen + `"}]},` +
 		`{"signal":"logs","quiet":false,"sources":[]}],"warnings":[]}`
 }
 
 func TestStatusAndApps(t *testing.T) {
 	fresh, newer, old := statusBody("2026-10-13T14:59:00Z"), statusBody("2026-10-13T15:00:00Z"), statusBody("2026-10-12T10:00:00Z")
+	devFresh, devOld := appStatusBody("shop/development", "2026-10-13T14:59:00Z"), appStatusBody("shop/development", "2026-10-12T10:00:00Z")
 	noApps := `{"now":"2026-10-13T15:00:00Z","apps":[]}`
 	devApp := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
 	twoApps := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-12T10:00:00Z"}]}`
@@ -179,15 +184,20 @@ func TestStatusAndApps(t *testing.T) {
 		{name: "apps", args: []string{"apps"}, key: statusKey, code: 0, stdout: "APP              LAST DATA\nshop/production  now\n"},
 		{name: "apps as JSON", args: []string{"apps", "--json"}, key: statusKey, code: 0, stdout: `"app": "shop/production"`},
 		{name: "apps takes no argument", args: []string{"apps", "shop"}, key: statusKey, code: 2, stderr: "takes no argument"},
-		{name: "status", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is arriving.", asked: 1},
+		{name: "status", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is connected.", asked: 1},
 		{name: "status as JSON", args: []string{"status", "--json", "--app=shop/production"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"source": "otel"`, asked: 1},
 		{name: "an app that stopped", args: []string{"status", "--app", "shop/production"}, key: statusKey, bodies: []string{old}, code: 1, stdout: "Nothing has arrived for 29 hours.", asked: 1},
 		{name: "plan leaves out what the app already sends", args: []string{"setup", "plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "3 steps. Packrat already receives 1 signal.\n", asked: 1},
 		{name: "plan as JSON names the app", args: []string{"setup", "plan", "--json", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: `"arrives": true`, asked: 1},
 		{name: "plan for an app needs a key", args: []string{"setup", "plan", "--app", "shop/production", filepath.Join("testdata", "rails-by-railties")}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "plan for an app that is not there", args: []string{"setup", "plan", "--app", "shop/staging", filepath.Join("testdata", "rails-by-railties")}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
-		{name: "no app names the org's one app", args: []string{"status"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is arriving.", asked: 1},
-		{name: "no app when the org has several", args: []string{"status"}, key: statusKey, apps: []string{twoApps}, code: 2, stderr: "This key has access to shop/production and shop/development."},
+		{name: "no app names the org's one app", args: []string{"status"}, key: statusKey, bodies: []string{fresh}, code: 0, stdout: "1 of 2 signals is connected.", asked: 1},
+		{name: "no app when the org has several shows each", args: []string{"status"}, key: statusKey, apps: []string{twoApps}, bodies: []string{fresh, devFresh}, code: 0,
+			stdout: "1 of 2 signals is connected.\n\npackrat status  shop/development\n", asked: 2},
+		{name: "no app when the org has several fails if one is not sending", args: []string{"status"}, key: statusKey, apps: []string{twoApps}, bodies: []string{fresh, devOld}, code: 1,
+			stdout: "Nothing has arrived for 29 hours.", asked: 2},
+		{name: "no app when the org has several, as JSON, is a list", args: []string{"status", "--json"}, key: statusKey, apps: []string{twoApps}, bodies: []string{fresh, devFresh}, code: 0,
+			stdout: "[\n  {\n    \"app\": \"shop/production\"", asked: 2},
 		{name: "no app when the org has none", args: []string{"status"}, key: statusKey, apps: []string{noApps}, code: 1, stderr: "no app has sent data yet"},
 		{name: "the app as an argument", args: []string{"status", "shop/production"}, key: statusKey, code: 2, stderr: "--app SERVICE/ENV"},
 		{name: "wait with no app ends when an app first sends", args: []string{"status", "--wait"}, key: statusKey, apps: []string{noApps, noApps, devApp}, bodies: []string{fresh}, code: 0, stdout: "Waiting for data from your app.", asked: 1, sleeps: 2},

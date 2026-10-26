@@ -4,9 +4,11 @@ packrat plan  otel-logs-already  Rails 7.2.2
   Exceptions  OpenTelemetry   ✓          subscribe to Rails.error
       setup subscribes to Rails.error
   Traces      OpenTelemetry   ✓          dual-ship to Packrat
-      already exports OTLP; setup points the exporter at Packrat
+      already exports OTLP; setup adds Packrat as a second OTLP destination, and the current one
+      keeps receiving
   Logs        OpenTelemetry   ✓          dual-ship to Packrat
-      already exports OTLP logs; setup points the exporter at Packrat
+      already exports OTLP logs; setup adds Packrat as a second OTLP destination, and the current
+      one keeps receiving
   Replays     Sentry browser             add the Sentry browser SDK
       Packrat accepts Sentry envelopes
 
