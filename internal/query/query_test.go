@@ -106,3 +106,46 @@ func TestClient(t *testing.T) {
 		})
 	}
 }
+
+func TestAgent(t *testing.T) {
+	tests := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{name: "Claude Code", env: map[string]string{"AI_AGENT": "claude-code_2-1-310_agent", "CLAUDECODE": "1"}, want: "claude-code/2.1.310"},
+		{name: "another agent", env: map[string]string{"AI_AGENT": "codex cli/1.2 (beta)"}, want: "codexcli/1.2beta"},
+		{name: "Claude Code without AI_AGENT", env: map[string]string{"CLAUDECODE": "1"}, want: "claude-code"},
+		{name: "a terminal", env: map[string]string{}, want: ""},
+		{name: "an AI_AGENT of nothing usable", env: map[string]string{"AI_AGENT": "  ;  "}, want: ""},
+		{name: "a long AI_AGENT", env: map[string]string{"AI_AGENT": strings.Repeat("a", 100)}, want: strings.Repeat("a", 64)},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := query.Agent(func(name string) string { return tc.env[name] }); got != tc.want {
+				t.Errorf("Agent() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUserAgent(t *testing.T) {
+	for _, tc := range []struct{ agent, want string }{
+		{agent: "claude-code/2.1.310", want: "packrat-cli/0.1.1 claude-code/2.1.310"},
+		{agent: "", want: "packrat-cli/0.1.1"},
+	} {
+		var got string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = r.Header.Get("User-Agent")
+			_, _ = w.Write([]byte(`{"apps":[]}`))
+		}))
+		client := query.Client{BaseURL: server.URL, Key: testKey, HTTP: server.Client(), Version: "0.1.1", Agent: tc.agent}
+		if _, err := client.Apps(context.Background()); err != nil {
+			t.Fatalf("Apps: %v", err)
+		}
+		server.Close()
+		if got != tc.want {
+			t.Errorf("User-Agent = %q, want %q", got, tc.want)
+		}
+	}
+}

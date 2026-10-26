@@ -229,7 +229,10 @@ packrat status  colorbook/production
 ### Network requests
 
 Commands that query Packrat send only your API key, in the `Authorization` header, the app name, and
-the CLI's version, in the `User-Agent` header. They never print your key. `packrat update` asks
+the CLI's version, in the `User-Agent` header. When a coding agent runs the CLI, the `User-Agent` also
+names the agent, from `AI_AGENT` (or `CLAUDECODE` in Claude Code), for example
+`packrat-cli/0.1.1 claude-code/2.1.310`, so Packrat can tell you that your agent reached it. They
+never print your key. `packrat update` asks
 GitHub for the newest release and sends no key. To use a different API host, set `PACKRAT_QUERY_URL`. To use a different
 site host (for `login` and `open`), set `PACKRAT_URL`.
 
