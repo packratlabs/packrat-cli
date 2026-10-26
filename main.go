@@ -304,7 +304,7 @@ func newClient(w world) (query.Client, error) {
 	if base == "" {
 		base = query.DefaultURL
 	}
-	return query.Client{BaseURL: base, Key: key, HTTP: w.http, Version: version, Heard: w.heard}, nil
+	return query.Client{BaseURL: base, Key: key, HTTP: w.http, Version: version, Agent: query.Agent(w.getenv), Heard: w.heard}, nil
 }
 
 // runSetup is the setup topic: detect and plan, which read a project before it sends anything.

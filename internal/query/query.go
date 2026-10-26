@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -25,6 +26,28 @@ var ErrRefused = errors.New("your key was rejected (401). It may be invalid or r
 
 // UserAgent names this program to the API, followed by /version.
 const UserAgent = "packrat-cli"
+
+var (
+	claudeCode = regexp.MustCompile(`^claude-code_([0-9]+(?:-[0-9]+)*)_agent$`)
+	notInToken = regexp.MustCompile(`[^A-Za-z0-9._/-]+`)
+)
+
+// Agent names the coding agent running the CLI, for the User-Agent: claude-code/2.1.310 from
+// Claude Code's AI_AGENT=claude-code_2-1-310_agent, another agent's AI_AGENT as one token, or
+// claude-code alone from CLAUDECODE=1. It is "" outside an agent.
+func Agent(getenv func(string) string) string {
+	name := getenv("AI_AGENT")
+	if m := claudeCode.FindStringSubmatch(name); m != nil {
+		return "claude-code/" + strings.ReplaceAll(m[1], "-", ".")
+	}
+	if token := notInToken.ReplaceAllString(name, ""); token != "" {
+		return token[:min(len(token), 64)]
+	}
+	if getenv("CLAUDECODE") == "1" {
+		return "claude-code"
+	}
+	return ""
+}
 
 // Heard is what the API's answers said about the CLI's releases. The newest answer wins.
 type Heard struct {
@@ -94,13 +117,14 @@ type Status struct {
 	Warnings []string  `json:"warnings"`
 }
 
-// Client reads the API with one key. Version goes in the User-Agent, and when Heard is set, the
-// release headers of each answer are kept in it.
+// Client reads the API with one key. Version and Agent go in the User-Agent, and when Heard is set,
+// the release headers of each answer are kept in it.
 type Client struct {
 	BaseURL string
 	Key     string
 	HTTP    *http.Client
 	Version string
+	Agent   string
 	Heard   *Heard
 }
 
@@ -159,7 +183,7 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 	where := request.URL.Scheme + "://" + request.URL.Host
 	request.Header.Set("Authorization", "Bearer "+c.Key)
 	request.Header.Set("Accept", accept)
-	request.Header.Set("User-Agent", UserAgent+"/"+c.version())
+	request.Header.Set("User-Agent", c.userAgent())
 	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}
@@ -199,6 +223,14 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 		}
 		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))
 	}
+}
+
+func (c Client) userAgent() string {
+	agent := UserAgent + "/" + c.version()
+	if c.Agent != "" {
+		agent += " " + c.Agent
+	}
+	return agent
 }
 
 func (c Client) version() string {
