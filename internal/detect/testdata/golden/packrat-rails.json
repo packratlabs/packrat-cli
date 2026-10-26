@@ -1,0 +1,355 @@
+{
+  "schema": "packrat.detect/1",
+  "path": "",
+  "stack": {
+    "name": "rails",
+    "version": "7.2.2",
+    "ruby": "3.1.6",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 59,
+        "text": "rails (7.2.2)"
+      }
+    ]
+  },
+  "sdks": [
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-exporter-otlp",
+      "version": "0.32.0",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 28,
+          "text": "opentelemetry-exporter-otlp (0.32.0)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-exporter-otlp-logs",
+      "version": "0.3.0",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 32,
+          "text": "opentelemetry-exporter-otlp-logs (0.3.0)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-action_pack",
+      "version": "0.14.1",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 37,
+          "text": "opentelemetry-instrumentation-action_pack (0.14.1)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-active_record",
+      "version": "0.10.1",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 39,
+          "text": "opentelemetry-instrumentation-active_record (0.10.1)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-base",
+      "version": "0.24.0",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 41,
+          "text": "opentelemetry-instrumentation-base (0.24.0)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-net_http",
+      "version": "0.25.1",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 44,
+          "text": "opentelemetry-instrumentation-net_http (0.25.1)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-rack",
+      "version": "0.28.2",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 46,
+          "text": "opentelemetry-instrumentation-rack (0.28.2)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-instrumentation-sidekiq",
+      "version": "0.27.1",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 48,
+          "text": "opentelemetry-instrumentation-sidekiq (0.27.1)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-logs-sdk",
+      "version": "0.4.0",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 52,
+          "text": "opentelemetry-logs-sdk (0.4.0)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "OpenTelemetry",
+      "gem": "opentelemetry-sdk",
+      "version": "1.10.0",
+      "direct": false,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "traces"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 56,
+          "text": "opentelemetry-sdk (1.10.0)"
+        }
+      ],
+      "notes": [
+        "configured by packrat-rails"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-rails",
+      "version": "5.22.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 62,
+          "text": "sentry-rails (5.22.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces off"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-ruby",
+      "version": "5.22.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 65,
+          "text": "sentry-ruby (5.22.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces off"
+      ]
+    },
+    {
+      "vendor": "Sentry",
+      "gem": "sentry-sidekiq",
+      "version": "5.22.0",
+      "direct": true,
+      "groups": [],
+      "configured": true,
+      "provides": [
+        "exceptions"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 67,
+          "text": "sentry-sidekiq (5.22.0)"
+        },
+        {
+          "path": "config/initializers/sentry.rb",
+          "line": 1,
+          "text": "Sentry.init do |config|"
+        }
+      ],
+      "notes": [
+        "traces off"
+      ]
+    },
+    {
+      "vendor": "packrat-rails",
+      "gem": "packrat-rails",
+      "version": "0.1.0",
+      "direct": true,
+      "groups": [],
+      "configured": false,
+      "provides": [
+        "exceptions",
+        "traces",
+        "logs"
+      ],
+      "evidence": [
+        {
+          "path": "Gemfile.lock",
+          "line": 5,
+          "text": "packrat-rails (0.1.0)"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "agents": [],
+  "browser": [
+    {
+      "vendor": "Sentry browser",
+      "package": "",
+      "replays": true,
+      "evidence": [
+        {
+          "path": "app/views/shared/_sentry_browser.html.erb",
+          "line": 2,
+          "text": "\u003cscript defer src=\"https://browser.sentry-cdn.com/11.3.0/bundle.tracing.replay.min.js\" crossorigin=\"anonymous\"\u003e\u003c/script\u003e"
+        },
+        {
+          "path": "app/views/shared/_sentry_browser.html.erb",
+          "line": 8,
+          "text": "integrations.push(Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false, maskAllInputs: true }));"
+        },
+        {
+          "path": "app/views/shared/_sentry_browser.html.erb",
+          "line": 10,
+          "text": "Sentry.init({ ...options, integrations });"
+        }
+      ]
+    }
+  ],
+  "env_names": [],
+  "host": null,
+  "notes": []
+}

@@ -1,0 +1,13 @@
+packrat plan  packrat-rails  Rails 7.2.2, Ruby 3.1.6
+
+  SIGNAL      SOURCE                  INSTALLED  STEP
+  Exceptions  packrat-rails + Sentry  ✓          none: packrat-rails sends it
+      packrat-rails sends Rails.error to Packrat; Sentry keeps its own
+  Traces      packrat-rails           ✓          none: packrat-rails sends it
+      packrat-rails sends traces to Packrat
+  Logs        packrat-rails           ✓          none: packrat-rails sends it
+      packrat-rails sends logs to Packrat
+  Replays     Sentry browser          ✓          copy to Packrat with a DSN
+      replays on
+
+Add --app service/env to detect if Packrat is receiving data from each signal.

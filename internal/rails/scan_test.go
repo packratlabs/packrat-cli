@@ -43,6 +43,10 @@ func TestConfigured(t *testing.T) {
 			[]string{"traces", "exceptions", "logs"}, []string{"coexists with OpenTelemetry"}},
 		{"configured-by-file", "skylight", false, []string{"Gemfile.lock:6"},
 			[]string{"traces"}, []string{notConfiguredNote}},
+		{"packrat-rails", "opentelemetry-sdk", false, []string{"Gemfile.lock:56"},
+			[]string{"traces"}, []string{configuredByPackratRailsNote}},
+		{"packrat-rails", "opentelemetry-logs-sdk", false, []string{"Gemfile.lock:52"},
+			[]string{"logs"}, []string{configuredByPackratRailsNote}},
 		{"otel-use-all", "opentelemetry-sdk", true, []string{"Gemfile.lock:6", "config/initializers/opentelemetry.rb:1"},
 			[]string{"traces"}, []string{"use_all", "reads OTEL_EXPORTER_OTLP_ENDPOINT"}},
 	}

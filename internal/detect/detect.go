@@ -38,6 +38,7 @@ const (
 
 // The route names of version 1. They are part of the JSON document.
 const (
+	RoutePackratRails  = "packrat-rails"
 	RouteDatadogAgent  = "Datadog Agent copy"
 	RouteOTel          = "OpenTelemetry"
 	RouteOTelRails     = "OpenTelemetry (Rails)"

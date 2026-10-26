@@ -7,7 +7,7 @@ packrat plan  canary  Rails 8.0.2
       Agent config at .github/workflows/ci.yml:10
   Logs        Datadog         ✓          dual-ship from the Agent
       same Agent
-  Replays     Sentry browser  ✓          dual-ship to Packrat
+  Replays     Sentry browser  ✓          copy to Packrat with a DSN
       replays on
 
   Traces do not use OpenTelemetry: the datadog gem and the OpenTelemetry Net::HTTP

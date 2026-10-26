@@ -10,10 +10,11 @@ type vendor struct {
 	Note     string
 }
 
-// vendors is the whole vendor table, from section 4.4 of the plan. It is data. Do not add a row
-// that the plan does not have.
+// vendors is the whole vendor table, from section 4.4 of the plan, and packrat-rails, which the
+// owner added. It is data. Do not add a row that neither has.
 func vendors() []vendor {
 	return []vendor{
+		{Gems: []string{"packrat-rails"}, Vendor: "packrat-rails", Provides: []string{"exceptions", "traces", "logs"}},
 		{Gems: []string{"datadog", "ddtrace"}, Vendor: "Datadog", Provides: []string{"traces", "logs", "exceptions"}, Note: "needs an Agent; no agentless APM in Ruby"},
 		{Gems: []string{"sentry-ruby", "sentry-rails", "sentry-sidekiq"}, Vendor: "Sentry", Provides: []string{"exceptions"}},
 		{Gems: []string{"newrelic_rpm"}, Vendor: "New Relic", Provides: []string{"traces", "exceptions", "logs"}, Note: "coexists with OpenTelemetry"},

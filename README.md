@@ -205,11 +205,13 @@ packrat status  colorbook/production
   Packrat keeps the first source of exceptions and of traces.
   To use a different source, ask us to switch it.
 
-4 of 5 signals are arriving.
+4 of 5 signals are connected.
 ```
 
-- `--app` names the app, as `SERVICE/ENV` from `packrat apps`. You can leave it out if your org has
-  one app.
+- `--app` names the app, as `SERVICE/ENV` from `packrat apps`. Without it, `status` shows every app
+  your key opens, one after another.
+- A signal is connected when it has a source. A source that hasn't sent anything yet, such as
+  packrat-rails before the app's first exception, shows `no exceptions yet` in LAST DATA.
 - `no` in the KEPT column means a source sends the signal, but Packrat doesn't store it, because the
   app already keeps that signal from another source. Logs, metrics and all browser data are kept
   from every source.
@@ -218,11 +220,12 @@ packrat status  colorbook/production
   run the command, then start your app and load a page. Without `--app`, it waits for any app to
   send data, including one Packrat hasn't seen before, and then shows that app.
 - `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
+  Without `--app`, a key that opens several apps outputs a JSON array with one response for each app.
 
 `packrat status` exits with:
 
 - `0` if data arrived in the last hour.
-- `1` if no data arrived in the last hour, a kept source stopped while another source still sends
+- `1` if no data arrived in the last hour (for any one of the apps, without `--app`), a kept source stopped while another source still sends
   the same signal, `--wait` timed out, or the API rejected the request.
 - `2` for a usage error or a missing key.
 
@@ -282,7 +285,7 @@ packrat setup plan  shop  Rails 8.1.1, Ruby 3.3.8
   Exceptions  Sentry          ✓          dual-ship to Packrat
   Traces      OpenTelemetry   ✓          dual-ship to Packrat
   Logs        OpenTelemetry              add the OpenTelemetry logs gems
-  Replays     Sentry browser  ✓          dual-ship to Packrat
+  Replays     Sentry browser  ✓          copy to Packrat with a DSN
 
 Add --app service/env to detect if Packrat is receiving data from each signal.
 ```
@@ -290,6 +293,9 @@ Add --app service/env to detect if Packrat is receiving data from each signal.
 - SOURCE is where Packrat will receive the signal from. The names match the ones `packrat status`
   shows.
 - INSTALLED has a check mark if the project already includes that source.
+- With the `packrat-rails` gem, SOURCE is `packrat-rails` for exceptions, traces and logs, and STEP is
+  `none: packrat-rails sends it`. The gem sends them to Packrat itself. Exceptions show
+  `packrat-rails + Sentry` when Sentry is configured too.
 - STEP is what setup would do. "Dual-ship" means the source keeps sending to its current vendor and
   also sends to Packrat.
 - A note below the table explains when the usual route wasn't chosen, or why a signal has no route.
@@ -454,11 +460,11 @@ pattern that matched.
 | Key | Meaning |
 |---|---|
 | `name` | `exceptions`, `traces`, `logs` or `replays`. |
-| `source` | What Packrat will receive the signal from: `Sentry`, `Datadog`, `OpenTelemetry`, `Sentry browser`, or `none`. |
+| `source` | What Packrat will receive the signal from: `packrat-rails`, `packrat-rails + Sentry`, `Sentry`, `Datadog`, `OpenTelemetry`, `Sentry browser`, or `none`. |
 | `installed` | `true` when the repository has that source now. |
 | `step` | What setup would do, as the table prints it. |
 | `route` | The rule's name for the way in. One of the routes below. |
-| `state` | `route`: setup can add this route. `already`: the repository already sends this way, and setup only points it at Packrat. `later`: not offered yet; no rule gives this state today. `unsupported`: there is no route. |
+| `state` | `route`: setup can add this route. `already`: the repository already sends this way. Setup adds Packrat as a second destination, or does nothing when the route is `packrat-rails`. `later`: not offered yet; no rule gives this state today. `unsupported`: there is no route. |
 | `reason` | One sentence that says why. |
 | `blocked` | Routes that would normally be chosen, each with the reason why not. |
 | `arrives` | `true` when Packrat already keeps the signal for the app of `--app`. Always `false` without `--app`. |
@@ -467,9 +473,9 @@ pattern that matched.
 
 | Signal | Routes |
 |---|---|
-| `exceptions` | `Sentry copy`, `Datadog Agent copy`, `OpenTelemetry exceptions (Rails.error)` |
-| `traces` | `Datadog Agent copy`, `OpenTelemetry`, `OpenTelemetry (Rails)` |
-| `logs` | `Datadog Agent copy`, `OpenTelemetry logs` |
+| `exceptions` | `packrat-rails`, `Sentry copy`, `Datadog Agent copy`, `OpenTelemetry exceptions (Rails.error)` |
+| `traces` | `packrat-rails`, `Datadog Agent copy`, `OpenTelemetry`, `OpenTelemetry (Rails)` |
+| `logs` | `packrat-rails`, `Datadog Agent copy`, `OpenTelemetry logs` |
 | `replays` | `Sentry browser copy`, `Sentry browser SDK pointed at Packrat`, `none` |
 
 ## Development

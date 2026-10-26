@@ -1,0 +1,21 @@
+packrat detect  packrat-rails-sentry-not-configured  Rails 7.2.2, Ruby 3.1.6
+
+  SIGNAL      FOUND
+  Exceptions  packrat-rails
+  Traces      packrat-rails
+  Logs        packrat-rails
+  Replays     Sentry browser
+
+Found in this repository
+  OpenTelemetry   Gemfile.lock:28                               traces, logs
+      configured by packrat-rails
+      opentelemetry-exporter-otlp 0.32.0 (dependency),
+      opentelemetry-exporter-otlp-logs 0.3.0 (dependency),
+      opentelemetry-logs-sdk 0.4.0 (dependency), opentelemetry-sdk 1.10.0 (dependency),
+      6 instrumentation gems (dependency)
+  Sentry          Gemfile.lock:62                               exceptions
+      gem present, no configure call found
+      sentry-rails 5.22.0, sentry-ruby 5.22.0, sentry-sidekiq 5.22.0
+  packrat-rails   Gemfile.lock:5                                exceptions, traces, logs
+      packrat-rails 0.1.0
+  Sentry browser  app/views/shared/_sentry_browser.html.erb:10  replays on

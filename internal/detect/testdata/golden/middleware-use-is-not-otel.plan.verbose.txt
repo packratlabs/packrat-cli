@@ -4,7 +4,8 @@ packrat plan  middleware-use-is-not-otel  Rails 8.0.2
   Exceptions  OpenTelemetry   ✓          subscribe to Rails.error
       setup subscribes to Rails.error
   Traces      OpenTelemetry   ✓          dual-ship to Packrat
-      already exports OTLP; setup points the exporter at Packrat
+      already exports OTLP; setup adds Packrat as a second OTLP destination, and the current one
+      keeps receiving
   Logs        OpenTelemetry              add the OpenTelemetry logs gems
       setup adds the OpenTelemetry logs SDK
   Replays     Sentry browser             add the Sentry browser SDK

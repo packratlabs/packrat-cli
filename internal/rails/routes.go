@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	vendorPackratRails  = "packrat-rails"
 	vendorDatadog       = "Datadog"
 	vendorDatadogAgent  = "Datadog Agent"
 	vendorSentry        = "Sentry"
@@ -20,7 +21,9 @@ const (
 
 // Routes picks a route for each of the four signals. It reads nothing; the facts are its only
 // input. The rule numbers in the comments are those of section 5.1 of the plan, and their order
-// is the order of precedence. Logs differs from the plan; see logsRoute. A gem that loads only in development or test picks no route.
+// is the order of precedence. Rule 1 of exceptions, traces and logs, packrat-rails, is the owner's
+// and not the plan's, so the plan's rules are one higher here. Logs differs from the plan; see
+// logsRoute. A gem that loads only in development or test picks no route.
 func Routes(facts detect.Facts) []detect.Signal {
 	datadog := hasVendor(facts, vendorDatadog)
 	signals := make([]detect.Signal, 0, 4)
@@ -46,7 +49,11 @@ func Routes(facts detect.Facts) []detect.Signal {
 }
 
 func tracesRoute(facts detect.Facts, datadog bool) detect.Signal {
-	// Traces 1: the datadog gem decides, because it cannot share Net::HTTP with OpenTelemetry.
+	// Traces 1: packrat-rails sends them already.
+	if hasVendor(facts, vendorPackratRails) {
+		return detect.Signal{Route: detect.RoutePackratRails, State: detect.StateAlready, Reason: "packrat-rails sends traces to Packrat"}
+	}
+	// Traces 2: the datadog gem decides, because it cannot share Net::HTTP with OpenTelemetry.
 	if datadog {
 		reason := "Agent config not in this repository; setup will print the lines for it"
 		if where := agentWhere(facts); where != "" {
@@ -54,12 +61,12 @@ func tracesRoute(facts detect.Facts, datadog bool) detect.Signal {
 		}
 		return detect.Signal{Route: detect.RouteDatadogAgent, State: detect.StateRoute, Reason: reason, Blocked: []string{blockedOTel}}
 	}
-	// Traces 2: the SDK and the OTLP exporter are both here.
+	// Traces 3: the SDK and the OTLP exporter are both here.
 	if hasGem(facts, "opentelemetry-sdk") && hasGem(facts, "opentelemetry-exporter-otlp") {
 		return detect.Signal{Route: detect.RouteOTel, State: detect.StateAlready,
-			Reason: "already exports OTLP; setup points the exporter at Packrat"}
+			Reason: "already exports OTLP; setup adds Packrat as a second OTLP destination, and the current one keeps receiving"}
 	}
-	// Traces 3: everything else gets OpenTelemetry.
+	// Traces 4: everything else gets OpenTelemetry.
 	reasons := []string{"setup adds the OpenTelemetry SDK"}
 	if hasGem(facts, "newrelic_rpm") {
 		reasons = append(reasons, "coexists with New Relic")
@@ -71,16 +78,24 @@ func tracesRoute(facts detect.Facts, datadog bool) detect.Signal {
 }
 
 func exceptionsRoute(facts detect.Facts, datadog bool) detect.Signal {
-	// Exceptions 1: a configured Sentry wins over Datadog.
+	// Exceptions 1: packrat-rails subscribes to Rails.error and sends what it reports.
+	if hasVendor(facts, vendorPackratRails) {
+		reason := "packrat-rails sends Rails.error to Packrat"
+		if sentryConfigured(facts) {
+			reason += "; Sentry keeps its own"
+		}
+		return detect.Signal{Route: detect.RoutePackratRails, State: detect.StateAlready, Reason: reason}
+	}
+	// Exceptions 2: a configured Sentry wins over Datadog.
 	if sentryConfigured(facts) {
 		return detect.Signal{Route: detect.RouteSentry, State: detect.StateRoute,
 			Reason: "sentry-ruby sends; Packrat takes the same envelope"}
 	}
-	// Exceptions 2: the route chosen for traces carries the errors.
+	// Exceptions 3: the route chosen for traces carries the errors.
 	if datadog {
 		return detect.Signal{Route: detect.RouteDatadogAgent, State: detect.StateRoute, Reason: "errors arrive as error spans"}
 	}
-	// Exceptions 3: Rails.error, next to any error tracker that is here.
+	// Exceptions 4: Rails.error, next to any error tracker that is here.
 	reasons := []string{"setup subscribes to Rails.error"}
 	for _, vendor := range []string{"Honeybadger", "Bugsnag", "Rollbar", "Airbrake"} {
 		if hasVendor(facts, vendor) {
@@ -91,19 +106,23 @@ func exceptionsRoute(facts detect.Facts, datadog bool) detect.Signal {
 }
 
 func logsRoute(facts detect.Facts, datadog bool) detect.Signal {
-	// Logs 1: only when the Agent is in the repository; the gem alone does not ship logs.
+	// Logs 1: packrat-rails sends them already.
+	if hasVendor(facts, vendorPackratRails) {
+		return detect.Signal{Route: detect.RoutePackratRails, State: detect.StateAlready, Reason: "packrat-rails sends logs to Packrat"}
+	}
+	// Logs 2: only when the Agent is in the repository; the gem alone does not ship logs.
 	if datadog && agentWhere(facts) != "" {
 		return detect.Signal{Route: detect.RouteDatadogAgent, State: detect.StateRoute, Reason: "same Agent"}
 	}
-	// Logs 2 and 3 are not the plan's. The plan said "later" for every other case, because Ruby
+	// Logs 3 and 4 are not the plan's. The plan said "later" for every other case, because Ruby
 	// OpenTelemetry logs are pre-1.0. The owner decided after the corpus to treat them as released:
 	// Packrat accepts them, and Colorbook sends its logs this way.
-	// Logs 2: the logs SDK and its OTLP exporter are both here.
+	// Logs 3: the logs SDK and its OTLP exporter are both here.
 	if hasGem(facts, "opentelemetry-logs-sdk") && hasGem(facts, "opentelemetry-exporter-otlp-logs") {
 		return detect.Signal{Route: detect.RouteOTelLogs, State: detect.StateAlready,
-			Reason: "already exports OTLP logs; setup points the exporter at Packrat"}
+			Reason: "already exports OTLP logs; setup adds Packrat as a second OTLP destination, and the current one keeps receiving"}
 	}
-	// Logs 3: everything else gets OpenTelemetry logs.
+	// Logs 4: everything else gets OpenTelemetry logs.
 	reason := "setup adds the OpenTelemetry logs SDK"
 	var gems []string
 	for _, sdk := range facts.SDKs {

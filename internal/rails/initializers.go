@@ -8,7 +8,10 @@ import (
 	"github.com/packratlabs/packrat-cli/internal/detect"
 )
 
-const notConfiguredNote = "gem present, no configure call found"
+const (
+	notConfiguredNote            = "gem present, no configure call found"
+	configuredByPackratRailsNote = "configured by packrat-rails"
+)
 
 // extra is a line that says more about a configured vendor. SameFile marks a pattern that is too
 // common a word to count outside a file that configures the vendor: Mastodon's
@@ -68,6 +71,10 @@ func configSources(root *os.Root) []source {
 // configure marks each finding whose vendor is configured. A vendor with no rule is left alone.
 func configure(root *os.Root, found []detect.Finding) []detect.Finding {
 	sources := configSources(root)
+	packratRails := false
+	for _, f := range found {
+		packratRails = packratRails || (f.Vendor == vendorPackratRails && f.Production())
+	}
 	for _, rule := range configRules() {
 		evidence, notes := applyRule(root, rule, sources)
 		for i := range found {
@@ -75,7 +82,11 @@ func configure(root *os.Root, found []detect.Finding) []detect.Finding {
 				continue
 			}
 			if len(evidence) == 0 {
-				found[i].Notes = append(found[i].Notes, notConfiguredNote)
+				note := notConfiguredNote
+				if packratRails && rule.Vendor == "OpenTelemetry" {
+					note = configuredByPackratRailsNote
+				}
+				found[i].Notes = append(found[i].Notes, note)
 				continue
 			}
 			found[i].Configured = true

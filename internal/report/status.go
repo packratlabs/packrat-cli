@@ -54,7 +54,7 @@ func Apps(w io.Writer, apps query.Apps) error {
 func Status(w io.Writer, s query.Status) error {
 	var b strings.Builder
 	b.WriteString("packrat status  " + s.App.App + "\n\n")
-	unkept, arriving := false, 0
+	unkept, connected := false, 0
 	width := len("Datadog browser")
 	for _, signal := range s.Signals {
 		for _, source := range signal.Sources {
@@ -68,13 +68,13 @@ func Status(w io.Writer, s query.Status) error {
 			fmt.Fprintf(&b, "  %-10s  %s\n", label, NothingYet)
 			continue
 		}
-		arriving++
+		connected++
 		for i, source := range signal.Sources {
 			if i > 0 {
 				label = ""
 			}
 			unkept = unkept || !source.Kept
-			line := fmt.Sprintf("  %-10s  %-*s  %-4s  %s", label, width, source.Name, kept(source), seen(s, source))
+			line := fmt.Sprintf("  %-10s  %-*s  %-4s  %s", label, width, source.Name, kept(source), seen(s, signal, source))
 			b.WriteString(strings.TrimRight(line, " ") + "\n")
 		}
 	}
@@ -86,8 +86,28 @@ func Status(w io.Writer, s query.Status) error {
 	if unkept {
 		b.WriteString("\n" + FirstSource + "\n")
 	}
-	b.WriteString("\n" + statusSummary(s, arriving) + "\n")
+	b.WriteString("\n" + statusSummary(s, connected) + "\n")
 	return put(w, b.String())
+}
+
+// Statuses writes the status of each app, with a blank line between two apps.
+func Statuses(w io.Writer, statuses []query.Status) error {
+	for i, s := range statuses {
+		if i > 0 {
+			if err := put(w, "\n"); err != nil {
+				return err
+			}
+		}
+		if err := Status(w, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StatusesJSON writes the answers of the API for several apps as one list.
+func StatusesJSON(w io.Writer, statuses []query.Status) error {
+	return putJSON(w, statuses)
 }
 
 // StatusJSON writes the answer of the API as it was read.
@@ -125,17 +145,18 @@ func Last(s query.Status) *time.Time {
 	return last
 }
 
-func statusSummary(s query.Status, arriving int) string {
+// statusSummary counts a signal with a source as connected, whether or not that source has sent yet.
+func statusSummary(s query.Status, connected int) string {
 	last := Last(s)
 	switch {
 	case last == nil:
 		return "No data has arrived for this app."
 	case s.Now.Sub(*last) > Fresh:
 		return "Nothing has arrived for " + span(s.Now.Sub(*last)) + "."
-	case arriving == 1:
-		return fmt.Sprintf("1 of %d signals is arriving.", len(s.Signals))
+	case connected == 1:
+		return fmt.Sprintf("1 of %d signals is connected.", len(s.Signals))
 	default:
-		return fmt.Sprintf("%d of %d signals are arriving.", arriving, len(s.Signals))
+		return fmt.Sprintf("%d of %d signals are connected.", connected, len(s.Signals))
 	}
 }
 
@@ -172,9 +193,9 @@ func kept(source query.Source) string {
 	return "no"
 }
 
-func seen(s query.Status, source query.Source) string {
+func seen(s query.Status, signal query.Signal, source query.Source) string {
 	if source.LastSeenAt == nil {
-		return "none"
+		return "no " + signal.Signal + " yet"
 	}
 	return ago(s.Now.Sub(*source.LastSeenAt))
 }

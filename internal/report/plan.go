@@ -21,6 +21,7 @@ const Installed = "✓"
 
 // The vendor names of the facts, and the source names that packrat status prints.
 const (
+	packratRails  = "packrat-rails"
 	datadog       = "Datadog"
 	datadogAgent  = "Datadog Agent"
 	openTelemetry = "OpenTelemetry"
@@ -33,7 +34,9 @@ const AppHint = "Add --app service/env to detect if Packrat is receiving data fr
 
 const (
 	stepArrives       = "none: Packrat receives it"
+	stepPackratRails  = "none: packrat-rails sends it"
 	stepDualShip      = "dual-ship to Packrat"
+	stepBrowserCopy   = "copy to Packrat with a DSN"
 	stepDualShipAgent = "dual-ship from the Agent"
 	stepUnsupported   = "not supported"
 )
@@ -104,6 +107,11 @@ func keptSources(status *query.Status, name detect.SignalName) []string {
 
 func plan(a detect.Result, signal detect.Signal) (source string, installed bool, step string) {
 	switch signal.Route {
+	case detect.RoutePackratRails:
+		if signal.Name == detect.Exceptions && sentryConfigured(a) {
+			return packratRails + " + " + sentry, true, stepPackratRails
+		}
+		return packratRails, true, stepPackratRails
 	case detect.RouteSentry:
 		return sentry, true, stepDualShip
 	case detect.RouteDatadogAgent:
@@ -121,9 +129,9 @@ func plan(a detect.Result, signal detect.Signal) (source string, installed bool,
 		return openTelemetry, false, "add the OpenTelemetry logs gems"
 	case detect.RouteSentryBrowser:
 		if sentryReplays(a) {
-			return sentryBrowser, true, stepDualShip
+			return sentryBrowser, true, stepBrowserCopy
 		}
-		return sentryBrowser, true, "turn on replays, then " + stepDualShip
+		return sentryBrowser, true, "turn on replays, then " + stepBrowserCopy
 	case detect.RouteSentryNew:
 		return sentryBrowser, false, "add the Sentry browser SDK"
 	}
@@ -133,6 +141,16 @@ func plan(a detect.Result, signal detect.Signal) (source string, installed bool,
 func hasOpenTelemetry(a detect.Result) bool {
 	for _, sdk := range a.SDKs {
 		if sdk.Vendor == openTelemetry && sdk.Production() && provides(sdk, string(detect.Traces)) {
+			return true
+		}
+	}
+	return false
+}
+
+// sentryConfigured decides whether Sentry is named beside packrat-rails, in detect and in plan.
+func sentryConfigured(a detect.Result) bool {
+	for _, sdk := range a.SDKs {
+		if sdk.Vendor == sentry && sdk.Production() && sdk.Configured {
 			return true
 		}
 	}
@@ -191,7 +209,7 @@ func PlanFor(w io.Writer, a detect.Result, status *query.Status, verbose bool) e
 		switch {
 		case step.Arrives:
 			arrive++
-		case step.Source != None:
+		case step.Source != None && step.Route != detect.RoutePackratRails:
 			total++
 		}
 	}

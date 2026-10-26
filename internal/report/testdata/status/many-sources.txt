@@ -14,4 +14,4 @@ packrat status  colorbook/production
   Packrat keeps the first source of exceptions and of traces.
   To use a different source, ask us to switch it.
 
-4 of 5 signals are arriving.
+4 of 5 signals are connected.

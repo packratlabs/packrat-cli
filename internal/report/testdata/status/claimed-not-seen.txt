@@ -2,9 +2,9 @@ packrat status  shop/production
 
   SIGNAL      SOURCE           KEPT  LAST DATA
   Exceptions  nothing yet
-  Traces      Datadog          yes   none
+  Traces      Datadog          yes   no traces yet
   Logs        OpenTelemetry    yes   3 minutes ago
   Metrics     nothing yet
   Replays     nothing yet
 
-2 of 5 signals are arriving.
+2 of 5 signals are connected.

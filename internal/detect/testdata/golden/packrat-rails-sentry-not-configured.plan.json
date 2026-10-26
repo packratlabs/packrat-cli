@@ -1,0 +1,64 @@
+{
+  "schema": "packrat.plan/1",
+  "path": "",
+  "app": null,
+  "stack": {
+    "name": "rails",
+    "version": "7.2.2",
+    "ruby": "3.1.6",
+    "evidence": [
+      {
+        "path": "Gemfile.lock",
+        "line": 59,
+        "text": "rails (7.2.2)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "exceptions",
+      "source": "packrat-rails",
+      "installed": true,
+      "step": "none: packrat-rails sends it",
+      "route": "packrat-rails",
+      "state": "already",
+      "reason": "packrat-rails sends Rails.error to Packrat",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "traces",
+      "source": "packrat-rails",
+      "installed": true,
+      "step": "none: packrat-rails sends it",
+      "route": "packrat-rails",
+      "state": "already",
+      "reason": "packrat-rails sends traces to Packrat",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "logs",
+      "source": "packrat-rails",
+      "installed": true,
+      "step": "none: packrat-rails sends it",
+      "route": "packrat-rails",
+      "state": "already",
+      "reason": "packrat-rails sends logs to Packrat",
+      "blocked": [],
+      "arrives": false
+    },
+    {
+      "name": "replays",
+      "source": "Sentry browser",
+      "installed": true,
+      "step": "copy to Packrat with a DSN",
+      "route": "Sentry browser copy",
+      "state": "route",
+      "reason": "replays on",
+      "blocked": [],
+      "arrives": false
+    }
+  ],
+  "notes": []
+}

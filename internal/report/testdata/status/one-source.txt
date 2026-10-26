@@ -7,4 +7,4 @@ packrat status  shop/production
   Metrics     OpenTelemetry    yes   now
   Replays     nothing yet
 
-4 of 5 signals are arriving.
+4 of 5 signals are connected.

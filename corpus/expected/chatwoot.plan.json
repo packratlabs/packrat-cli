@@ -54,7 +54,7 @@
       "name": "replays",
       "source": "Sentry browser",
       "installed": true,
-      "step": "turn on replays, then dual-ship to Packrat",
+      "step": "turn on replays, then copy to Packrat with a DSN",
       "route": "Sentry browser copy",
       "state": "route",
       "reason": "replays not enabled yet",
