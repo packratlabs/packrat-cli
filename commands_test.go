@@ -51,7 +51,7 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/cli/whoami":
 			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","org":"org_a","org_name":"Acme","email":"dana@example.com"}`)
 		case r.URL.Path == "/pulls/482":
-			answer(200, `{"app":"shop/production","pull":482,"analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
+			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}]}`)
 		case r.URL.Path == "/pulls/7":
 			answer(200, `{"app":"shop/production","pull":7,"analysed":false,"repository":"","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/checks" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
@@ -105,6 +105,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request by number asks by the origin remote", args: []string{"pr", "show", "#482"}, login: true, origin: "git@github.com:acme/shop.git\n", code: 0, stdout: "Report    packrat open http", request: "GET /pulls/482?repo=acme%2Fshop"},
 		{name: "--app wins over the repository", args: []string{"pr", "show", "482", "--app", "shop"}, login: true, origin: "git@github.com:acme/shop.git", code: 0, stdout: "due 20 Oct 21:00     Gift card totals are right.", request: "GET /pulls/482?app=shop"},
 		{name: "a pull request as JSON", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"verdict": "partly"`},
+		{name: "a pull request as JSON keeps its state", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"state": "partly"`},
+		{name: "a pull request as JSON keeps each check's runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"evidence": "3 carts off by the card"`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
 		{name: "not a pull request", args: []string{"pr", "show", "main"}, login: true, code: 2, stderr: "is not a pull request number or URL", none: true},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
