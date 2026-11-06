@@ -55,12 +55,25 @@ type Check struct {
 	OpenedAt time.Time  `json:"opened_at"`
 	ClosedAt *time.Time `json:"closed_at"`
 	Outcome  string     `json:"outcome"`
+	Title    string     `json:"title"`
+	Source   string     `json:"source"`
+	Result   string     `json:"result"`
+	Accepted string     `json:"accepted"`
+	Runs     []Run      `json:"runs"`
+}
+
+// Run is one time the analyst verified a check.
+type Run struct {
+	At       time.Time `json:"at"`
+	Result   string    `json:"result"`
+	Evidence string    `json:"evidence"`
 }
 
 // Pull is the answer of GET /pulls/:number.
 type Pull struct {
 	App        string   `json:"app"`
 	Pull       int      `json:"pull"`
+	State      string   `json:"state"`
 	Analysed   bool     `json:"analysed"`
 	Repository string   `json:"repository"`
 	Deploys    []Deploy `json:"deploys"`
