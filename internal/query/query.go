@@ -78,6 +78,12 @@ type NotFoundError struct{ Message string }
 
 func (e *NotFoundError) Error() string { return e.Message }
 
+// NotWatchedError is a repository or app Packrat's analyst does not look at, so nothing would run a check
+// declared for it. Message is the API's sentence.
+type NotWatchedError struct{ Message string }
+
+func (e *NotWatchedError) Error() string { return e.Message }
+
 // App is one service and environment that has sent data.
 type App struct {
 	App         string     `json:"app"`
@@ -222,9 +228,14 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 		return body, "", fmt.Errorf("%s has no %s (404). The API is older than this command", where, strings.SplitN(path, "?", 2)[0])
 	default:
 		var choose struct {
-			Apps []string `json:"apps"`
+			Apps    []string `json:"apps"`
+			Watched *bool    `json:"watched"`
 		}
-		if response.StatusCode == http.StatusBadRequest && json.Unmarshal(body, &choose) == nil && len(choose.Apps) > 0 {
+		_ = json.Unmarshal(body, &choose)
+		if response.StatusCode == http.StatusBadRequest && choose.Watched != nil && !*choose.Watched {
+			return body, "", &NotWatchedError{Message: message(body, "Packrat does not verify this app")}
+		}
+		if response.StatusCode == http.StatusBadRequest && len(choose.Apps) > 0 {
 			return body, "", &AppRequiredError{Apps: choose.Apps}
 		}
 		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))

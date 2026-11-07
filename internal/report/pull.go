@@ -59,9 +59,52 @@ func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 		}
 		b.WriteString("\n")
 	}
+	if len(p.Declared) > 0 {
+		b.WriteString("=== Waiting for the deploy\n")
+		b.WriteString(declaredTable(p.Declared, width) + "\n")
+	}
 	b.WriteString("=== Checks\n")
 	b.WriteString(checkTable(p.Checks, false, "No check for this pull request.", width))
 	return put(w, b.String())
+}
+
+// Declaration writes what a pull request declared, or what a dry run found in a draft.
+func Declaration(w io.Writer, d query.Declaration, width int) error {
+	var b strings.Builder
+	count := fmt.Sprintf("%d checks", len(d.Checks))
+	if len(d.Checks) == 1 {
+		count = "1 check"
+	}
+	switch {
+	case d.DryRun && d.None != "":
+		fmt.Fprintf(&b, "The draft declares no checks for %s: %s\n", d.App, d.None)
+	case d.DryRun:
+		fmt.Fprintf(&b, "The draft holds %s for %s.\n", count, d.App)
+	case d.None != "":
+		fmt.Fprintf(&b, "#%d declares no checks in %s: %s\n", d.Pull, d.App, d.None)
+	default:
+		fmt.Fprintf(&b, "Declared %s for #%d in %s. Each is due its time after the deploy that ships it.\n", count, d.Pull, d.App)
+	}
+	if len(d.Checks) > 0 {
+		b.WriteString("\n" + declaredTable(d.Checks, width))
+	}
+	return put(w, b.String())
+}
+
+// DeclarationJSON writes the answer of the API as it was read.
+func DeclarationJSON(w io.Writer, d query.Declaration) error { return putJSON(w, d) }
+
+func declaredTable(checks []query.Declared, width int) string {
+	var b strings.Builder
+	b.WriteString("AFTER  TITLE\n")
+	for _, check := range checks {
+		line := fmt.Sprintf("%-6s %s", check.After, check.Title)
+		if width > 0 && len([]rune(line)) > width {
+			line = string([]rune(line)[:width-1]) + "…"
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String()
 }
 
 // PullJSON writes the answer of the API as it was read.

@@ -71,14 +71,59 @@ type Run struct {
 
 // Pull is the answer of GET /pulls/:number.
 type Pull struct {
-	App        string   `json:"app"`
-	Org        string   `json:"org"`
-	Pull       int      `json:"pull"`
-	State      string   `json:"state"`
-	Analysed   bool     `json:"analysed"`
-	Repository string   `json:"repository"`
-	Deploys    []Deploy `json:"deploys"`
-	Checks     []Check  `json:"checks"`
+	App        string     `json:"app"`
+	Org        string     `json:"org"`
+	Pull       int        `json:"pull"`
+	State      string     `json:"state"`
+	Analysed   bool       `json:"analysed"`
+	Repository string     `json:"repository"`
+	Deploys    []Deploy   `json:"deploys"`
+	Checks     []Check    `json:"checks"`
+	Declared   []Declared `json:"declared"`
+}
+
+// Declared is a check a pull request declared, waiting for the deploy that ships it. After is how long
+// after that deploy it can first pass, such as "1h".
+type Declared struct {
+	Title string `json:"title"`
+	What  string `json:"what"`
+	After string `json:"after"`
+	Check string `json:"check,omitempty"`
+}
+
+// Declaration is the answer of PUT /pulls/:number/checks. Pull is 0 on a dry run, and None is why a
+// pull request declared no checks.
+type Declaration struct {
+	App    string     `json:"app"`
+	Pull   int        `json:"pull"`
+	DryRun bool       `json:"dry_run"`
+	None   string     `json:"none,omitempty"`
+	Checks []Declared `json:"checks"`
+}
+
+// Declare sends the checks a pull request ships with, which replace the ones it declared before. A dry
+// run with number 0 validates a draft before the pull request has a number, and keeps nothing.
+func (c Client) Declare(ctx context.Context, number int, where Where, draft []byte, dryRun bool) (Declaration, error) {
+	path := "/pulls/checks"
+	if number > 0 {
+		path = "/pulls/" + strconv.Itoa(number) + "/checks"
+	}
+	values := where.values()
+	if dryRun {
+		values.Set("dry_run", "1")
+	}
+	var declared Declaration
+	body, err := c.send(ctx, "PUT", path+query(values), "text/plain", "application/json", strings.NewReader(string(draft)))
+	if err != nil {
+		return Declaration{}, err
+	}
+	if err := decode(c.BaseURL, body, &declared); err != nil {
+		return Declaration{}, err
+	}
+	if declared.Checks == nil {
+		declared.Checks = []Declared{}
+	}
+	return declared, nil
 }
 
 // Checks is the answer of GET /checks.
@@ -98,6 +143,9 @@ func (c Client) Pull(ctx context.Context, number int, where Where) (Pull, error)
 	}
 	if pull.Checks == nil {
 		pull.Checks = []Check{}
+	}
+	if pull.Declared == nil {
+		pull.Declared = []Declared{}
 	}
 	return pull, nil
 }

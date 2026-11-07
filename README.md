@@ -145,6 +145,28 @@ URL, that's the repository in the URL. For a number, it's the `origin` remote of
 directory. To use a different app, pass `--app` or set `PACKRAT_APP`. Pass `--json` to output the API
 response.
 
+### pr checks set
+
+`packrat pr checks set` declares the checks a pull request ships with. Each waits until a deploy ships
+the pull request, then becomes a check due its `after` time past that deploy. Write the draft as JSON:
+
+```json
+[ { "title": "The cart is faster", "what": "p95 of GET /cart is under 300 ms.", "after": "1h" },
+  { "title": "Checkout still works", "what": "No new errors on POST /checkout.", "after": "1d" } ]
+```
+
+A change production can't show declares `{"none": "why"}` instead. Validate a draft before the pull
+request exists, then declare it once it has a number:
+
+```
+packrat pr checks set --dry-run --file checks.json
+packrat pr checks set 482 --file checks.json
+```
+
+Declaring again replaces the list. Once a deploy has shipped the pull request, add a check with
+`packrat check add`. The command exits 3 when Packrat doesn't verify the repository. The Packrat plugin
+for Claude Code runs both commands for you when Claude opens a pull request.
+
 ### check
 
 A check asks Packrat's analyst to verify something at a later time. Write what must be true and the

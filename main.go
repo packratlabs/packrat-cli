@@ -26,6 +26,8 @@ const (
 	exitOK     = 0
 	exitFailed = 1
 	exitUsage  = 2
+	// exitNotWatched is a repository Packrat does not verify, which a hook lets through.
+	exitNotWatched = 3
 )
 
 const (
