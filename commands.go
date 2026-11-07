@@ -209,7 +209,12 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(io.Discard)
 	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
 	asJSON := fs.Bool("json", false, "")
+	file := fs.String("file", "", "")
+	dryRun := fs.Bool("dry-run", false, "")
 	words, err := parseInterleaved(fs, args)
+	if err == nil && len(words) >= 2 && words[0] == "checks" && words[1] == "set" {
+		return declareChecks(w, words[2:], *app, *file, *dryRun, *asJSON, stdout, stderr)
+	}
 	if err != nil || len(words) != 2 || words[0] != "show" {
 		return say(stderr, prUsage, exitUsage)
 	}
@@ -236,7 +241,55 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-const prUsage = "packrat pr: specify a command: show NUMBER|URL. Run packrat help pr for details.\n"
+// declareChecks sends the checks drafted in file for a pull request, or, with dryRun and no pull request,
+// has the API validate the draft. A repository Packrat does not verify exits exitNotWatched, so a hook can
+// let the pull request through.
+func declareChecks(w world, words []string, app, file string, dryRun, asJSON bool, stdout, stderr io.Writer) int {
+	const name = "pr checks set"
+	if len(words) > 1 || file == "" || (len(words) == 0 && !dryRun) {
+		return say(stderr, "packrat "+name+": specify the pull request and --file: packrat pr checks set NUMBER|URL --file checks.json (or --dry-run with no pull request)\n", exitUsage)
+	}
+	number, where := 0, query.Where{App: app, Repo: originRepo(w)}
+	if len(words) == 1 {
+		var ok bool
+		if number, where, ok = pullRef(w, words[0], app); !ok {
+			return say(stderr, fmt.Sprintf("packrat %s: %q is not a pull request number or URL\n", name, words[0]), exitUsage)
+		}
+	}
+	var draft []byte
+	var err error
+	if file == "-" {
+		draft, err = io.ReadAll(w.stdin)
+	} else {
+		draft, err = os.ReadFile(file) // #nosec G304 -- the file the user named
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: reading %s: %v\n", name, file, err), exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
+	}
+	declared, err := client.Declare(context.Background(), number, where, draft, dryRun)
+	var notWatched *query.NotWatchedError
+	if errors.As(err, &notWatched) {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, notWatched), exitNotWatched)
+	}
+	if err != nil {
+		return fail(stderr, name, name+" --app %s", err)
+	}
+	if asJSON {
+		err = report.DeclarationJSON(stdout, declared)
+	} else {
+		err = report.Declaration(stdout, declared, width(w))
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	}
+	return exitOK
+}
+
+const prUsage = "packrat pr: specify a command: show NUMBER|URL, or checks set. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, due, name, usage string, stdout, stderr io.Writer) int {
 	at, err := time.Parse("2006-01-02T15:04Z07:00", due)

@@ -54,6 +54,16 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"now":"2026-10-20T21:00:00Z","apps":[{"app":"shop/production","service":"shop","env":"production","org":"org_a","org_name":"Acme","repository":"acme/shop","first_seen_at":"2026-10-01T00:00:00Z"},{"app":"blog/production","service":"blog","env":"production","org":"org_b","org_name":"Bolt","repository":"bolt/blog","first_seen_at":"2026-10-01T00:00:00Z"}]}`)
 		case r.URL.Path == "/pulls/482":
 			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}]}`)
+		case r.URL.Path == "/pulls/checks" && r.URL.Query().Get("repo") == "acme/blog":
+			answer(400, `{"type":"error","message":"no app is connected to acme/blog on GitHub.","watched":false}`)
+		case r.URL.Path == "/pulls/checks":
+			answer(200, `{"app":"shop/production","pull":null,"dry_run":true,"checks":[{"title":"The cart is faster","what":"x","after":"1h"}]}`)
+		case r.URL.Path == "/pulls/482/checks" && strings.Contains(string(body), "none"):
+			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"none":"Docs only.","checks":[]}`)
+		case r.URL.Path == "/pulls/482/checks":
+			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"checks":[{"title":"The cart is faster","what":"x","after":"1h"},{"title":"No checkout errors","what":"y","after":"1d"}]}`)
+		case r.URL.Path == "/pulls/9/checks":
+			answer(409, `{"type":"error","message":"#9 shipped in 9f2c41e8 at 2026-10-14 16:02 UTC, and its checks are scheduled."}`)
 		case r.URL.Path == "/pulls/7":
 			answer(200, `{"app":"shop/production","pull":7,"analysed":false,"repository":"","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/checks" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
@@ -117,6 +127,13 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request as JSON keeps each check's runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"evidence": "3 carts off by the card"`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
 		{name: "not a pull request", args: []string{"pr", "show", "main"}, login: true, code: 2, stderr: "is not a pull request number or URL", none: true},
+		{name: "a dry run checks a draft by the origin remote", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `[{"title":"The cart is faster"}]`, code: 0, stdout: "The draft holds 1 check for shop/production.\n\nAFTER  TITLE\n1h     The cart is faster\n", request: `PUT /pulls/checks?dry_run=1&repo=acme%2Fshop [{"title":"The cart is faster"}]`},
+		{name: "a pull request declares its checks", args: []string{"pr", "checks", "set", "https://github.com/acme/shop/pull/482", "--file", "-"}, login: true, stdin: "[]", code: 0, stdout: "Declared 2 checks for #482 in shop/production.", request: "PUT /pulls/482/checks?repo=acme%2Fshop []"},
+		{name: "a pull request declares none", args: []string{"pr", "checks", "set", "482", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git", stdin: `{"none":"Docs only."}`, code: 0, stdout: "#482 declares no checks in shop/production: Docs only."},
+		{name: "a repository Packrat does not verify exits 3", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/blog.git", stdin: "[]", code: 3, stderr: "no app is connected to acme/blog"},
+		{name: "a shipped pull request says how to add a check", args: []string{"pr", "checks", "set", "9", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git", stdin: "[]", code: 1, stderr: "its checks are scheduled"},
+		{name: "declaring needs a file", args: []string{"pr", "checks", "set", "482"}, login: true, code: 2, stderr: "specify the pull request and --file", none: true},
+		{name: "declaring needs a pull request unless it is a dry run", args: []string{"pr", "checks", "set", "--file", "-"}, login: true, code: 2, stderr: "specify the pull request and --file", none: true},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
 		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?due=2026-10-20T21%3A00Z&pull=482&repo=acme%2Fshop Gift card totals are right."},
 		{name: "a check needs a time", args: []string{"check", "add", "--pull", "482"}, login: true, stdin: "x", code: 2, stderr: "specify --due, the earliest time", none: true},

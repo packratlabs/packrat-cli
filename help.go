@@ -123,6 +123,23 @@ func commands() map[string]command {
 				"any checks. With a number, the repository is the origin remote of the current directory.",
 			examples: []string{"packrat pr show 482", "packrat pr show https://github.com/acme/shop/pull/482"},
 		},
+		"pr checks set": {
+			summary: "declare the checks a pull request ships with",
+			usage:   "packrat pr checks set [NUMBER|URL] --file FILE [--dry-run] [--app SERVICE] [--json]",
+			args:    [][2]string{{"NUMBER|URL", "pull request number or GitHub URL (not needed with --dry-run)"}},
+			flags: [][2]string{
+				{"--file=<value>", "the draft, as JSON (- reads stdin)"},
+				{"--dry-run", "check the draft and keep nothing"},
+				{"--app=<value>", "app to use (default: the app connected to the repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Sends the checks a pull request ships with, replacing any it declared before. Each waits until a\n" +
+				"deploy ships the pull request, then becomes a check due its time after that deploy. The draft is a\n" +
+				"JSON list, [{\"title\": \"...\", \"what\": \"...\", \"after\": \"1h\"}], with after from 0m to 30d, or\n" +
+				"{\"none\": \"why production cannot show this change\"}. Once a deploy has shipped the pull request, add\n" +
+				"a check with packrat check add. Exits 3 when Packrat does not verify the repository.",
+			examples: []string{"packrat pr checks set --dry-run --file checks.json", "packrat pr checks set 482 --file checks.json"},
+		},
 		"sql": {
 			summary: "query your telemetry with SQL",
 			usage:   "packrat sql [SQL] [--app SERVICE] [-f FILE] [--quiet]",
@@ -199,7 +216,7 @@ func helpAsked(args []string) ([]string, bool) {
 		switch {
 		case arg == "-h" || arg == "--help" || arg == "-help":
 			asked = true
-		case !asked && !strings.HasPrefix(arg, "-") && len(words) < 2:
+		case !asked && !strings.HasPrefix(arg, "-") && len(words) < 3:
 			words = append(words, arg)
 		}
 	}
@@ -211,6 +228,11 @@ func helpAsked(args []string) ([]string, bool) {
 func helpFor(words []string) (string, bool) {
 	if len(words) == 0 {
 		return topLevelHelp(), true
+	}
+	if len(words) > 2 {
+		if c, found := commands()[strings.Join(words[:3], " ")]; found {
+			return commandHelp(c), true
+		}
 	}
 	if len(words) > 1 {
 		if c, found := commands()[words[0]+" "+words[1]]; found {
