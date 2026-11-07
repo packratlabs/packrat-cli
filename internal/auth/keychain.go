@@ -20,18 +20,18 @@ const (
 // stdin, never as an argument, so it is not in the process list.
 type Keychain struct{}
 
-// Get reads the token of org.
-func (Keychain) Get(org string) (string, error) {
-	out, err := security(nil, "find-generic-password", "-s", service, "-a", org, "-w")
+// Get reads the token of account.
+func (Keychain) Get(account string) (string, error) {
+	out, err := security(nil, "find-generic-password", "-s", service, "-a", account, "-w")
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(out), nil
 }
 
-// Set keeps token for org, in place of any token it had.
-func (Keychain) Set(org, token string) error {
-	command := fmt.Sprintf("add-generic-password -U -s %s -a %s -w %s\n", service, quote(org), quote(token))
+// Set keeps token for account, in place of any token it had.
+func (Keychain) Set(account, token string) error {
+	command := fmt.Sprintf("add-generic-password -U -s %s -a %s -w %s\n", service, quote(account), quote(token))
 	if _, err := security([]byte(command), "-i"); err != nil {
 		// Only the exit: what security -i prints about a failed line can repeat the line, token and all.
 		var exit *exec.ExitError
@@ -43,9 +43,9 @@ func (Keychain) Set(org, token string) error {
 	return nil
 }
 
-// Delete forgets the token of org. A token that is not there is not an error.
-func (Keychain) Delete(org string) error {
-	_, err := security(nil, "delete-generic-password", "-s", service, "-a", org)
+// Delete forgets the token of account. A token that is not there is not an error.
+func (Keychain) Delete(account string) error {
+	_, err := security(nil, "delete-generic-password", "-s", service, "-a", account)
 	var exit *exec.ExitError
 	if errors.As(err, &exit) && exit.ExitCode() == notFound {
 		return nil
@@ -56,7 +56,7 @@ func (Keychain) Delete(org string) error {
 func security(stdin []byte, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), commandLimit)
 	defer cancel()
-	command := exec.CommandContext(ctx, "/usr/bin/security", args...) // #nosec G204 -- fixed words, and an org id, which is never the token
+	command := exec.CommandContext(ctx, "/usr/bin/security", args...) // #nosec G204 -- fixed words, and an account name, which is never the token
 	command.Stdin = bytes.NewReader(stdin)
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr

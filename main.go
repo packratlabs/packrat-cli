@@ -50,7 +50,12 @@ type world struct {
 	heard      *query.Heard
 	releases   query.Releases
 	executable func() (string, error)
+	// org is --org, which any command takes.
+	org string
 }
+
+// orgName is the variable that names the org when there is no --org.
+const orgName = "PACKRAT_ORG"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -73,6 +78,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func runIn(w world, args []string, stdout, stderr io.Writer) int {
+	args, org, ok := takeOrg(args)
+	if !ok {
+		return say(stderr, "packrat: --org needs an org's public id, such as --org org_5k2m9x0qv7ha. Run packrat auth status to list yours.\n", exitUsage)
+	}
+	w.org = org
 	code := dispatch(w, args, stdout, stderr)
 	notify(w, args, stderr)
 	return code
@@ -318,6 +328,30 @@ func awaitData(w world, client query.Client, app string) (query.Status, error) {
 	}
 }
 
+// takeOrg takes --org ORG or --org=ORG out of args, wherever it is. ok is false for an --org with no ORG.
+func takeOrg(args []string) (rest []string, org string, ok bool) {
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--org":
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+				return nil, "", false
+			}
+			org = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--org="):
+			org = strings.TrimPrefix(args[i], "--org=")
+			if org == "" {
+				return nil, "", false
+			}
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return rest, org, true
+}
+
+// newClient asks the API with the key, naming the org (--org, then PACKRAT_ORG) and this checkout's
+// repository, which is how the API picks one of the orgs a key from packrat login opens.
 func newClient(w world) (query.Client, error) {
 	key, err := query.Key(w.getenv, w.store)
 	if err != nil {
@@ -327,7 +361,12 @@ func newClient(w world) (query.Client, error) {
 	if base == "" {
 		base = query.DefaultURL
 	}
-	return query.Client{BaseURL: base, Key: key, HTTP: w.http, Version: version, Agent: query.Agent(w.getenv), Heard: w.heard}, nil
+	org := w.org
+	if org == "" {
+		org = strings.TrimSpace(w.getenv(orgName))
+	}
+	return query.Client{BaseURL: base, Key: key, Org: org, Repo: originRepo(w), HTTP: w.http, Version: version,
+		Agent: query.Agent(w.getenv), Heard: w.heard}, nil
 }
 
 // runSetup is the setup topic: detect and plan, which read a project before it sends anything.

@@ -43,13 +43,15 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 				answer(400, `{"error":"authorization_pending"}`)
 				return
 			}
-			answer(200, `{"access_token":"`+loginKey+`","key":"key_1","org":"org_a","org_name":"Acme","email":"dana@example.com"}`)
+			answer(200, `{"access_token":"`+loginKey+`","key":"key_1","email":"dana@example.com"}`)
 		case !signedIn:
 			answer(401, "")
 		case r.URL.Path == "/cli/token":
 			answer(204, "")
 		case r.URL.Path == "/cli/whoami":
-			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","org":"org_a","org_name":"Acme","email":"dana@example.com"}`)
+			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","email":"dana@example.com","orgs":[{"org":"org_a","name":"Acme"},{"org":"org_b","name":"Bolt"}]}`)
+		case r.URL.Path == "/apps":
+			answer(200, `{"now":"2026-10-20T21:00:00Z","apps":[{"app":"shop/production","service":"shop","env":"production","org":"org_a","org_name":"Acme","repository":"acme/shop","first_seen_at":"2026-10-01T00:00:00Z"},{"app":"blog/production","service":"blog","env":"production","org":"org_b","org_name":"Bolt","repository":"bolt/blog","first_seen_at":"2026-10-01T00:00:00Z"}]}`)
 		case r.URL.Path == "/pulls/482":
 			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}]}`)
 		case r.URL.Path == "/pulls/7":
@@ -88,17 +90,23 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		login   bool
 		stdin   string
 		origin  string
+		org     string
 		code    int
 		stdout  string
 		stderr  string
 		request string
 		none    bool
 	}{
-		{name: "login waits for the browser and keeps the key", args: []string{"login", "--no-browser"}, code: 0, stdout: "Signed in to Acme as dana@example.com.", request: "POST /cli/token device_code=dev"},
+		{name: "login waits for the browser and keeps the key", args: []string{"login", "--no-browser"}, code: 0, stdout: "Signed in as dana@example.com, in every org you belong to.", request: "POST /cli/token device_code=dev"},
 		{name: "login with a browser says what to check", args: []string{"login"}, code: 0, stdout: "Confirm that it shows the code BCDF-GHJK"},
-		{name: "auth status names the key of the sign-in", args: []string{"auth", "status"}, login: true, code: 0, stdout: "Signed in to Acme (org_a) as dana@example.com."},
+		{name: "auth status names the person and the orgs", args: []string{"auth", "status"}, login: true, code: 0, stdout: "Signed in as dana@example.com.\nKey key_1, \"CLI: laptop\", from packrat login.\n\nOrgs\n  Acme  org_a\n  Bolt  org_b\n\nCommands here find the org"},
+		{name: "auth status marks the org of this checkout", args: []string{"auth", "status"}, login: true, origin: "git@github.com:bolt/blog.git", code: 0, stdout: "  Acme  org_a\n* Bolt  org_b\n\n* is the org commands read here: an app in it reads bolt/blog, this checkout's origin.", request: "GET /apps?repo=bolt%2Fblog"},
+		{name: "auth status marks the org of --org", args: []string{"auth", "status", "--org", "org_a"}, login: true, code: 0, stdout: "* Acme  org_a\n  Bolt  org_b\n\n* is the org commands read here: --org."},
+		{name: "--org goes on every request", args: []string{"--org=org_b", "sql", "--app", "shop", "select 1"}, login: true, origin: "git@github.com:acme/shop.git", code: 0, request: "POST /sql?app=shop&org=org_b&repo=acme%2Fshop select 1"},
+		{name: "PACKRAT_ORG names the org", args: []string{"check", "list", "--app", "shop"}, org: "org_b", login: true, code: 0, request: "GET /checks?app=shop&org=org_b"},
+		{name: "--org needs a value", args: []string{"sql", "--org"}, login: true, code: 2, stderr: "--org needs an org's public id", none: true},
 		{name: "auth status says when PACKRAT_API_KEY is used", args: []string{"auth", "status"}, key: statusKey, login: true, code: 0, stdout: "from PACKRAT_API_KEY"},
-		{name: "logout revokes the key", args: []string{"logout"}, login: true, code: 0, stdout: "Signed out of Acme.", request: "DELETE /cli/token"},
+		{name: "logout revokes the key", args: []string{"logout"}, login: true, code: 0, stdout: "Signed out dana@example.com.", request: "DELETE /cli/token"},
 		{name: "logout with no sign-in", args: []string{"logout"}, code: 0, stdout: "You're not signed in."},
 		{name: "no key", args: []string{"pr", "show", "482"}, code: 2, stderr: "Run packrat login", none: true},
 		{name: "a pull request by URL asks by its repository", args: []string{"pr", "show", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total\nshop/production\n\nDeploy    9f2c41e8, live 2026-10-14 16:02 UTC\nVerdict   worked in part\n", request: "GET /pulls/482?repo=acme%2Fshop"},
@@ -135,10 +143,10 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			server, asked := fakePackrat(t)
-			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL, "PACKRAT_URL": server.URL}
+			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL, "PACKRAT_URL": server.URL, "PACKRAT_ORG": tc.org}
 			store := auth.Store{Dir: t.TempDir()}
 			if tc.login {
-				if err := store.Save(auth.SignIn{Org: "org_a", OrgName: "Acme", Email: "dana@example.com", Key: "key_1", Token: loginKey}); err != nil {
+				if err := store.Save(auth.SignIn{Email: "dana@example.com", Key: "key_1", Token: loginKey}); err != nil {
 					t.Fatalf("saving the sign-in: %v", err)
 				}
 			}
@@ -177,8 +185,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 			}
 			if tc.args[0] == "login" && tc.code == 0 {
 				signIn, err := store.Current()
-				if err != nil || signIn.Token != loginKey || signIn.Org != "org_a" {
-					t.Errorf("kept %+v (%v), want the key of org_a", signIn, err)
+				if err != nil || signIn.Token != loginKey || signIn.Email != "dana@example.com" {
+					t.Errorf("kept %+v (%v), want dana's key", signIn, err)
 				}
 				if (browsed != "") == (len(tc.args) > 1) {
 					t.Errorf("browsed %q with args %v", browsed, tc.args)

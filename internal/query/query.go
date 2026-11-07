@@ -83,6 +83,9 @@ type App struct {
 	App         string     `json:"app"`
 	Service     string     `json:"service"`
 	Env         string     `json:"env"`
+	Org         string     `json:"org"`
+	OrgName     string     `json:"org_name"`
+	Repository  string     `json:"repository"`
 	FirstSeenAt time.Time  `json:"first_seen_at"`
 	LastDataAt  *time.Time `json:"last_data_at"`
 }
@@ -118,10 +121,13 @@ type Status struct {
 }
 
 // Client reads the API with one key. Version and Agent go in the User-Agent, and when Heard is set,
-// the release headers of each answer are kept in it.
+// the release headers of each answer are kept in it. Org and Repo go on every request that does not
+// say its own: with a key from packrat login, they are how the API picks one of the person's orgs.
 type Client struct {
 	BaseURL string
 	Key     string
+	Org     string
+	Repo    string
 	HTTP    *http.Client
 	Version string
 	Agent   string
@@ -167,7 +173,7 @@ func (c Client) get(ctx context.Context, path string, into any) error {
 
 // send asks the API. On an error the body is the API's answer, when there was one.
 func (c Client) send(ctx context.Context, method, path, contentType, accept string, payload io.Reader) ([]byte, error) {
-	address := strings.TrimRight(c.BaseURL, "/") + path
+	address := strings.TrimRight(c.BaseURL, "/") + c.scoped(path)
 	if payload == nil {
 		payload = http.NoBody
 	}
@@ -223,6 +229,23 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 		}
 		return body, "", fmt.Errorf("%s answered %d: %s", where, response.StatusCode, message(body, "no reason given"))
 	}
+}
+
+func (c Client) scoped(path string) string {
+	if c.Org == "" && c.Repo == "" {
+		return path
+	}
+	base, raw, _ := strings.Cut(path, "?")
+	values, err := url.ParseQuery(raw)
+	if err != nil {
+		return path
+	}
+	for name, value := range map[string]string{"org": c.Org, "repo": c.Repo} {
+		if value != "" && !values.Has(name) {
+			values.Set(name, value)
+		}
+	}
+	return base + "?" + values.Encode()
 }
 
 func (c Client) userAgent() string {

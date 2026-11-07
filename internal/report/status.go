@@ -34,18 +34,27 @@ func Apps(w io.Writer, apps query.Apps) error {
 	if len(apps.Apps) == 0 {
 		return put(w, NoApps+"\n")
 	}
-	width := len("APP")
+	width, orgWidth, orgs := len("APP"), len("ORG"), map[string]bool{}
 	for _, app := range apps.Apps {
 		width = max(width, len(app.App))
+		orgWidth = max(orgWidth, len(app.OrgName))
+		orgs[app.Org] = true
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%-*s  %s\n", width, "APP", "LAST DATA")
+	row := func(name, org, last string) {
+		if len(orgs) > 1 {
+			fmt.Fprintf(&b, "%-*s  %-*s  %s\n", width, name, orgWidth, org, last)
+		} else {
+			fmt.Fprintf(&b, "%-*s  %s\n", width, name, last)
+		}
+	}
+	row("APP", "ORG", "LAST DATA")
 	for _, app := range apps.Apps {
 		last := "none"
 		if app.LastDataAt != nil {
 			last = ago(apps.Now.Sub(*app.LastDataAt))
 		}
-		fmt.Fprintf(&b, "%-*s  %s\n", width, app.App, last)
+		row(app.App, app.OrgName, last)
 	}
 	return put(w, b.String())
 }

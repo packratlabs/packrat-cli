@@ -37,19 +37,23 @@ type Started struct {
 type Token struct {
 	AccessToken string `json:"access_token"`
 	Key         string `json:"key"`
-	Org         string `json:"org"`
-	OrgName     string `json:"org_name"`
 	Email       string `json:"email"`
 }
 
-// Who is the answer of GET /cli/whoami: the key that asked.
+// Org is one org a key opens.
+type Org struct {
+	Org  string `json:"org"`
+	Name string `json:"name"`
+}
+
+// Who is the answer of GET /cli/whoami: the key that asked, and the orgs it opens. A key from
+// packrat login opens each org its person belongs to; a key from the keys page opens its one org.
 type Who struct {
-	Key     string `json:"key"`
-	Name    string `json:"name"`
-	Source  string `json:"source"`
-	Org     string `json:"org"`
-	OrgName string `json:"org_name"`
-	Email   string `json:"email"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Source string `json:"source"`
+	Email  string `json:"email"`
+	Orgs   []Org  `json:"orgs"`
 }
 
 // StartSignIn asks for a code for this machine, named name.
