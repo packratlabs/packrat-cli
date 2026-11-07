@@ -13,15 +13,15 @@ import (
 
 type memory map[string]string
 
-func (m memory) Get(org string) (string, error) {
-	token, found := m[org]
+func (m memory) Get(account string) (string, error) {
+	token, found := m[account]
 	if !found {
 		return "", errors.New("no token")
 	}
 	return token, nil
 }
-func (m memory) Set(org, token string) error { m[org] = token; return nil }
-func (m memory) Delete(org string) error     { delete(m, org); return nil }
+func (m memory) Set(account, token string) error { m[account] = token; return nil }
+func (m memory) Delete(account string) error     { delete(m, account); return nil }
 
 func TestStore(t *testing.T) {
 	tests := []struct {
@@ -29,8 +29,8 @@ func TestStore(t *testing.T) {
 		secrets auth.Secrets
 		inFile  bool
 	}{
-		{name: "tokens in the file", inFile: true},
-		{name: "tokens apart from the file", secrets: memory{}},
+		{name: "token in the file", inFile: true},
+		{name: "token apart from the file", secrets: memory{}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -39,13 +39,13 @@ func TestStore(t *testing.T) {
 				t.Fatalf("an empty store answers %v, want ErrNotSignedIn", err)
 			}
 
-			for _, org := range []string{"org_b", "org_a"} {
-				if err := store.Save(auth.SignIn{Org: org, Email: "dana@example.com", Token: "packrat_api_" + org}); err != nil {
-					t.Fatalf("saving %s: %v", org, err)
+			for _, key := range []string{"key_1", "key_2"} {
+				if err := store.Save(auth.SignIn{Email: "dana@example.com", Key: key, Token: "packrat_api_" + key}); err != nil {
+					t.Fatalf("saving %s: %v", key, err)
 				}
 			}
 			current, err := store.Current()
-			if err != nil || current.Org != "org_a" || current.Token != "packrat_api_org_a" {
+			if err != nil || current.Key != "key_2" || current.Token != "packrat_api_key_2" {
 				t.Fatalf("current is %+v (%v), want the last sign-in with its token", current, err)
 			}
 
@@ -62,23 +62,14 @@ func TestStore(t *testing.T) {
 				t.Errorf("the file's mode is %v (%v), want 0600", info.Mode().Perm(), err)
 			}
 
-			_, all, err := store.All()
-			if err != nil || len(all) != 2 || all[0].Token != "" {
-				t.Errorf("All is %+v (%v), want two sign-ins and no token", all, err)
-			}
-
-			if err := store.Remove("org_a"); err != nil {
-				t.Fatalf("removing: %v", err)
-			}
-			current, err = store.Current()
-			if err != nil || current.Org != "org_b" {
-				t.Errorf("after removing the current one, current is %+v (%v), want org_b", current, err)
-			}
-			if err := store.Remove("org_b"); err != nil {
+			if err := store.Remove(); err != nil {
 				t.Fatalf("removing: %v", err)
 			}
 			if _, err := store.Current(); !errors.Is(err, auth.ErrNotSignedIn) {
-				t.Errorf("after removing all, current answers %v, want ErrNotSignedIn", err)
+				t.Errorf("after removing, current answers %v, want ErrNotSignedIn", err)
+			}
+			if err := store.Remove(); err != nil {
+				t.Errorf("removing twice: %v", err)
 			}
 		})
 	}

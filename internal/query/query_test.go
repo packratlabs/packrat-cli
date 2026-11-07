@@ -32,7 +32,7 @@ func TestKey(t *testing.T) {
 		{name: "the environment wins", env: "from-env", stored: signIns{signIn: auth.SignIn{Token: "from-login"}}, want: "from-env"},
 		{name: "the sign-in", stored: signIns{signIn: auth.SignIn{Token: "from-login"}}, want: "from-login"},
 		{name: "no sign-in", stored: signIns{err: auth.ErrNotSignedIn}, wantErr: query.ErrNoKey},
-		{name: "a sign-in with no token", stored: signIns{signIn: auth.SignIn{Org: "org_a"}}, wantErr: query.ErrNoKey},
+		{name: "a sign-in with no token", stored: signIns{signIn: auth.SignIn{Key: "key_1"}}, wantErr: query.ErrNoKey},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

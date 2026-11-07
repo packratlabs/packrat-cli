@@ -40,16 +40,17 @@ func commands() map[string]command {
 			summary: "list your apps",
 			usage:   "packrat apps [--json]",
 			flags:   [][2]string{{"--json", "output the API response as JSON"}},
-			description: "Lists each app that has sent data to Packrat, with the time of its most recent data. An app\n" +
-				"is a service name and an environment. If you don't recognize an app, it's usually one of yours\n" +
-				"reporting under a different service name or environment.",
+			description: "Lists each app that has sent data to Packrat, in every org you belong to, with the time of\n" +
+				"its most recent data. An app is a service name and an environment. If you don't recognize an\n" +
+				"app, it's usually one of yours reporting under a different service name or environment.",
 			examples: []string{"packrat apps"},
 		},
 		"auth status": {
-			summary:     "show the org and key that commands use",
-			usage:       "packrat auth status",
-			description: "Commands use PACKRAT_API_KEY if it's set. Otherwise, they use the key from packrat login.",
-			examples:    []string{"packrat auth status"},
+			summary: "show the key that commands use, and the orgs it opens",
+			usage:   "packrat auth status",
+			description: "Commands use PACKRAT_API_KEY if it's set. Otherwise, they use the key from packrat login, which\n" +
+				"opens every org you belong to. The org marked * is the one commands read in this directory.",
+			examples: []string{"packrat auth status"},
 		},
 		"setup detect": {
 			summary: "scan a project for existing observability tools",
@@ -67,9 +68,10 @@ func commands() map[string]command {
 			summary: "sign in to Packrat in your browser",
 			usage:   "packrat login [--no-browser]",
 			flags:   [][2]string{{"--no-browser", "print the sign-in URL and code instead of opening a browser"}},
-			description: "Creates an API key for you on this machine. The key is stored in the macOS Keychain, or in\n" +
-				"~/.config/packrat/credentials.json on other platforms. You can see and revoke it on your org's\n" +
-				"API keys page.",
+			description: "Creates an API key for you on this machine, which opens every org you belong to. The key is\n" +
+				"stored in the macOS Keychain, or in ~/.config/packrat/credentials.json on other platforms. Each\n" +
+				"of your orgs lists it on its API keys page, where you can revoke it. It stops working after 90\n" +
+				"days unused.",
 			examples: []string{"packrat login"},
 		},
 		"logout": {
@@ -238,6 +240,9 @@ func topLevelHelp() string {
 	}
 	width := max(columnWidth(topicRows), columnWidth(commandRows))
 	b.WriteString("TOPICS\n" + tableAt(topicRows, width) + "\nCOMMANDS\n" + tableAt(commandRows, width))
+	b.WriteString("\nORGS\n" +
+		"  A command reads one of your orgs: the one --org or PACKRAT_ORG names, else the one whose app\n" +
+		"  --app names or whose app reads this checkout's GitHub repository, else your only org.\n")
 	return b.String()
 }
 

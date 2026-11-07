@@ -72,6 +72,7 @@ type Run struct {
 // Pull is the answer of GET /pulls/:number.
 type Pull struct {
 	App        string   `json:"app"`
+	Org        string   `json:"org"`
 	Pull       int      `json:"pull"`
 	State      string   `json:"state"`
 	Analysed   bool     `json:"analysed"`

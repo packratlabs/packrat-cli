@@ -70,18 +70,42 @@ Waiting...
 Signed in to Acme as dana@example.com.
 ```
 
-Signing in creates an API key for you on this machine. On macOS, the key is stored in your login
-Keychain. On other platforms, it's stored in `~/.config/packrat/credentials.json` with mode `0600`.
-On macOS, `credentials.json` holds only the org and your email address.
+Signing in creates an API key for you on this machine. The key belongs to you rather than to an
+org: it opens every org you belong to, and an org you leave drops out at once. On macOS, the key is
+stored in your login Keychain. On other platforms, it's stored in `~/.config/packrat/credentials.json`
+with mode `0600`. On macOS, `credentials.json` holds only your email address and the key's id.
 
-The key appears with your name on your org's API keys page, where you or anyone in the org can
-revoke it. It stops working if you leave the org. If you sign in to a second org, commands use that
-org. Run `packrat auth status` to see which org and key are in use.
+Each of your orgs lists the key on its API keys page, where you can revoke it. It stops working after
+90 days unused. Run `packrat auth status` to see the key and the orgs it opens.
+
+### Choose an org
+
+Each command reads one of your orgs:
+
+1. The org that `--org` or `PACKRAT_ORG` names, by its public id (`org_…`).
+2. The org with the app that `--app` names, when only one of your orgs has it.
+3. The org with an app that reads this checkout's GitHub repository (its `origin` remote).
+4. Your only org, when you belong to one.
+
+Otherwise the command fails and lists your orgs. `packrat auth status` marks the org that commands
+read in the current directory:
+
+```
+$ packrat auth status
+Signed in as dana@example.com.
+Key key_7ha5k2m9x0qv, "CLI: dana-mbp", from packrat login.
+
+Orgs
+* Acme  org_5k2m9x0qv7ha
+  Bolt  org_x0qv7ha5k2m9
+
+* is the org commands read here: an app in it reads acme/shop, this checkout's origin.
+```
 
 To sign out and revoke the key, run `packrat logout`.
 
-In CI, set `PACKRAT_API_KEY` instead. Commands use `PACKRAT_API_KEY` if it's set, and the key from
-`packrat login` otherwise. `packrat logout` doesn't affect `PACKRAT_API_KEY`.
+In CI, set `PACKRAT_API_KEY` to a key from an org's API keys page instead. That key opens its one
+org. Commands use `PACKRAT_API_KEY` if it's set, and the key from `packrat login` otherwise. `packrat logout` doesn't affect `PACKRAT_API_KEY`.
 
 ## Commands
 

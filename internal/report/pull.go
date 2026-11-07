@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/packratlabs/packrat-cli/internal/auth"
 	"github.com/packratlabs/packrat-cli/internal/query"
 )
 
@@ -193,8 +192,9 @@ func fold(text string, width int, indent string) string {
 	return b.String()
 }
 
-// SignedIn writes who a key is, where it came from, and the other sign-ins kept.
-func SignedIn(w io.Writer, who query.Who, fromEnv bool, current string, all []auth.SignIn) error {
+// SignedIn says who the key is, the orgs it opens, and which of them commands read here (here is
+// its public id, or empty when commands must name one), and why.
+func SignedIn(w io.Writer, who query.Who, fromEnv bool, here, why string) error {
 	var b strings.Builder
 	from := "packrat login"
 	if fromEnv {
@@ -202,18 +202,24 @@ func SignedIn(w io.Writer, who query.Who, fromEnv bool, current string, all []au
 	}
 	person := who.Email
 	if person == "" {
-		person = "the org (no person)"
+		person = "an org (no person)"
 	}
-	fmt.Fprintf(&b, "Signed in to %s (%s) as %s.\nKey %s, %q, from %s.\n", who.OrgName, who.Org, person, who.Key, who.Name, from)
-	if len(all) > 1 {
-		b.WriteString("\nSign-ins kept:\n")
-		for _, signIn := range all {
-			mark := " "
-			if signIn.Org == current {
-				mark = "*"
-			}
-			fmt.Fprintf(&b, "  %s %s (%s) as %s\n", mark, signIn.OrgName, signIn.Org, signIn.Email)
+	fmt.Fprintf(&b, "Signed in as %s.\nKey %s, %q, from %s.\n\nOrgs\n", person, who.Key, who.Name, from)
+	width := 0
+	for _, org := range who.Orgs {
+		width = max(width, len(org.Name))
+	}
+	for _, org := range who.Orgs {
+		mark := " "
+		if org.Org == here {
+			mark = "*"
 		}
+		fmt.Fprintf(&b, "%s %-*s  %s\n", mark, width, org.Name, org.Org)
+	}
+	if here != "" {
+		fmt.Fprintf(&b, "\n* is the org commands read here: %s.\n", why)
+	} else if len(who.Orgs) > 1 {
+		b.WriteString("\nCommands here find the org from --app, or name it with --org or PACKRAT_ORG.\n")
 	}
 	return put(w, b.String())
 }

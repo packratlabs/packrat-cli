@@ -58,10 +58,10 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
 	}
-	if err := w.store.Save(auth.SignIn{Org: token.Org, OrgName: token.OrgName, Email: token.Email, Key: token.Key, Token: token.AccessToken}); err != nil {
+	if err := w.store.Save(auth.SignIn{Email: token.Email, Key: token.Key, Token: token.AccessToken}); err != nil {
 		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
 	}
-	return say(stdout, fmt.Sprintf("Signed in to %s as %s.\n", token.OrgName, token.Email), exitOK)
+	return say(stdout, fmt.Sprintf("Signed in as %s, in every org you belong to. Run packrat auth status to list them.\n", token.Email), exitOK)
 }
 
 func awaitToken(w world, site query.Client, started query.Started) (query.Token, error) {
@@ -95,10 +95,10 @@ func runLogout(w world, args []string, stdout, stderr io.Writer) int {
 	if err := siteClient(w, signIn.Token).Revoke(context.Background()); err != nil && !errors.Is(err, query.ErrRefused) {
 		return say(stderr, fmt.Sprintf("packrat logout: revoking the key: %v\n", err), exitFailed)
 	}
-	if err := w.store.Remove(signIn.Org); err != nil {
+	if err := w.store.Remove(); err != nil {
 		return say(stderr, fmt.Sprintf("packrat logout: %v\n", err), exitFailed)
 	}
-	msg := fmt.Sprintf("Signed out of %s. The key for this machine is revoked.\n", signIn.OrgName)
+	msg := fmt.Sprintf("Signed out %s. The key for this machine is revoked.\n", signIn.Email)
 	if w.getenv(query.KeyName) != "" {
 		msg += query.KeyName + " is still set, and commands still use it.\n"
 	}
@@ -109,22 +109,48 @@ func runAuth(w world, args []string, stdout, stderr io.Writer) int {
 	if len(args) != 1 || args[0] != "status" {
 		return say(stderr, "packrat auth: specify a command: status. Run packrat help auth for details.\n", exitUsage)
 	}
-	key, err := query.Key(w.getenv, w.store)
+	client, err := newClient(w)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
 	}
-	who, err := siteClient(w, key).WhoAmI(context.Background())
+	who, err := siteClient(w, client.Key).WhoAmI(context.Background())
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
 	}
-	current, all, err := w.store.All()
-	if err != nil && !errors.Is(err, auth.ErrNotSignedIn) {
-		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
-	}
-	if err := report.SignedIn(stdout, who, w.getenv(query.KeyName) != "", current, all); err != nil {
+	here, why := orgHere(w, client, who)
+	if err := report.SignedIn(stdout, who, w.getenv(query.KeyName) != "", here, why); err != nil {
 		return say(stderr, fmt.Sprintf("packrat auth status: %v\n", err), exitFailed)
 	}
 	return exitOK
+}
+
+// orgHere is the org that commands read in this directory, and why, or nothing when they must name one.
+func orgHere(w world, client query.Client, who query.Who) (here, why string) {
+	switch {
+	case w.org != "":
+		return w.org, "--org"
+	case w.getenv(orgName) != "":
+		return client.Org, orgName
+	case len(who.Orgs) == 1:
+		return who.Orgs[0].Org, "the only org the key opens"
+	case client.Repo == "":
+		return "", ""
+	}
+	apps, err := client.Apps(context.Background())
+	if err != nil {
+		return "", ""
+	}
+	orgs := map[string]bool{}
+	for _, app := range apps.Apps {
+		if strings.EqualFold(app.Repository, client.Repo) {
+			orgs[app.Org] = true
+			here = app.Org
+		}
+	}
+	if len(orgs) != 1 {
+		return "", ""
+	}
+	return here, "an app in it reads " + client.Repo + ", this checkout's origin"
 }
 
 func runSQL(w world, args []string, stdout, stderr io.Writer) int {
@@ -350,10 +376,7 @@ func pullRef(w world, ref, app string) (int, query.Where, bool) {
 	if found := pullURL.FindStringSubmatch(ref); found != nil {
 		repo, digits = found[1], found[2]
 	} else if found := pullNum.FindStringSubmatch(ref); found != nil {
-		digits = found[1]
-		if found := originRe.FindStringSubmatch(strings.TrimSpace(w.origin())); found != nil {
-			repo = found[1]
-		}
+		digits, repo = found[1], originRepo(w)
 	} else {
 		return 0, query.Where{}, false
 	}
@@ -362,6 +385,17 @@ func pullRef(w world, ref, app string) (int, query.Where, bool) {
 		return 0, query.Where{}, false
 	}
 	return number, query.Where{App: app, Repo: repo}, true
+}
+
+// originRepo is the GitHub owner/name of this checkout's origin remote, or empty.
+func originRepo(w world) string {
+	if w.origin == nil {
+		return ""
+	}
+	if found := originRe.FindStringSubmatch(strings.TrimSpace(w.origin())); found != nil {
+		return found[1]
+	}
+	return ""
 }
 
 func siteURL(w world) string {
