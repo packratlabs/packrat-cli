@@ -111,6 +111,24 @@ func commands() map[string]command {
 			description: "Doesn't make network requests, unless you pass --app.",
 			examples:    []string{"packrat setup plan", "packrat setup plan --app shop/production"},
 		},
+		"issues": {
+			summary: "list the issues an app's errors are grouped into",
+			usage:   "packrat issues [--app SERVICE] [--status STATUS] [--kind KIND] [--sort SORT] [--json]",
+			flags: [][2]string{
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
+				{"--status=<value>", "unresolved (default), resolved, archived or all"},
+				{"--kind=<value>", "error or detected (default: both)"},
+				{"--environment=<value>", "count only this environment's events"},
+				{"--sort=<value>", "priority (default), date, freq, new or user"},
+				{"--period=<value>", "how far back to count events, such as 24h or 14d (default: 14d)"},
+				{"--limit=<value>", "1 to 100 (default: 25)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Lists the app's issues in the order of its Issues page: the analyst's severity first, then how\n" +
+				"many events and people each reaches. An issue marked AI is one the analyst raised from the data\n" +
+				"rather than an exception.",
+			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
+		},
 		"pr show": {
 			summary: "show how a pull request performed in production",
 			usage:   "packrat pr show NUMBER|URL [--app SERVICE] [--json]",

@@ -241,6 +241,41 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+func runIssues(w world, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("issues", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
+	asJSON := fs.Bool("json", false, "")
+	var filter query.IssueFilter
+	fs.StringVar(&filter.Status, "status", "", "")
+	fs.StringVar(&filter.Kind, "kind", "", "")
+	fs.StringVar(&filter.Environment, "environment", "", "")
+	fs.StringVar(&filter.Sort, "sort", "priority", "")
+	fs.StringVar(&filter.Period, "period", "", "")
+	fs.IntVar(&filter.Limit, "limit", 0, "")
+	words, err := parseInterleaved(fs, args)
+	if err != nil || len(words) > 0 {
+		return say(stderr, "packrat issues: this command takes only flags. Run packrat help issues for details.\n", exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat issues: %v\n", err), exitUsage)
+	}
+	list, err := client.Issues(context.Background(), query.Where{App: *app, Repo: originRepo(w)}, filter)
+	if err != nil {
+		return fail(stderr, "issues", "issues --app %s", err)
+	}
+	if *asJSON {
+		err = report.IssueListJSON(stdout, list)
+	} else {
+		err = report.IssueList(stdout, list, filter.Status, width(w))
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat issues: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
 // declareChecks sends the checks drafted in file for a pull request, or, with dryRun and no pull request,
 // has the API validate the draft. A repository Packrat does not verify exits exitNotWatched, so a hook can
 // let the pull request through.

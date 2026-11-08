@@ -111,6 +111,24 @@ org. Commands use `PACKRAT_API_KEY` if it's set, and the key from `packrat login
 
 Run `packrat help` for a list of commands, and `packrat help COMMAND` for a command's usage.
 
+### issues
+
+`packrat issues` lists the app's unresolved issues in the order of its Issues page: the analyst's severity
+first, then how many events and people each reaches. An issue marked `AI:` is one the analyst raised from
+the data rather than an exception. The app is the one connected to this checkout's repository, or `--app`.
+
+```
+$ packrat issues
+=== shop issues · unresolved, events over 14d
+
+ID       SEVERITY  EVENTS  USERS  TITLE
+SHOP-14  critical      41      9  AI: Gift card carts fail to pay
+SHOP-12  high           6      2  ActiveRecord::RangeError: PG::NumericValueOutOfRange
+SHOP-9   —              3      1  NoMethodError: undefined method 'total' for nil
+```
+
+`--status`, `--kind`, `--sort` and `--json` change what it lists; see `packrat help issues`.
+
 ### pr show
 
 `packrat pr show` shows how a pull request performed in production:
