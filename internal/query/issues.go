@@ -29,7 +29,7 @@ type Issue struct {
 	PartOf        string    `json:"part_of"`
 	Environment   string    `json:"environment,omitempty"`
 	State         string    `json:"state,omitempty"`
-	Normal        bool      `json:"normal,omitempty"`
+	Normal        string    `json:"normal,omitempty"`
 	Errors        []string  `json:"errors,omitempty"`
 	Pull          int       `json:"pull,omitempty"`
 	Reasons       []string  `json:"reasons,omitempty"`
