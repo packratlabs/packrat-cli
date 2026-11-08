@@ -118,6 +118,8 @@ func dispatch(w world, args []string, stdout, stderr io.Writer) int {
 		return runSQL(w, args[1:], stdout, stderr)
 	case "pr":
 		return runPR(w, args[1:], stdout, stderr)
+	case "issues":
+		return runIssues(w, args[1:], stdout, stderr)
 	// watch is the name before 2026-10-17.
 	case "check", "watch":
 		return runCheck(w, args[1:], stdout, stderr)
