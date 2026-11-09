@@ -50,6 +50,7 @@ type Check struct {
 	ID       string     `json:"id"`
 	What     string     `json:"what"`
 	DueAt    time.Time  `json:"due_at"`
+	RunsAt   *time.Time `json:"runs_at,omitempty"`
 	Pull     int        `json:"pull"`
 	Asked    bool       `json:"asked"`
 	OpenedAt time.Time  `json:"opened_at"`
