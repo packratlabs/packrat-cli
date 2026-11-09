@@ -44,5 +44,30 @@ func IssueList(w io.Writer, list query.Issues, status string, width int) error {
 	return put(w, b.String())
 }
 
+// IssueJSON writes one issue as the API answered it.
+func IssueJSON(w io.Writer, issue query.Issue) error { return putJSON(w, issue) }
+
 // IssueListJSON writes the answer of the API as it was read.
 func IssueListJSON(w io.Writer, list query.Issues) error { return putJSON(w, list) }
+
+// IssueActed says what became of an issue a member resolved, archived or reopened.
+func IssueActed(w io.Writer, issue query.Issue) error {
+	var line string
+	switch {
+	case issue.Status == "resolved":
+		line = "Resolved " + issue.ID + "."
+	case issue.Status == "archived" && issue.ArchivedUntil == "forever":
+		line = "Archived " + issue.ID + " for good."
+	case issue.Status == "archived":
+		line = "Archived " + issue.ID + " until it escalates."
+	default:
+		line = "Reopened " + issue.ID + "."
+	}
+	if issue.Reason != "" {
+		line += "\nReason: " + issue.Reason
+	}
+	if _, err := fmt.Fprintln(w, line); err != nil {
+		return fmt.Errorf("writing the answer: %w", err)
+	}
+	return nil
+}

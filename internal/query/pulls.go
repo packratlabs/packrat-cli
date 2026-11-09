@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -72,15 +73,17 @@ type Run struct {
 
 // Pull is the answer of GET /pulls/:number.
 type Pull struct {
-	App        string     `json:"app"`
-	Org        string     `json:"org"`
-	Pull       int        `json:"pull"`
-	State      string     `json:"state"`
-	Analysed   bool       `json:"analysed"`
-	Repository string     `json:"repository"`
-	Deploys    []Deploy   `json:"deploys"`
-	Checks     []Check    `json:"checks"`
-	Declared   []Declared `json:"declared"`
+	App   string `json:"app"`
+	Org   string `json:"org"`
+	Pull  int    `json:"pull"`
+	State string `json:"state"`
+	// ArchiveReason is why a member archived its verification, if they said.
+	ArchiveReason string     `json:"archive_reason,omitempty"`
+	Analysed      bool       `json:"analysed"`
+	Repository    string     `json:"repository"`
+	Deploys       []Deploy   `json:"deploys"`
+	Checks        []Check    `json:"checks"`
+	Declared      []Declared `json:"declared"`
 }
 
 // Declared is a check a pull request declared, waiting for the deploy that ships it. After is how long
@@ -149,6 +152,21 @@ func (c Client) Pull(ctx context.Context, number int, where Where) (Pull, error)
 		pull.Declared = []Declared{}
 	}
 	return pull, nil
+}
+
+// ArchivePull archives a pending verification and cancels its open checks; with archived false it moves the
+// verification back and opens them again.
+func (c Client) ArchivePull(ctx context.Context, number int, where Where, archived bool, reason string) (Pull, error) {
+	method := http.MethodPatch
+	if !archived {
+		method = http.MethodDelete
+	}
+	body, err := c.act(ctx, method, "/pulls/"+strconv.Itoa(number)+"/archive"+query(where.values()), reason)
+	if err != nil {
+		return Pull{}, err
+	}
+	var pull Pull
+	return pull, decode(c.BaseURL, body, &pull)
 }
 
 // Checks lists the app's open checks, and the asked ones closed this week. A pull above 0 keeps the

@@ -211,9 +211,13 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	asJSON := fs.Bool("json", false, "")
 	file := fs.String("file", "", "")
 	dryRun := fs.Bool("dry-run", false, "")
+	reason := fs.String("reason", "", "")
 	words, err := parseInterleaved(fs, args)
 	if err == nil && len(words) >= 2 && words[0] == "checks" && words[1] == "set" {
 		return declareChecks(w, words[2:], *app, *file, *dryRun, *asJSON, stdout, stderr)
+	}
+	if err == nil && len(words) == 2 && (words[0] == "archive" || words[0] == "unarchive") {
+		return archivePull(w, words[1], *app, words[0] == "archive", *reason, *asJSON, stdout, stderr)
 	}
 	if err != nil || len(words) != 2 || words[0] != "show" {
 		return say(stderr, prUsage, exitUsage)
@@ -253,9 +257,16 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&filter.Sort, "sort", "priority", "")
 	fs.StringVar(&filter.Period, "period", "", "")
 	fs.IntVar(&filter.Limit, "limit", 0, "")
+	var action query.IssueAction
+	fs.StringVar(&action.Until, "until", "", "")
+	fs.StringVar(&action.Reason, "reason", "", "")
 	words, err := parseInterleaved(fs, args)
+	if err == nil && len(words) == 2 && (words[0] == "resolve" || words[0] == "archive" || words[0] == "reopen") {
+		action.Do = words[0]
+		return actOnIssue(w, words[1], *app, action, *asJSON, stdout, stderr)
+	}
 	if err != nil || len(words) > 0 {
-		return say(stderr, "packrat issues: this command takes only flags. Run packrat help issues for details.\n", exitUsage)
+		return say(stderr, "packrat issues: specify only flags to list issues, or resolve, archive or reopen and an issue ID. Run packrat help issues for details.\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -272,6 +283,58 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat issues: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+func actOnIssue(w world, id, app string, action query.IssueAction, asJSON bool, stdout, stderr io.Writer) int {
+	name := "issues " + action.Do
+	if action.Until != "" && (action.Do != "archive" || (action.Until != "escalating" && action.Until != "forever")) {
+		return say(stderr, "packrat "+name+": --until is escalating or forever, and only for packrat issues archive\n", exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
+	}
+	issue, err := client.ActOnIssue(context.Background(), id, query.Where{App: app, Repo: originRepo(w)}, action)
+	if err != nil {
+		return fail(stderr, name, name+" "+id+" --app %s", err)
+	}
+	if asJSON {
+		err = report.IssueJSON(stdout, issue)
+	} else {
+		err = report.IssueActed(stdout, issue)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	}
+	return exitOK
+}
+
+func archivePull(w world, ref, app string, archived bool, reason string, asJSON bool, stdout, stderr io.Writer) int {
+	name := "pr archive"
+	if !archived {
+		name = "pr unarchive"
+	}
+	number, where, ok := pullRef(w, ref, app)
+	if !ok {
+		return say(stderr, fmt.Sprintf("packrat %s: %q is not a pull request number or URL\n", name, ref), exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
+	}
+	pull, err := client.ArchivePull(context.Background(), number, where, archived, reason)
+	if err != nil {
+		return fail(stderr, name, name+" "+ref+" --app %s", err)
+	}
+	if asJSON {
+		err = report.PullJSON(stdout, pull)
+	} else {
+		err = report.PullArchived(stdout, pull)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
 	}
 	return exitOK
 }
@@ -324,7 +387,7 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 	return exitOK
 }
 
-const prUsage = "packrat pr: specify a command: show NUMBER|URL, or checks set. Run packrat help pr for details.\n"
+const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive or checks set. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, due, name, usage string, stdout, stderr io.Writer) int {
 	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
