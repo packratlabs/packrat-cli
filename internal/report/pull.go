@@ -270,3 +270,18 @@ func SignedIn(w io.Writer, who query.Who, fromEnv bool, here, why string) error 
 func short(version string) string { return version[:min(8, len(version))] }
 
 func stamp(at time.Time) string { return at.UTC().Format("2006-01-02 15:04 UTC") }
+
+// PullArchived says where a pull request's verification stands after a member archived it or moved it back.
+func PullArchived(w io.Writer, p query.Pull) error {
+	line := fmt.Sprintf("Moved #%d in %s back to pending, with its checks open again.", p.Pull, p.App)
+	if p.State == "archived" {
+		line = fmt.Sprintf("Archived #%d in %s and cancelled its open checks.", p.Pull, p.App)
+	}
+	if p.ArchiveReason != "" {
+		line += "\nReason: " + p.ArchiveReason
+	}
+	if _, err := fmt.Fprintln(w, line); err != nil {
+		return fmt.Errorf("writing the answer: %w", err)
+	}
+	return nil
+}

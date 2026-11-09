@@ -30,7 +30,7 @@ func topics() map[string]topic {
 		"auth":  {summary: "manage your Packrat sign-in"},
 		"setup": {summary: "set up Packrat in a project"},
 		"check": {summary: "schedule checks that verify a change in production"},
-		"pr":    {summary: "see how pull requests performed in production"},
+		"pr":    {summary: "see how pull requests performed in production, and archive their verification"},
 	}
 }
 
@@ -126,8 +126,43 @@ func commands() map[string]command {
 			},
 			description: "Lists the app's issues in the order of its Issues page: the analyst's severity first, then how\n" +
 				"many events and people each reaches. An issue marked AI is one the analyst raised from the data\n" +
-				"rather than an exception.",
+				"rather than an exception. To change one, run packrat issues resolve, archive or reopen.",
 			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
+		},
+		"issues resolve": {
+			summary: "resolve an issue",
+			usage:   "packrat issues resolve ID [--reason TEXT] [--app SERVICE] [--json]",
+			args:    [][2]string{{"ID", "issue ID, such as SHOP-41, from packrat issues"}},
+			flags: [][2]string{
+				{"--reason=<value>", "why, for the analyst to read in its next daily summary"},
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Resolves the issue, as Resolve on the Issues page does. Resolving an AI-detected issue resolves\n" +
+				"the errors under it. Give a reason when the issue was wrong or is fixed in a way the data can't\n" +
+				"show: the analyst reads it, so it doesn't raise the same issue again.",
+			examples: []string{"packrat issues resolve SHOP-41", `packrat issues resolve SHOP-41 --reason "The check counted errors the change never meant to stop."`},
+		},
+		"issues archive": {
+			summary: "archive an issue",
+			usage:   "packrat issues archive ID [--until escalating|forever] [--reason TEXT] [--app SERVICE] [--json]",
+			args:    [][2]string{{"ID", "issue ID, such as SHOP-41, from packrat issues"}},
+			flags: [][2]string{
+				{"--until=<value>", "escalating (default): it comes back if it escalates; forever: it never does"},
+				{"--reason=<value>", "why, for the analyst to read in its next daily summary"},
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Archives the issue, as Archive on the Issues page does. Archive an issue that is normal for this\n" +
+				"app; resolve one that is fixed.",
+			examples: []string{"packrat issues archive SHOP-41", `packrat issues archive SHOP-41 --until forever --reason "Bots probing old URLs."`},
+		},
+		"issues reopen": {
+			summary:  "reopen a resolved or archived issue",
+			usage:    "packrat issues reopen ID [--app SERVICE] [--json]",
+			args:     [][2]string{{"ID", "issue ID, such as SHOP-41"}},
+			flags:    [][2]string{{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"}, {"--json", "output the API response as JSON"}},
+			examples: []string{"packrat issues reopen SHOP-41"},
 		},
 		"pr show": {
 			summary: "show how a pull request performed in production",
@@ -140,6 +175,28 @@ func commands() map[string]command {
 			description: "Shows each deploy that included the pull request, with the analyst's verdict, the evidence and\n" +
 				"any checks. With a number, the repository is the origin remote of the current directory.",
 			examples: []string{"packrat pr show 482", "packrat pr show https://github.com/acme/shop/pull/482"},
+		},
+		"pr archive": {
+			summary: "stop verifying a pull request",
+			usage:   "packrat pr archive NUMBER|URL [--reason TEXT] [--app SERVICE] [--json]",
+			args:    [][2]string{{"NUMBER|URL", "pull request number or GitHub URL"}},
+			flags: [][2]string{
+				{"--reason=<value>", "why, for the analyst to read at each look"},
+				{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Archives a pending verification, as Archive on PR Verifications does: the analyst stops looking\n" +
+				"at the pull request and its open checks are cancelled. A verification that already has a verdict\n" +
+				"can't be archived. Run packrat pr unarchive to move it back.",
+			examples: []string{"packrat pr archive 482", `packrat pr archive 482 --reason "Reverted in #483."`},
+		},
+		"pr unarchive": {
+			summary:     "verify an archived pull request again",
+			usage:       "packrat pr unarchive NUMBER|URL [--app SERVICE] [--json]",
+			args:        [][2]string{{"NUMBER|URL", "pull request number or GitHub URL"}},
+			flags:       [][2]string{{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"}, {"--json", "output the API response as JSON"}},
+			description: "Moves the verification back to pending and opens again the checks the archive cancelled.",
+			examples:    []string{"packrat pr unarchive 482"},
 		},
 		"pr checks set": {
 			summary: "declare the checks a pull request ships with",

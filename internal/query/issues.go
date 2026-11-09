@@ -2,7 +2,12 @@ package query
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,6 +24,7 @@ type Issue struct {
 	ArchivedUntil string    `json:"archived_until"`
 	Severity      string    `json:"severity"`
 	Summary       string    `json:"summary"`
+	Reason        string    `json:"reason,omitempty"`
 	Level         string    `json:"level"`
 	Platform      string    `json:"platform"`
 	Events        int       `json:"events"`
@@ -73,4 +79,48 @@ func (c Client) Issues(ctx context.Context, where Where, filter IssueFilter) (Is
 		issues.Issues = []Issue{}
 	}
 	return issues, nil
+}
+
+// IssueAction is what a member does to an issue: resolve, archive or reopen it.
+type IssueAction struct {
+	Do     string
+	Until  string
+	Reason string
+}
+
+// ActOnIssue resolves, archives or reopens issue id, and answers with the issue as it is now.
+func (c Client) ActOnIssue(ctx context.Context, id string, where Where, action IssueAction) (Issue, error) {
+	values := where.values()
+	method, path := http.MethodPatch, "/issues/"+url.PathEscape(id)
+	switch action.Do {
+	case "resolve":
+		path += "/resolve"
+	case "archive":
+		path += "/archive"
+		if action.Until != "" {
+			values.Set("until", action.Until)
+		}
+	case "reopen":
+		method, path = http.MethodDelete, path+"/resolve"
+	default:
+		return Issue{}, fmt.Errorf("%q is not something to do to an issue", action.Do)
+	}
+	body, err := c.act(ctx, method, path+query(values), action.Reason)
+	if err != nil {
+		return Issue{}, err
+	}
+	var issue Issue
+	return issue, decode(c.BaseURL, body, &issue)
+}
+
+// act sends a change, with the reason a member gave for it in a JSON body.
+func (c Client) act(ctx context.Context, method, path, reason string) ([]byte, error) {
+	if reason == "" {
+		return c.send(ctx, method, path, "", "application/json", nil)
+	}
+	payload, err := json.Marshal(map[string]string{"reason": reason})
+	if err != nil {
+		return nil, fmt.Errorf("writing the reason: %w", err)
+	}
+	return c.send(ctx, method, path, "application/json", "application/json", strings.NewReader(string(payload)))
 }

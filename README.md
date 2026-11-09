@@ -129,6 +129,18 @@ SHOP-9   —              3      1  NoMethodError: undefined method 'total' for 
 
 `--status`, `--kind`, `--sort` and `--json` change what it lists; see `packrat help issues`.
 
+`packrat issues resolve SHOP-14`, `packrat issues archive SHOP-14` and `packrat issues reopen SHOP-14`
+change an issue as the buttons on its Issues page do. `--reason` says why, and the analyst reads it in its
+next daily summary:
+
+```
+$ packrat issues resolve SHOP-14 --reason "Gift cards moved to the new processor in #490."
+Resolved SHOP-14.
+Reason: Gift cards moved to the new processor in #490.
+```
+
+`archive` takes `--until escalating` (the default) or `--until forever`.
+
 ### pr show
 
 `packrat pr show` shows how a pull request performed in production:
@@ -157,6 +169,9 @@ due 20 Oct 21:00     Gift card checkouts charge the total the page shows.     ch
 
 Times are UTC. packrat check show <ID> prints the whole text.
 ```
+
+`packrat pr archive 482 --reason "Reverted in #483."` stops a pending verification and cancels its open
+checks, as Archive on PR Verifications does. `packrat pr unarchive 482` moves it back.
 
 By default, the app is the one whose analyst is connected to the pull request's repository. For a
 URL, that's the repository in the URL. For a number, it's the `origin` remote of the current

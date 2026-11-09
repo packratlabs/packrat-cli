@@ -52,6 +52,22 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","email":"dana@example.com","orgs":[{"org":"org_a","name":"Acme"},{"org":"org_b","name":"Bolt"}]}`)
 		case r.URL.Path == "/apps":
 			answer(200, `{"now":"2026-10-20T21:00:00Z","apps":[{"app":"shop/production","service":"shop","env":"production","org":"org_a","org_name":"Acme","repository":"acme/shop","first_seen_at":"2026-10-01T00:00:00Z"},{"app":"blog/production","service":"blog","env":"production","org":"org_b","org_name":"Bolt","repository":"bolt/blog","first_seen_at":"2026-10-01T00:00:00Z"}]}`)
+		case r.URL.Path == "/issues/SHOP-3/resolve" && r.Method == http.MethodPatch:
+			answer(200, `{"id":"SHOP-3","kind":"detected","status":"resolved","resolved_by":"member","reason":"The check measured the wrong thing."}`)
+		case r.URL.Path == "/issues/SHOP-3/archive" && r.URL.Query().Get("until") == "forever":
+			answer(200, `{"id":"SHOP-3","kind":"detected","status":"archived","archived_until":"forever"}`)
+		case r.URL.Path == "/issues/SHOP-3/archive" && r.Method == http.MethodPatch:
+			answer(200, `{"id":"SHOP-3","kind":"detected","status":"archived","archived_until":"escalating"}`)
+		case r.URL.Path == "/issues/SHOP-3/resolve" && r.Method == http.MethodDelete:
+			answer(200, `{"id":"SHOP-3","kind":"detected","status":"unresolved"}`)
+		case r.URL.Path == "/issues/SHOP-9/resolve":
+			answer(404, `{"message":"shop has no issue SHOP-9"}`)
+		case r.URL.Path == "/pulls/482/archive" && r.Method == http.MethodPatch:
+			answer(200, `{"app":"shop/production","pull":482,"state":"archived","archive_reason":"Reverted in #483.","deploys":[],"checks":[]}`)
+		case r.URL.Path == "/pulls/482/archive" && r.Method == http.MethodDelete:
+			answer(200, `{"app":"shop/production","pull":482,"state":"pending","deploys":[],"checks":[]}`)
+		case r.URL.Path == "/pulls/490/archive":
+			answer(409, `{"message":"#490 is confirmed, and only a pending verification can be archived"}`)
 		case r.URL.Path == "/pulls/482":
 			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","runs_at":"2026-10-20T21:07:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}]}`)
 		case r.URL.Path == "/pulls/checks" && r.URL.Query().Get("repo") == "acme/blog":
@@ -140,7 +156,20 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "issues by the origin remote, by priority", args: []string{"issues"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
 			stdout: "=== shop issues · unresolved, events over 14d\n\nID      SEVERITY  EVENTS  USERS  TITLE\nSHOP-3  high          12      4  AI: Checkout fails for gift cards\nSHOP-2  —              3      1  NoMethodError", request: "GET /issues?repo=acme%2Fshop&sort=priority"},
 		{name: "issues as JSON keep the summary and reasons", args: []string{"issues", "--app", "shop", "--kind", "detected", "--json"}, login: true, code: 0, stdout: `"normal": "Gift card failures run at this level most days."`, request: "GET /issues?app=shop&kind=detected&sort=priority"},
-		{name: "issues take only flags", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "takes only flags", none: true},
+		{name: "issues take only flags or an action", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "resolve, archive or reopen and an issue ID", none: true},
+		{name: "resolve an issue with a reason", args: []string{"issues", "resolve", "SHOP-3", "--reason", "The check measured the wrong thing."}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
+			stdout: "Resolved SHOP-3.\nReason: The check measured the wrong thing.\n", request: `PATCH /issues/SHOP-3/resolve?repo=acme%2Fshop {"reason":"The check measured the wrong thing."}`},
+		{name: "archive an issue for good", args: []string{"issues", "archive", "SHOP-3", "--until", "forever", "--app", "shop"}, login: true, code: 0, stdout: "Archived SHOP-3 for good.\n", request: "PATCH /issues/SHOP-3/archive?app=shop&until=forever"},
+		{name: "archive an issue until it escalates", args: []string{"issues", "archive", "SHOP-3", "--app", "shop"}, login: true, code: 0, stdout: "Archived SHOP-3 until it escalates.\n", request: "PATCH /issues/SHOP-3/archive?app=shop"},
+		{name: "reopen an issue", args: []string{"issues", "reopen", "SHOP-3", "--app", "shop"}, login: true, code: 0, stdout: "Reopened SHOP-3.\n", request: "DELETE /issues/SHOP-3/resolve?app=shop"},
+		{name: "resolve an issue as JSON", args: []string{"issues", "resolve", "SHOP-3", "--app", "shop", "--json"}, login: true, code: 0, stdout: `"resolved_by": "member"`},
+		{name: "until is only for archive", args: []string{"issues", "resolve", "SHOP-3", "--until", "forever"}, login: true, code: 2, stderr: "--until is escalating or forever", none: true},
+		{name: "resolve an issue that is not there", args: []string{"issues", "resolve", "SHOP-9", "--app", "shop"}, login: true, code: 1, stderr: "packrat issues resolve: shop has no issue SHOP-9"},
+		{name: "archive a pull request's verification", args: []string{"pr", "archive", "482", "--reason", "Reverted in #483."}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
+			stdout: "Archived #482 in shop/production and cancelled its open checks.\nReason: Reverted in #483.\n", request: `PATCH /pulls/482/archive?repo=acme%2Fshop {"reason":"Reverted in #483."}`},
+		{name: "unarchive a pull request's verification", args: []string{"pr", "unarchive", "https://github.com/acme/shop/pull/482"}, login: true, code: 0,
+			stdout: "Moved #482 in shop/production back to pending", request: "DELETE /pulls/482/archive?repo=acme%2Fshop"},
+		{name: "a verification with a verdict is not archived", args: []string{"pr", "archive", "490", "--app", "shop"}, login: true, code: 1, stderr: "only a pending verification can be archived"},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
 		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?due=2026-10-20T21%3A00Z&pull=482&repo=acme%2Fshop Gift card totals are right."},
 		{name: "a check needs a time", args: []string{"check", "add", "--pull", "482"}, login: true, stdin: "x", code: 2, stderr: "specify --due, the earliest time", none: true},
