@@ -1,8 +1,6 @@
 package report
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -11,14 +9,18 @@ import (
 	"github.com/packratlabs/packrat-cli/internal/query"
 )
 
-// Overview writes what the analyst said about an app in the last day, newest first.
+// Overview writes the items of an app's latest daily summary.
 func Overview(w io.Writer, o query.Overview, width int, queryURL string) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "=== %s · what the analyst said in the last 24 hours\n", o.App)
-	if len(o.Feed) == 0 {
-		b.WriteString("\nNothing. The analyst writes a summary at 06:00, 12:00 and 18:00 Denver time.\n")
+	if o.Report == nil {
+		fmt.Fprintf(&b, "=== %s\n\nNo summary yet. The analyst writes one at 06:00, 12:00 and 18:00 Denver time.\n", o.App)
+		return put(w, b.String())
 	}
-	for _, item := range o.Feed {
+	fmt.Fprintf(&b, "=== %s · %s\n%s · %s UTC\n", o.App, o.Report.Subject, o.Report.ID, o.Report.At.UTC().Format("2006-01-02 15:04"))
+	if len(o.Items) == 0 {
+		b.WriteString("\nNothing worth your minute in this summary.\n")
+	}
+	for _, item := range o.Items {
 		tag := ""
 		if item.Issue != nil {
 			tag = "  " + *item.Issue
@@ -30,23 +32,17 @@ func Overview(w io.Writer, o query.Overview, width int, queryURL string) error {
 			}
 		}
 		fmt.Fprintf(&b, "\n%s  %s%s\n", strings.ToUpper(item.Status), oneLine(item.Title), tag)
-		fmt.Fprintf(&b, "  %s · %s UTC\n", item.Report, item.At.UTC().Format("2006-01-02 15:04"))
-		texts := []string{item.Changed, item.Matters, item.Evidence}
+		next := ""
 		if item.Next != "" {
-			texts = append(texts, "Next: "+item.Next)
+			next = "Next: " + item.Next
 		}
-		if item.Body != nil {
-			texts = strings.Split(*item.Body, "\n\n")
-		}
-		for _, text := range texts {
+		for _, text := range []string{item.Changed, item.Matters, item.Evidence, next} {
 			for _, line := range wrapWords(oneLine(text), max(width-2, 20)) {
 				fmt.Fprintf(&b, "  %s\n", line)
 			}
 		}
 	}
-	if len(o.Feed) > 0 {
-		fmt.Fprintf(&b, "\nRead a whole mail with packrat open %s/reports/<id>\n", strings.TrimRight(queryURL, "/"))
-	}
+	fmt.Fprintf(&b, "\nRead the whole summary with packrat open %s/reports/%s\n", strings.TrimRight(queryURL, "/"), o.Report.ID)
 	return put(w, b.String())
 }
 
@@ -70,11 +66,5 @@ func wrapWords(text string, width int) []string {
 	return lines
 }
 
-// OverviewJSON writes the answer of the API as it was sent, every field kept.
-func OverviewJSON(w io.Writer, o query.Overview) error {
-	var doc bytes.Buffer
-	if err := json.Indent(&doc, o.Raw, "", "  "); err != nil {
-		return fmt.Errorf("encoding the answer: %w", err)
-	}
-	return put(w, doc.String()+"\n")
-}
+// OverviewJSON writes the answer of the API as it was read.
+func OverviewJSON(w io.Writer, o query.Overview) error { return putJSON(w, o) }
