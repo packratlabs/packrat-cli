@@ -129,20 +129,6 @@ func commands() map[string]command {
 				"rather than an exception. To change one, run packrat issues resolve, archive or reopen.",
 			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
 		},
-		"overview": {
-			summary: "show what the analyst said about an app in the last 24 hours",
-			usage:   "packrat overview [--app SERVICE] [--json]",
-			flags: [][2]string{
-				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
-				{"--json", "output the API response as it was sent, every field kept"},
-			},
-			description: "Shows what the analyst said about the app in the last 24 hours, newest first: each daily summary's\n" +
-				"items, with what changed, why it matters, the evidence and what to do next, and each urgent mail and\n" +
-				"update. A thing told twice is shown once, by the latest word on it. A shipped item names its pull\n" +
-				"request with its verification's state now, as packrat pr show gives it. It is what the Overview tab\n" +
-				"of the Claude Code pane shows.",
-			examples: []string{"packrat overview", "packrat overview --app shop/production --json"},
-		},
 		"issues resolve": {
 			summary: "resolve an issue",
 			usage:   "packrat issues resolve ID [--reason TEXT] [--app SERVICE] [--json]",

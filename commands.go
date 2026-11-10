@@ -287,34 +287,6 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-func runOverview(w world, args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("overview", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
-	asJSON := fs.Bool("json", false, "")
-	words, err := parseInterleaved(fs, args)
-	if err != nil || len(words) > 0 {
-		return say(stderr, "packrat overview: specify only flags. Run packrat help overview for details.\n", exitUsage)
-	}
-	client, err := newClient(w)
-	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat overview: %v\n", err), exitUsage)
-	}
-	overview, err := client.Overview(context.Background(), query.Where{App: *app, Repo: originRepo(w)})
-	if err != nil {
-		return fail(stderr, "overview", "overview --app %s", err)
-	}
-	if *asJSON {
-		err = report.OverviewJSON(stdout, overview)
-	} else {
-		err = report.Overview(stdout, overview, width(w), client.BaseURL)
-	}
-	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat overview: %v\n", err), exitFailed)
-	}
-	return exitOK
-}
-
 func actOnIssue(w world, id, app string, action query.IssueAction, asJSON bool, stdout, stderr io.Writer) int {
 	name := "issues " + action.Do
 	if action.Until != "" && (action.Do != "archive" || (action.Until != "escalating" && action.Until != "forever")) {
