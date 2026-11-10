@@ -5,12 +5,16 @@ import (
 	"time"
 )
 
-// Overview is the answer of GET /overview: the items of an app's latest daily summary.
+// Overview is the answer of GET /overview: what the analyst said about an app in the last day (Feed), and the
+// latest daily summary with its items alone.
 type Overview struct {
-	App    string  `json:"app"`
-	Org    string  `json:"org"`
-	Report *Report `json:"report"`
-	Items  []Item  `json:"items"`
+	App    string    `json:"app"`
+	Org    string    `json:"org"`
+	From   time.Time `json:"from"`
+	To     time.Time `json:"to"`
+	Feed   []Item    `json:"feed"`
+	Report *Report   `json:"report"`
+	Items  []Item    `json:"items"`
 }
 
 // Report names the summary the items come from. Read the whole of it with packrat open.
@@ -22,14 +26,19 @@ type Report struct {
 	To      time.Time `json:"to"`
 }
 
-// Item is one thing the summary found worth a minute: act, watch, shipped or better.
+// Item is one thing the analyst said: a summary's act, watch, shipped or better item, with its four sentences, or
+// an urgent mail or update, with its markdown in Body.
 type Item struct {
+	Kind     string     `json:"kind"`
+	Report   string     `json:"report"`
+	At       time.Time  `json:"at"`
 	Status   string     `json:"status"`
 	Title    string     `json:"title"`
 	Changed  string     `json:"changed"`
 	Matters  string     `json:"matters"`
 	Evidence string     `json:"evidence"`
 	Next     string     `json:"next"`
+	Body     *string    `json:"body"`
 	Issue    *string    `json:"issue"`
 	Pull     *ItemPull  `json:"pull"`
 	Chart    *ItemChart `json:"chart"`
@@ -52,7 +61,7 @@ type ItemChart struct {
 	Rows    [][]any `json:"rows"`
 }
 
-// Overview reads the items of the app's latest daily summary.
+// Overview reads what the analyst said about the app in the last day.
 func (c Client) Overview(ctx context.Context, where Where) (Overview, error) {
 	var overview Overview
 	if err := c.get(ctx, "/overview"+query(where.values()), &overview); err != nil {
@@ -60,6 +69,9 @@ func (c Client) Overview(ctx context.Context, where Where) (Overview, error) {
 	}
 	if overview.Items == nil {
 		overview.Items = []Item{}
+	}
+	if overview.Feed == nil {
+		overview.Feed = []Item{}
 	}
 	return overview, nil
 }
