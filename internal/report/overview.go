@@ -1,6 +1,8 @@
 package report
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -68,5 +70,11 @@ func wrapWords(text string, width int) []string {
 	return lines
 }
 
-// OverviewJSON writes the answer of the API as it was read.
-func OverviewJSON(w io.Writer, o query.Overview) error { return putJSON(w, o) }
+// OverviewJSON writes the answer of the API as it was sent, every field kept.
+func OverviewJSON(w io.Writer, o query.Overview) error {
+	var doc bytes.Buffer
+	if err := json.Indent(&doc, o.Raw, "", "  "); err != nil {
+		return fmt.Errorf("encoding the answer: %w", err)
+	}
+	return put(w, doc.String()+"\n")
+}

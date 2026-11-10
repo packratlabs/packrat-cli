@@ -2,6 +2,8 @@ package query
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"time"
 )
 
@@ -15,6 +17,9 @@ type Overview struct {
 	Feed   []Item    `json:"feed"`
 	Report *Report   `json:"report"`
 	Items  []Item    `json:"items"`
+	// Raw is the answer as the API sent it, which --json writes so a field the API adds reaches the pane
+	// without a release of the CLI.
+	Raw json.RawMessage `json:"-"`
 }
 
 // Report names the summary the items come from. Read the whole of it with packrat open.
@@ -64,9 +69,15 @@ type ItemChart struct {
 // Overview reads what the analyst said about the app in the last day.
 func (c Client) Overview(ctx context.Context, where Where) (Overview, error) {
 	var overview Overview
-	if err := c.get(ctx, "/overview"+query(where.values()), &overview); err != nil {
+	path := "/overview" + query(where.values())
+	body, err := c.send(ctx, http.MethodGet, path, "", "application/json", nil)
+	if err != nil {
 		return Overview{}, err
 	}
+	if err := decode(c.BaseURL, body, &overview); err != nil {
+		return Overview{}, err
+	}
+	overview.Raw = body
 	if overview.Items == nil {
 		overview.Items = []Item{}
 	}
