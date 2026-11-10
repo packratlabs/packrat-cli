@@ -80,11 +80,6 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"checks":[{"title":"The cart is faster","what":"x","after":"1h"},{"title":"No checkout errors","what":"y","after":"1d"}]}`)
 		case r.URL.Path == "/pulls/9/checks":
 			answer(409, `{"type":"error","message":"#9 shipped in 9f2c41e8 at 2026-10-14 16:02 UTC, and its checks are scheduled."}`)
-		case r.URL.Path == "/overview":
-			answer(200, `{"app":"shop/production","org":"org_a","report":{"id":"rep_1","subject":"Watch (afternoon): deploys recorded early","at":"2026-11-10T19:00:00Z","from":"2026-11-10T13:00:00Z","to":"2026-11-10T19:00:00Z"},`+
-				`"items":[{"status":"watch","title":"Migration pod records deploys early","changed":"Migrations logged their versions before any server ran them.","matters":"Deploy times are early.","evidence":"30s early, twice.","next":"Have ingest ignore the migration pod.","issue":"SHOP-70","pull":null,`+
-				`"chart":{"kind":"bars","unit":"s","caption":"seconds early","rows":[["2026-11-10 09:00",31,true]]}},`+
-				`{"status":"shipped","title":"Cart total cached","changed":"The cart total is cached.","matters":"","evidence":"","next":"Nothing.","issue":null,"pull":{"number":482,"title":"Cache the cart total","state":"confirmed","label":"Worked","url":null},"chart":null}]}`)
 		case r.URL.Path == "/issues":
 			answer(200, `{"app":"shop","org":"org_a","period":"14d","issues":[{"id":"SHOP-3","kind":"detected","title":"Checkout fails for gift cards","severity":"high","summary":"Gift card carts fail to pay.","status":"unresolved","events":12,"users":4,"normal":"Gift card failures run at this level most days.","errors":["SHOP-1"],"reasons":["rising"]},{"id":"SHOP-2","kind":"error","title":"NoMethodError: undefined method 'total' for nil","severity":null,"status":"unresolved","events":3,"users":1,"part_of":null}]}`)
 		case r.URL.Path == "/pulls/7":
@@ -160,9 +155,6 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "declaring needs a pull request unless it is a dry run", args: []string{"pr", "checks", "set", "--file", "-"}, login: true, code: 2, stderr: "specify the pull request and --file", none: true},
 		{name: "issues by the origin remote, by priority", args: []string{"issues"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
 			stdout: "=== shop issues · unresolved, events over 14d\n\nID      SEVERITY  EVENTS  USERS  TITLE\nSHOP-3  high          12      4  AI: Checkout fails for gift cards\nSHOP-2  —              3      1  NoMethodError", request: "GET /issues?repo=acme%2Fshop&sort=priority"},
-		{name: "overview by the origin remote", args: []string{"overview"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
-			stdout: "=== shop/production · Watch (afternoon): deploys recorded early\nrep_1 · 2026-11-10 19:00 UTC\n\nWATCH  Migration pod records deploys early  SHOP-70\n  Migrations logged their versions before any server ran them.\n  Deploy times are early.\n  30s early, twice.\n  Next: Have ingest ignore the migration pod.\n\nSHIPPED  Cart total cached  #482 Worked\n  The cart total is cached.\n  Next: Nothing.\n\nRead the whole summary with packrat open ", request: "GET /overview?repo=acme%2Fshop"},
-		{name: "overview as JSON keeps the chart rows and nulls", args: []string{"overview", "--app", "shop/production", "--json"}, login: true, code: 0, stdout: `"issue": null`, request: "GET /overview?app=shop%2Fproduction"},
 		{name: "issues as JSON keep the summary and reasons", args: []string{"issues", "--app", "shop", "--kind", "detected", "--json"}, login: true, code: 0, stdout: `"normal": "Gift card failures run at this level most days."`, request: "GET /issues?app=shop&kind=detected&sort=priority"},
 		{name: "issues take only flags or an action", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "resolve, archive or reopen and an issue ID", none: true},
 		{name: "resolve an issue with a reason", args: []string{"issues", "resolve", "SHOP-3", "--reason", "The check measured the wrong thing."}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
