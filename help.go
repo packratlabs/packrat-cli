@@ -130,15 +130,17 @@ func commands() map[string]command {
 			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
 		},
 		"overview": {
-			summary: "show the items of an app's latest daily summary",
+			summary: "show what the analyst said about an app in the last 24 hours",
 			usage:   "packrat overview [--app SERVICE] [--json]",
 			flags: [][2]string{
 				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
-				{"--json", "output the API response as JSON"},
+				{"--json", "output the API response as it was sent, every field kept"},
 			},
-			description: "Shows the items of the analyst's latest daily summary: what changed, why it matters, the evidence\n" +
-				"and what to do next. A shipped item names its pull request with its verification's state now, as\n" +
-				"packrat pr show gives it. It is what the Overview tab of the Claude Code pane shows.",
+			description: "Shows what the analyst said about the app in the last 24 hours, newest first: each daily summary's\n" +
+				"items, with what changed, why it matters, the evidence and what to do next, and each urgent mail and\n" +
+				"update. A thing told twice is shown once, by the latest word on it. A shipped item names its pull\n" +
+				"request with its verification's state now, as packrat pr show gives it. It is what the Overview tab\n" +
+				"of the Claude Code pane shows.",
 			examples: []string{"packrat overview", "packrat overview --app shop/production --json"},
 		},
 		"issues resolve": {
