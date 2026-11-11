@@ -63,10 +63,15 @@ type Check struct {
 	Accepted string     `json:"accepted"`
 	Runs     []Run      `json:"runs"`
 	// A rule check runs every five minutes until its window ends (DueAt); Seen is from its latest run.
-	Kind    string `json:"kind"`
-	Seen    *int64 `json:"seen"`
-	MinSeen int64  `json:"min_seen"`
-	Review  string `json:"review"`
+	Kind         string     `json:"kind,omitempty"`
+	SQL          string     `json:"sql,omitempty"`
+	PassWhen     string     `json:"pass_when,omitempty"`
+	FailWhen     string     `json:"fail_when,omitempty"`
+	MinSeen      int64      `json:"min_seen,omitempty"`
+	AtEnd        string     `json:"at_end,omitempty"`
+	WindowEndsAt *time.Time `json:"window_ends_at,omitempty"`
+	Seen         *int64     `json:"seen,omitempty"`
+	Review       string     `json:"review,omitempty"`
 }
 
 // Run is one time the analyst verified a check.
