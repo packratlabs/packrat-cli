@@ -34,8 +34,17 @@ var (
 
 // Agent names the coding agent running the CLI, for the User-Agent: claude-code/2.1.310 from
 // Claude Code's AI_AGENT=claude-code_2-1-310_agent, another agent's AI_AGENT as one token, or
-// claude-code alone from CLAUDECODE=1. It is "" outside an agent.
+// claude-code alone from CLAUDECODE=1. It is "" outside an agent. Run by the Claude Code plugin,
+// which sets PACKRAT_PLUGIN_VERSION, it names the plugin last: claude-code/2.1.310 packrat-plugin/0.4.0.
 func Agent(getenv func(string) string) string {
+	agent := codingAgent(getenv)
+	if plugin := notInToken.ReplaceAllString(getenv("PACKRAT_PLUGIN_VERSION"), ""); plugin != "" {
+		agent = strings.TrimSpace(agent + " packrat-plugin/" + plugin[:min(len(plugin), 32)])
+	}
+	return agent
+}
+
+func codingAgent(getenv func(string) string) string {
 	name := getenv("AI_AGENT")
 	if m := claudeCode.FindStringSubmatch(name); m != nil {
 		return "claude-code/" + strings.ReplaceAll(m[1], "-", ".")

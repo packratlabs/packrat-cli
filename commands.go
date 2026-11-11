@@ -389,19 +389,12 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 
 const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive or checks set. Run packrat help pr for details.\n"
 
-func askCheck(w world, client query.Client, where query.Where, ask query.Ask, due, name, usage string, stdout, stderr io.Writer) int {
-	at, err := time.Parse("2006-01-02T15:04Z07:00", due)
-	if err != nil {
-		at, err = time.Parse(time.RFC3339, due)
-	}
-	if err != nil {
-		return say(stderr, "packrat "+name+": specify --due, the earliest time the check can pass, in UTC. For example: --due 2026-10-20T21:00Z\n", exitUsage)
-	}
+func askCheck(w world, client query.Client, where query.Where, ask query.Ask, name, usage string, stdout, stderr io.Writer) int {
 	text, err := io.ReadAll(w.stdin)
 	if err != nil || len(bytes.TrimSpace(text)) == 0 {
-		return say(stderr, "packrat "+name+": provide the check on stdin: what must be true, and the SQL that shows it\n", exitUsage)
+		return say(stderr, "packrat "+name+": provide the check on stdin as JSON: {\"title\", \"claim\", \"sql\", \"pass_when\", \"fail_when\", \"min_seen\", \"window\", \"at_end\"}\n", exitUsage)
 	}
-	ask.Due, ask.Text = at, string(text)
+	ask.JSON = string(text)
 	check, err := client.Check(context.Background(), where, ask)
 	if err == nil {
 		err = report.CheckJSON(stdout, check)
@@ -420,7 +413,6 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(io.Discard)
 	app := fs.String("app", w.getenv("PACKRAT_APP"), "")
 	pull := fs.Int("pull", 0, "")
-	due := fs.String("due", "", "")
 	reportID := fs.String("report", "", "")
 	asJSON := fs.Bool("json", false, "")
 	words, err := parseInterleaved(fs, args[1:])
@@ -437,7 +429,7 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 		if *pull > 0 {
 			_, where, _ = pullRef(w, strconv.Itoa(*pull), *app)
 		}
-		return askCheck(w, client, where, query.Ask{Pull: *pull, Report: *reportID}, *due, "check add", "check add --due "+*due+" --app %s", stdout, stderr)
+		return askCheck(w, client, where, query.Ask{Pull: *pull, Report: *reportID}, "check add", "check add --app %s", stdout, stderr)
 	case args[0] == "list" && len(words) == 0:
 		checks, err := client.Checks(context.Background(), query.Where{App: *app}, *pull)
 		if err == nil {

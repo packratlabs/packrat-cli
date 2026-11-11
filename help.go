@@ -208,11 +208,13 @@ func commands() map[string]command {
 				{"--app=<value>", "app to use (default: the app connected to the repository)"},
 				{"--json", "output the API response as JSON"},
 			},
-			description: "Sends the checks a pull request ships with, replacing any it declared before. Each waits until a\n" +
-				"deploy ships the pull request, then becomes a check due its time after that deploy. The draft is a\n" +
-				"JSON list, [{\"title\": \"...\", \"what\": \"...\", \"after\": \"1h\"}], with after from 0m to 30d, or\n" +
-				"{\"none\": \"why production cannot show this change\"}. Once a deploy has shipped the pull request, add\n" +
-				"a check with packrat check add. Exits 3 when Packrat does not verify the repository.",
+			description: "Sends the checks a pull request ships with, replacing any it declared before. Each check is SQL\n" +
+				"that returns one row with a seen column, and conditions over that row: [{\"title\", \"claim\", \"sql\",\n" +
+				"\"pass_when\", \"fail_when\", \"min_seen\", \"window\", \"at_end\"}], or {\"none\": \"why production cannot\n" +
+				"show this change\"}. Packrat runs each check's SQL once to check it, and refuses a draft whose SQL fails.\n" +
+				"After the deploy that ships the pull request, each runs every five minutes until its window ends. See\n" +
+				"https://packrat.sh/docs/api#put-pullsnumberchecks for the fields. Once a deploy has shipped the pull\n" +
+				"request, add a check with packrat check add. Exits 3 when Packrat does not verify the repository.",
 			examples: []string{"packrat pr checks set --dry-run --file checks.json", "packrat pr checks set 482 --file checks.json"},
 		},
 		"sql": {
@@ -240,16 +242,15 @@ func commands() map[string]command {
 		},
 		"check add": {
 			summary: "schedule a check for Packrat's analyst",
-			usage:   "packrat check add --due TIME [--app SERVICE] [--pull NUMBER] [--report ID] < check.txt",
+			usage:   "packrat check add [--app SERVICE] [--pull NUMBER] [--report ID] < check.json",
 			flags: [][2]string{
-				{"--due=<value>", "earliest time the check can pass, in UTC (up to 30 days from now)"},
 				{"--app=<value>", "app to check, if your org has more than one"},
 				{"--pull=<value>", "pull request the check is for (sets the app from the origin remote)"},
 				{"--report=<value>", "analyst report whose email thread gets the result"},
 			},
-			description: "Reads the check from stdin: what must be true, and the SQL that shows it. The analyst runs the\n" +
-				"check after the due time and emails the result.",
-			examples: []string{"packrat check add --due 2026-10-20T21:00Z --pull 482 < check.txt", "packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt"},
+			description: "Reads one check from stdin as JSON, in the shape packrat pr checks set takes. Packrat runs its SQL\n" +
+				"once to check it, then every five minutes until its window ends.",
+			examples: []string{"packrat check add --pull 482 < check.json", "packrat check add --report rep_5k2m9x0qv7ha < check.json"},
 		},
 		"check close": {
 			summary:  "cancel a check before it runs",
@@ -273,7 +274,7 @@ func commands() map[string]command {
 				{"--pull=<value>", "only list checks for this pull request"},
 				{"--json", "output the API response as JSON"},
 			},
-			description: "Shows one line per check: the pull request, when it's due or when it closed (in UTC), and the\n" +
+			description: "Shows one line per check: the pull request, how far it has got or when it closed (in UTC), and the\n" +
 				"start of what it asks. Open checks are listed first. Run packrat check show for the full text.",
 			examples: []string{"packrat check list", "packrat check list --pull 482"},
 		},

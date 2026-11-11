@@ -63,6 +63,13 @@ func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 		b.WriteString("=== Waiting for the deploy\n")
 		b.WriteString(declaredTable(p.Declared, width) + "\n")
 	}
+	if len(p.Dropped) > 0 {
+		b.WriteString("=== Not declared\n")
+		for _, check := range p.Dropped {
+			b.WriteString(cut(check.Title+": "+check.Dropped, max(width, 20)) + "\n")
+		}
+		b.WriteString("\n")
+	}
 	b.WriteString("=== Checks\n")
 	b.WriteString(checkTable(p.Checks, false, "No check for this pull request.", width))
 	return put(w, b.String())
@@ -83,10 +90,13 @@ func Declaration(w io.Writer, d query.Declaration, width int) error {
 	case d.None != "":
 		fmt.Fprintf(&b, "#%d declares no checks in %s: %s\n", d.Pull, d.App, d.None)
 	default:
-		fmt.Fprintf(&b, "Declared %s for #%d in %s. Each is due its time after the deploy that ships it.\n", count, d.Pull, d.App)
+		fmt.Fprintf(&b, "Declared %s for #%d in %s. Each runs every five minutes from the deploy that ships it until its window ends.\n", count, d.Pull, d.App)
 	}
 	if len(d.Checks) > 0 {
 		b.WriteString("\n" + declaredTable(d.Checks, width))
+	}
+	for _, warning := range d.Warnings {
+		b.WriteString("\nWarning: " + warning + "\n")
 	}
 	return put(w, b.String())
 }
@@ -96,9 +106,13 @@ func DeclarationJSON(w io.Writer, d query.Declaration) error { return putJSON(w,
 
 func declaredTable(checks []query.Declared, width int) string {
 	var b strings.Builder
-	b.WriteString("AFTER  TITLE\n")
+	b.WriteString("WINDOW TITLE\n")
 	for _, check := range checks {
-		line := fmt.Sprintf("%-6s %s", check.After, check.Title)
+		window := check.Window
+		if check.Dropped != "" {
+			window = "—"
+		}
+		line := fmt.Sprintf("%-6s %s", window, check.Title)
 		if width > 0 && len([]rune(line)) > width {
 			line = string([]rune(line)[:width-1]) + "…"
 		}
@@ -161,7 +175,7 @@ func checkTable(checks []query.Check, withPull bool, none string, width int) str
 			}
 			fmt.Fprintf(&b, "%-5s  ", pull)
 		}
-		state := "due " + day(check.DueAt)
+		state := openState(check)
 		if check.ClosedAt != nil {
 			state = "closed " + day(*check.ClosedAt)
 		}
@@ -180,6 +194,8 @@ func Check(w io.Writer, check query.Check, width int) error {
 	}
 	if check.ClosedAt != nil {
 		head = append(head, "closed "+stamp(*check.ClosedAt))
+	} else if check.Kind != "" {
+		head = append(head, progress(check)+" · window ends "+stamp(check.DueAt))
 	} else {
 		head = append(head, "due "+stamp(check.DueAt))
 	}
@@ -188,6 +204,29 @@ func Check(w io.Writer, check query.Check, width int) error {
 		b.WriteString("\nResult\n" + fold(check.Outcome, width-2, "  "))
 	}
 	return put(w, b.String())
+}
+
+// openState is an open check's STATUS: how far a rule check has got, or when a check from before rules is due.
+func openState(check query.Check) string {
+	if check.Kind == "" {
+		return "due " + day(check.DueAt)
+	}
+	if check.Review != "" || check.Seen != nil {
+		return progress(check)
+	}
+	return "ends " + day(check.DueAt)
+}
+
+// progress is how far a rule check has got: "seen 40/200", or that it waits for review.
+func progress(check query.Check) string {
+	switch {
+	case check.Review != "":
+		return "to review"
+	case check.Seen != nil:
+		return fmt.Sprintf("seen %d/%d", *check.Seen, check.MinSeen)
+	default:
+		return "not run yet"
+	}
 }
 
 // pullPrefix is how the analyst starts a check's text, "PR #542 (39428589, web live 17:44):", which the
