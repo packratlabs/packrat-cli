@@ -119,6 +119,8 @@ func TestAgent(t *testing.T) {
 		{name: "a terminal", env: map[string]string{}, want: ""},
 		{name: "an AI_AGENT of nothing usable", env: map[string]string{"AI_AGENT": "  ;  "}, want: ""},
 		{name: "a long AI_AGENT", env: map[string]string{"AI_AGENT": strings.Repeat("a", 100)}, want: strings.Repeat("a", 64)},
+		{name: "the Claude Code plugin", env: map[string]string{"AI_AGENT": "claude-code_2-1-310_agent", "PACKRAT_PLUGIN_VERSION": "0.4.0"}, want: "claude-code/2.1.310 packrat-plugin/0.4.0"},
+		{name: "the plugin outside an agent", env: map[string]string{"PACKRAT_PLUGIN_VERSION": "0.4.0 ;"}, want: "packrat-plugin/0.4.0"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

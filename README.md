@@ -180,13 +180,20 @@ response.
 
 ### pr checks set
 
-`packrat pr checks set` declares the checks a pull request ships with. Each waits until a deploy ships
-the pull request, then becomes a check due its `after` time past that deploy. Write the draft as JSON:
+`packrat pr checks set` declares the checks a pull request ships with. A check is SQL that returns one
+row with a `seen` column, and conditions over that row. Once a deploy ships the pull request, Packrat
+runs each check's SQL every five minutes until its window ends. Write the draft as JSON:
 
 ```json
-[ { "title": "The cart is faster", "what": "p95 of GET /cart is under 300 ms.", "after": "1h" },
-  { "title": "Checkout still works", "what": "No new errors on POST /checkout.", "after": "1d" } ]
+[ { "title": "The cart is faster",
+    "claim": "The p95 of GET /cart is under 300 ms.",
+    "sql": "SELECT count(*) AS seen, quantile_cont(duration_ms, 0.95) AS p95_ms FROM packrat_spans(since := getvariable('deployed_at'), until := getvariable('until')) WHERE parent_span_id IS NULL AND name = 'GET /cart'",
+    "pass_when": "p95_ms < 300", "fail_when": "p95_ms >= 300", "min_seen": 200, "window": "1d" } ]
 ```
+
+`pass_when` alone passes on the first match, `fail_when` alone fails on the first violation, and both
+judge the check once `seen` reaches `min_seen`. The [API reference](https://packrat.sh/docs/api#put-pullsnumberchecks)
+lists every field and the variables the SQL reads.
 
 A change production can't show declares `{"none": "why"}` instead. Validate a draft before the pull
 request exists, then declare it once it has a number:
@@ -196,28 +203,26 @@ packrat pr checks set --dry-run --file checks.json
 packrat pr checks set 482 --file checks.json
 ```
 
-Declaring again replaces the list. Once a deploy has shipped the pull request, add a check with
-`packrat check add`. The command exits 3 when Packrat doesn't verify the repository. The Packrat plugin
-for Claude Code runs both commands for you when Claude opens a pull request.
+Packrat runs each check's SQL once to check it. A draft whose SQL fails is refused with what DuckDB
+said, and a check that already passes before the deploy is kept with a warning. Declaring again
+replaces the list. Once a deploy has shipped the pull request, add a check with `packrat check add`.
+The command exits 3 when Packrat doesn't verify the repository. The Packrat plugin for Claude Code
+runs both commands for you when Claude opens a pull request.
 
 ### check
 
-A check asks Packrat's analyst to verify something at a later time. Write what must be true and the
-SQL that shows it in a file, then pass it on stdin:
+`packrat check add` asks for one check, in the shape `packrat pr checks set` takes, read from stdin:
 
 ```
-packrat check add --pull 482 --due 2026-10-20T21:00Z < check.txt
+packrat check add --pull 482 < check.json
 ```
 
-The analyst runs the check after the `--due` time and emails the result in the thread of the pull
-request's verdict email. With `--pull` and no `--app`, the app is the one connected to the `origin`
-remote.
-
-For a check that isn't tied to a pull request, pass `--report` instead. The result is emailed in the
-thread of that analyst report:
+Its window starts now. With `--pull` and no `--app`, the app is the one connected to the `origin`
+remote, and the check reads from the deploy that shipped the pull request. For a check that isn't tied
+to a pull request, pass `--report` instead, and the result is kept in the thread of that analyst report:
 
 ```
-packrat check add --due 2026-10-20T21:00Z --report rep_5k2m9x0qv7ha < check.txt
+packrat check add --report rep_5k2m9x0qv7ha < check.json
 ```
 
 To manage checks:

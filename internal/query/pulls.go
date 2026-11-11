@@ -62,6 +62,11 @@ type Check struct {
 	Result   string     `json:"result"`
 	Accepted string     `json:"accepted"`
 	Runs     []Run      `json:"runs"`
+	// A rule check runs every five minutes until its window ends (DueAt); Seen is from its latest run.
+	Kind    string `json:"kind"`
+	Seen    *int64 `json:"seen"`
+	MinSeen int64  `json:"min_seen"`
+	Review  string `json:"review"`
 }
 
 // Run is one time the analyst verified a check.
@@ -84,15 +89,18 @@ type Pull struct {
 	Deploys       []Deploy   `json:"deploys"`
 	Checks        []Check    `json:"checks"`
 	Declared      []Declared `json:"declared"`
+	// Dropped are checks the coding agent could not make run, sent so they are seen; they never run.
+	Dropped []Declared `json:"dropped"`
 }
 
-// Declared is a check a pull request declared, waiting for the deploy that ships it. After is how long
-// after that deploy it can first pass, such as "1h".
+// Declared is a check a pull request declared, waiting for the deploy that ships it. Window is how
+// long after that deploy it stays open, such as "1h". Dropped is why the coding agent gave up on it.
 type Declared struct {
-	Title string `json:"title"`
-	What  string `json:"what"`
-	After string `json:"after"`
-	Check string `json:"check,omitempty"`
+	Title   string `json:"title"`
+	Claim   string `json:"claim"`
+	Window  string `json:"window"`
+	Dropped string `json:"dropped,omitempty"`
+	Check   string `json:"check,omitempty"`
 }
 
 // Declaration is the answer of PUT /pulls/:number/checks. Pull is 0 on a dry run, and None is why a
@@ -103,6 +111,8 @@ type Declaration struct {
 	DryRun bool       `json:"dry_run"`
 	None   string     `json:"none,omitempty"`
 	Checks []Declared `json:"checks"`
+	// Warnings name checks that already pass before the deploy, so passing would prove nothing.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Declare sends the checks a pull request ships with, which replace the ones it declared before. A dry
@@ -189,8 +199,7 @@ func (c Client) Checks(ctx context.Context, where Where, pull int) (Checks, erro
 // Ask is a check to ask for: what must be true and the SQL that shows it, from when, and the pull
 // request or the analyst's mail it belongs to, if any.
 type Ask struct {
-	Text   string
-	Due    time.Time
+	JSON   string
 	Pull   int
 	Report string
 }
@@ -198,7 +207,6 @@ type Ask struct {
 // Check asks the analyst to verify something at a later time.
 func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) {
 	values := where.values()
-	values.Set("due", ask.Due.UTC().Format("2006-01-02T15:04Z"))
 	if ask.Pull > 0 {
 		values.Set("pull", strconv.Itoa(ask.Pull))
 	}
@@ -206,7 +214,7 @@ func (c Client) Check(ctx context.Context, where Where, ask Ask) (Check, error) 
 		values.Set("report", ask.Report)
 	}
 	var check Check
-	body, err := c.send(ctx, "POST", "/checks"+query(values), "text/plain", "application/json", strings.NewReader(ask.Text))
+	body, err := c.send(ctx, "POST", "/checks"+query(values), "text/plain", "application/json", strings.NewReader(ask.JSON))
 	if err != nil {
 		return Check{}, err
 	}

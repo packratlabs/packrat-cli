@@ -68,16 +68,18 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","pull":482,"state":"pending","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/pulls/490/archive":
 			answer(409, `{"message":"#490 is confirmed, and only a pending verification can be archived"}`)
+		case r.URL.Path == "/pulls/483":
+			answer(200, `{"app":"shop/production","pull":483,"state":"pending","analysed":true,"deploys":[],"checks":[{"id":"chk_3","what":"Filters by brand.","title":"Filters by brand","due_at":"2026-10-23T16:02:00Z","pull":483,"kind":"appears","seen":40,"min_seen":200}],"dropped":[{"title":"Gift cards","dropped":"Rejected twice."}]}`)
 		case r.URL.Path == "/pulls/482":
 			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","runs_at":"2026-10-20T21:07:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}]}`)
 		case r.URL.Path == "/pulls/checks" && r.URL.Query().Get("repo") == "acme/blog":
 			answer(400, `{"type":"error","message":"no app is connected to acme/blog on GitHub.","watched":false}`)
 		case r.URL.Path == "/pulls/checks":
-			answer(200, `{"app":"shop/production","pull":null,"dry_run":true,"checks":[{"title":"The cart is faster","what":"x","after":"1h"}]}`)
+			answer(200, `{"app":"shop/production","pull":null,"dry_run":true,"checks":[{"title":"The cart is faster","claim":"x","window":"1h"}],"warnings":["check 1 (The cart is faster): it already passes on the 1h before now, so passing would prove nothing about the change"]}`)
 		case r.URL.Path == "/pulls/482/checks" && strings.Contains(string(body), "none"):
 			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"none":"Docs only.","checks":[]}`)
 		case r.URL.Path == "/pulls/482/checks":
-			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"checks":[{"title":"The cart is faster","what":"x","after":"1h"},{"title":"No checkout errors","what":"y","after":"1d"}]}`)
+			answer(200, `{"app":"shop/production","pull":482,"dry_run":false,"checks":[{"title":"The cart is faster","claim":"x","window":"1h"},{"title":"No checkout errors","claim":"y","window":"1d"}]}`)
 		case r.URL.Path == "/pulls/9/checks":
 			answer(409, `{"type":"error","message":"#9 shipped in 9f2c41e8 at 2026-10-14 16:02 UTC, and its checks are scheduled."}`)
 		case r.URL.Path == "/issues":
@@ -140,13 +142,14 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request by URL asks by its repository", args: []string{"pr", "show", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total\nshop/production\n\nDeploy    9f2c41e8, live 2026-10-14 16:02 UTC\nVerdict   worked in part\n", request: "GET /pulls/482?repo=acme%2Fshop"},
 		{name: "a pull request by number asks by the origin remote", args: []string{"pr", "show", "#482"}, login: true, origin: "git@github.com:acme/shop.git\n", code: 0, stdout: "Report    packrat open http", request: "GET /pulls/482?repo=acme%2Fshop"},
 		{name: "--app wins over the repository", args: []string{"pr", "show", "482", "--app", "shop"}, login: true, origin: "git@github.com:acme/shop.git", code: 0, stdout: "due 20 Oct 21:00     Gift card totals are right.", request: "GET /pulls/482?app=shop"},
+		{name: "a rule check shows how far it has got", args: []string{"pr", "show", "483", "--app", "shop"}, login: true, code: 0, stdout: "seen 40/200          Filters by brand", request: "GET /pulls/483?app=shop"},
 		{name: "a pull request as JSON", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"verdict": "partly"`},
 		{name: "a pull request as JSON keeps its state", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"state": "partly"`},
 		{name: "a pull request as JSON keeps when each check runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"runs_at": "2026-10-20T21:07:00Z"`},
 		{name: "a pull request as JSON keeps each check's runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"evidence": "3 carts off by the card"`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
 		{name: "not a pull request", args: []string{"pr", "show", "main"}, login: true, code: 2, stderr: "is not a pull request number or URL", none: true},
-		{name: "a dry run checks a draft by the origin remote", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `[{"title":"The cart is faster"}]`, code: 0, stdout: "The draft holds 1 check for shop/production.\n\nAFTER  TITLE\n1h     The cart is faster\n", request: `PUT /pulls/checks?dry_run=1&repo=acme%2Fshop [{"title":"The cart is faster"}]`},
+		{name: "a dry run checks a draft by the origin remote", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `[{"title":"The cart is faster"}]`, code: 0, stdout: "The draft holds 1 check for shop/production.\n\nWINDOW TITLE\n1h     The cart is faster\n\nWarning: check 1 (The cart is faster): it already passes on the 1h before now, so passing would prove nothing about the change\n", request: `PUT /pulls/checks?dry_run=1&repo=acme%2Fshop [{"title":"The cart is faster"}]`},
 		{name: "a pull request declares its checks", args: []string{"pr", "checks", "set", "https://github.com/acme/shop/pull/482", "--file", "-"}, login: true, stdin: "[]", code: 0, stdout: "Declared 2 checks for #482 in shop/production.", request: "PUT /pulls/482/checks?repo=acme%2Fshop []"},
 		{name: "a pull request declares none", args: []string{"pr", "checks", "set", "482", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git", stdin: `{"none":"Docs only."}`, code: 0, stdout: "#482 declares no checks in shop/production: Docs only."},
 		{name: "a repository Packrat does not verify exits 3", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/blog.git", stdin: "[]", code: 3, stderr: "no app is connected to acme/blog"},
@@ -171,10 +174,9 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 			stdout: "Moved #482 in shop/production back to pending", request: "DELETE /pulls/482/archive?repo=acme%2Fshop"},
 		{name: "a verification with a verdict is not archived", args: []string{"pr", "archive", "490", "--app", "shop"}, login: true, code: 1, stderr: "only a pending verification can be archived"},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
-		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: "Gift card totals are right.\nselect 1", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?due=2026-10-20T21%3A00Z&pull=482&repo=acme%2Fshop Gift card totals are right."},
-		{name: "a check needs a time", args: []string{"check", "add", "--pull", "482"}, login: true, stdin: "x", code: 2, stderr: "specify --due, the earliest time", none: true},
-		{name: "a check needs a text", args: []string{"check", "add", "--pull", "482", "--due", "2026-10-20T21:00Z"}, login: true, code: 2, stderr: "on stdin", none: true},
-		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1", "--due", "2026-10-20T21:00Z"}, login: true, stdin: "It held.", code: 0, stdout: `"id": "chk_2"`, request: "POST /checks?app=shop&due=2026-10-20T21%3A00Z&report=rep_1 It held."},
+		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `{"title":"Gift card totals are right"}`, code: 0, stdout: `"id": "chk_2"`, request: `POST /checks?pull=482&repo=acme%2Fshop {"title":"Gift card totals are right"}`},
+		{name: "a check needs a body", args: []string{"check", "add", "--pull", "482"}, login: true, code: 2, stderr: "on stdin as JSON", none: true},
+		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1"}, login: true, stdin: `{"title":"It held"}`, code: 0, stdout: `"id": "chk_2"`, request: `POST /checks?app=shop&report=rep_1 {"title":"It held"}`},
 		{name: "check with no command", args: []string{"check"}, login: true, code: 2, stderr: "Run packrat help check", none: true},
 		{name: "check list puts open ones first", args: []string{"check", "list", "--app", "shop"}, login: true, code: 0,
 			stdout: "chk_1\n—      closed 12 Oct 20:43  PR #541 (merge 93428404) makes the check skip"},
