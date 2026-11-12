@@ -177,7 +177,7 @@ func checkTable(checks []query.Check, withPull bool, none string, width int) str
 		}
 		state := openState(check)
 		if check.ClosedAt != nil {
-			state = "closed " + day(*check.ClosedAt)
+			state = closedAs(check) + " " + day(*check.ClosedAt)
 		}
 		fmt.Fprintf(&b, "%-*s  %-*s  %s\n", status, state, whatWidth, cut(oneLine(withoutPull(check)), whatWidth), check.ID)
 	}
@@ -193,7 +193,7 @@ func Check(w io.Writer, check query.Check, width int) error {
 		head = append(head, fmt.Sprintf("PR #%d", check.Pull))
 	}
 	if check.ClosedAt != nil {
-		head = append(head, "closed "+stamp(*check.ClosedAt))
+		head = append(head, closedAs(check)+" "+stamp(*check.ClosedAt))
 	} else if check.Kind != "" {
 		head = append(head, progress(check)+" · window ends "+stamp(check.DueAt))
 	} else {
@@ -204,6 +204,14 @@ func Check(w io.Writer, check query.Check, width int) error {
 		b.WriteString("\nResult\n" + fold(check.Outcome, width-2, "  "))
 	}
 	return put(w, b.String())
+}
+
+// closedAs names how a closed check ended: its result, or "closed" for one closed before it ran.
+func closedAs(check query.Check) string {
+	if check.Result != "" {
+		return check.Result
+	}
+	return "closed"
 }
 
 // openState is an open check's STATUS: how far a rule check has got, or when a check from before rules is due.
