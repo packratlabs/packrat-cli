@@ -84,6 +84,8 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(409, `{"type":"error","message":"#9 shipped in 9f2c41e8 at 2026-10-14 16:02 UTC, and its checks are scheduled."}`)
 		case r.URL.Path == "/issues":
 			answer(200, `{"app":"shop","org":"org_a","period":"14d","issues":[{"id":"SHOP-3","kind":"detected","title":"Checkout fails for gift cards","severity":"high","summary":"Gift card carts fail to pay.","status":"unresolved","events":12,"users":4,"normal":"Gift card failures run at this level most days.","errors":["SHOP-1"],"reasons":["rising"]},{"id":"SHOP-2","kind":"error","title":"NoMethodError: undefined method 'total' for nil","severity":null,"status":"unresolved","events":3,"users":1,"part_of":null}]}`)
+		case r.URL.Path == "/pulls/8":
+			answer(200, `{"app":"shop/production","pull":8,"state":"not_observable","analysed":true,"repository":"acme/shop","none":"Renames a heading.","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/pulls/7":
 			answer(200, `{"app":"shop/production","pull":7,"analysed":false,"repository":"","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/checks" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
@@ -149,6 +151,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request as JSON keeps its state", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"state": "partly"`},
 		{name: "a pull request as JSON keeps when each check runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"runs_at": "2026-10-20T21:07:00Z"`},
 		{name: "a pull request as JSON keeps each check's runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"evidence": "3 carts off by the card"`},
+		{name: "a pull request that declared no checks says why", args: []string{"pr", "show", "8"}, login: true, code: 0, stdout: "=== Checks\nNo checks: Renames a heading.\n"},
+		{name: "a pull request as JSON keeps why it declared no checks", args: []string{"pr", "show", "8", "--json"}, login: true, code: 0, stdout: `"none": "Renames a heading."`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
 		{name: "not a pull request", args: []string{"pr", "show", "main"}, login: true, code: 2, stderr: "is not a pull request number or URL", none: true},
 		{name: "a dry run checks a draft by the origin remote", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `[{"title":"The cart is faster"}]`, code: 0, stdout: "The draft holds 1 check for shop/production.\n\nWINDOW TITLE\n1h     The cart is faster\n\nWarning: check 1 (The cart is faster): it already passes on the 1h before now, so passing would prove nothing about the change\n", request: `PUT /pulls/checks?dry_run=1&repo=acme%2Fshop [{"title":"The cart is faster"}]`},
