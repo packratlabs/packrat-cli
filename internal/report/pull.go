@@ -23,7 +23,7 @@ const NotAnalysed = "The analyst is off for this app, so no deploy gets a verdic
 
 var verdicts = map[string]string{
 	"confirmed": "worked", "partly": "worked in part", "refuted": "did not work",
-	"too_early": "too early to say", "not_observable": "not observable", "": "not judged yet",
+	"too_early": "too early to say", "not_observable": "not verified", "": "not judged yet",
 }
 
 // Pull writes the pull request's deploys, each with the analyst's verdict, then its checks, in the
