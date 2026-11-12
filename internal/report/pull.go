@@ -71,6 +71,10 @@ func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 		b.WriteString("\n")
 	}
 	b.WriteString("=== Checks\n")
+	if p.None != "" && len(p.Checks) == 0 {
+		b.WriteString(fold("No checks: "+p.None, width, ""))
+		return put(w, b.String())
+	}
 	b.WriteString(checkTable(p.Checks, false, "No check for this pull request.", width))
 	return put(w, b.String())
 }

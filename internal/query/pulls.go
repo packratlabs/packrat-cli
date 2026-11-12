@@ -90,12 +90,14 @@ type Pull struct {
 	Pull  int    `json:"pull"`
 	State string `json:"state"`
 	// ArchiveReason is why a member archived its verification, if they said.
-	ArchiveReason string     `json:"archive_reason,omitempty"`
-	Analysed      bool       `json:"analysed"`
-	Repository    string     `json:"repository"`
-	Deploys       []Deploy   `json:"deploys"`
-	Checks        []Check    `json:"checks"`
-	Declared      []Declared `json:"declared"`
+	ArchiveReason string `json:"archive_reason,omitempty"`
+	// None is why the pull request declared no checks, when it said so.
+	None       string     `json:"none,omitempty"`
+	Analysed   bool       `json:"analysed"`
+	Repository string     `json:"repository"`
+	Deploys    []Deploy   `json:"deploys"`
+	Checks     []Check    `json:"checks"`
+	Declared   []Declared `json:"declared"`
 	// Dropped are checks the coding agent could not make run, sent so they are seen; they never run.
 	Dropped []Declared `json:"dropped"`
 }
