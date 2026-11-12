@@ -72,6 +72,8 @@ type Check struct {
 	WindowEndsAt *time.Time `json:"window_ends_at,omitempty"`
 	Seen         *int64     `json:"seen,omitempty"`
 	Review       string     `json:"review,omitempty"`
+	// Warning is set by check add when the check already passes before now, so passing would prove nothing.
+	Warning string `json:"warning,omitempty"`
 }
 
 // Run is one time the analyst verified a check.

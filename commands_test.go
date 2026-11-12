@@ -89,7 +89,7 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/checks" && r.URL.Query().Get("app") == "" && r.Method == http.MethodGet:
 			answer(400, `{"type":"error","message":"No app specified. This key has access to claude-code and colorbook. Add app=<service>.","apps":["claude-code","colorbook"]}`)
 		case r.URL.Path == "/checks" && r.Method == http.MethodPost:
-			answer(201, `{"id":"chk_2","what":"x","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}`)
+			answer(201, `{"id":"chk_2","what":"x","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true,"warning":"it already passes on the 1h before now"}`)
 		case r.URL.Path == "/checks":
 			answer(200, `{"app":"shop/production","checks":[`+
 				`{"id":"chk_9","what":"PR #541 (merge 93428404) makes the check skip a moved item.","due_at":"2026-10-12T20:00:00Z","closed_at":"2026-10-12T20:43:00Z","outcome":"Held: 10 lines."},`+
@@ -176,7 +176,7 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 			stdout: "Moved #482 in shop/production back to pending", request: "DELETE /pulls/482/archive?repo=acme%2Fshop"},
 		{name: "a verification with a verdict is not archived", args: []string{"pr", "archive", "490", "--app", "shop"}, login: true, code: 1, stderr: "only a pending verification can be archived"},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
-		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `{"title":"Gift card totals are right"}`, code: 0, stdout: `"id": "chk_2"`, request: `POST /checks?pull=482&repo=acme%2Fshop {"title":"Gift card totals are right"}`},
+		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `{"title":"Gift card totals are right"}`, code: 0, stdout: `"id": "chk_2"`, stderr: "packrat check add: warning: it already passes on the 1h before now", request: `POST /checks?pull=482&repo=acme%2Fshop {"title":"Gift card totals are right"}`},
 		{name: "a check needs a body", args: []string{"check", "add", "--pull", "482"}, login: true, code: 2, stderr: "on stdin as JSON", none: true},
 		{name: "a check from a report", args: []string{"check", "add", "--app", "shop", "--report", "rep_1"}, login: true, stdin: `{"title":"It held"}`, code: 0, stdout: `"id": "chk_2"`, request: `POST /checks?app=shop&report=rep_1 {"title":"It held"}`},
 		{name: "check with no command", args: []string{"check"}, login: true, code: 2, stderr: "Run packrat help check", none: true},
