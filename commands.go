@@ -402,6 +402,9 @@ func askCheck(w world, client query.Client, where query.Where, ask query.Ask, na
 	if err != nil {
 		return fail(stderr, name, usage, err)
 	}
+	if check.Warning != "" {
+		fmt.Fprintf(stderr, "packrat %s: warning: %s\n", name, check.Warning)
+	}
 	return exitOK
 }
 
