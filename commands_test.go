@@ -94,6 +94,8 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","checks":[`+
 				`{"id":"chk_9","what":"PR #541 (merge 93428404) makes the check skip a moved item.","due_at":"2026-10-12T20:00:00Z","closed_at":"2026-10-12T20:43:00Z","outcome":"Held: 10 lines."},`+
 				`{"id":"chk_1","what":"Gift card totals are right.","due_at":"2026-10-20T21:00:00Z","pull":482,"asked":true}]}`)
+		case r.URL.Path == "/checks/chk_2":
+			answer(200, `{"id":"chk_2","what":"y","due_at":"2026-10-20T21:00:00Z","closed_at":"2026-10-16T10:05:00Z","result":"passed","outcome":"seen 199, matched 4","kind":"appears"}`)
 		case r.URL.Path == "/checks/chk_0":
 			answer(404, `{"type":"error","message":"No check chk_0 in your org."}`)
 		case r.URL.Path == "/checks/chk_1":
@@ -182,6 +184,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 			stdout: "chk_1\n—      closed 12 Oct 20:43  PR #541 (merge 93428404) makes the check skip"},
 		{name: "check show reads the check by its id", args: []string{"check", "show", "chk_1"}, login: true, code: 0,
 			stdout: "chk_1 · closed 2026-10-16 10:00 UTC\n\nAsked\n  x\n\nResult\n  Closed by a developer before it was verified.\n", request: "GET /checks/chk_1"},
+		{name: "check show names a closed check's result", args: []string{"check", "show", "chk_2"}, login: true, code: 0,
+			stdout: "chk_2 · passed 2026-10-16 10:05 UTC\n\nAsked\n  y\n\nResult\n  seen 199, matched 4\n"},
 		{name: "check show of one that is not there", args: []string{"check", "show", "chk_0"}, login: true, code: 1, stderr: "packrat check show: No check chk_0 in your org."},
 		{name: "check list", args: []string{"check", "list", "--app", "shop", "--pull", "482"}, login: true, code: 0, stdout: "=== shop/production checks\n\nPR     STATUS", request: "GET /checks?app=shop&pull=482"},
 		{name: "no app, with more than one", args: []string{"check", "list"}, login: true, code: 2, stderr: "Error: No app specified. This key has access to claude-code and colorbook.\nUSAGE: packrat check list --app <app-name>\n"},
