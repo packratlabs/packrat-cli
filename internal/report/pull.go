@@ -196,11 +196,12 @@ func Check(w io.Writer, check query.Check, width int) error {
 	if check.Pull > 0 {
 		head = append(head, fmt.Sprintf("PR #%d", check.Pull))
 	}
-	if check.ClosedAt != nil {
+	switch {
+	case check.ClosedAt != nil:
 		head = append(head, closedAs(check)+" "+stamp(*check.ClosedAt))
-	} else if check.Kind != "" {
+	case check.Kind != "":
 		head = append(head, progress(check)+" · window ends "+stamp(check.DueAt))
-	} else {
+	default:
 		head = append(head, "due "+stamp(check.DueAt))
 	}
 	b.WriteString(strings.Join(head, " · ") + "\n\nAsked\n" + fold(check.What, width-2, "  "))

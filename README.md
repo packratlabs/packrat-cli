@@ -64,6 +64,8 @@ Run `packrat login` to sign in with your browser:
 
 ```
 $ packrat login
+Your sign-in code is BCDF-GHJK.
+Press Enter to open Packrat in your browser and sign in...
 Opened https://packrat.sh/cli/activate in your browser.
 Confirm that it shows the code BCDF-GHJK, then sign in.
 Waiting...
@@ -302,7 +304,8 @@ packrat status  colorbook/production
 - Times are accurate to the minute. Anything under two minutes is shown as "now".
 - `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup:
   run the command, then start your app and load a page. Without `--app`, it waits for any app to
-  send data, including one Packrat hasn't seen before, and then shows that app.
+  send data, including one Packrat hasn't seen before, and then shows that app. After the first
+  data arrives, it waits up to 15 more seconds for traces and logs to both report.
 - `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
   Without `--app`, a key that opens several apps outputs a JSON array with one response for each app.
 
@@ -325,13 +328,44 @@ site host (for `login` and `open`), set `PACKRAT_URL`.
 
 ## Set up a project
 
+Run `packrat setup` in a checkout of your app. It does each step it can, shows how far the others
+have come, and names the next one. Run it again at any time, and on each teammate's machine.
+
+```
+$ packrat setup
+
+✓ Signed in    dana@example.com
+✓ Repository   acme/shop (from origin)
+✓ Platform     Ruby on Rails 8.1.1 (from Gemfile.lock)
+✓ GitHub       Packrat can read acme/shop
+✓ App          shop/development in Acme
+✓ Plugin       packrat@packrat is installed in Claude Code
+✓ Pull request #1, 2 checks declared
+◷ Deploy       Waiting for a production deploy that ships #1.
+
+Next: merge #1 and deploy to production. Its checks start when the deploy goes live.
+```
+
+- **Signed in:** it signs you in first if you aren't.
+- **GitHub:** it waits for Enter, then opens GitHub for you to approve Packrat for the repository.
+  Packrat reads code and comments on pull requests.
+- **Plugin:** it installs the Packrat plugin in Claude Code.
+- **Pull request:** it offers to start Claude Code, which adds `packrat-rails` to the app and opens
+  the setup pull request. `packrat pr checks setup` writes that pull request's two checks: after
+  the deploy, Packrat receives request traces and log lines from the deployed version.
+- **Deploy, Checks, Comment:** after you merge and deploy to production, Packrat runs the checks and
+  comments on the pull request. Setup is complete when the checks pass.
+
+`--no-browser` prints the GitHub page instead of opening a browser, and `--no-claude` prints the
+Claude Code command instead of offering to start it. When nobody is at the keyboard, `packrat setup`
+prints the GitHub page, says to run it again after you approve, and exits.
+
 `packrat setup detect` and `packrat setup plan` scan a project and suggest how to send its data to
 Packrat. Ruby on Rails is the only supported stack.
 
 `detect` reports what the project uses now: the stack, observability gems and their configuration,
 agents and collectors, browser SDKs, and the names of environment variables. `plan` uses those
-results to choose one route for each signal. Neither command changes anything. The steps in a plan
-describe what a future `packrat setup` command will do.
+results to choose one route for each signal. Neither command changes anything.
 
 ### setup detect
 

@@ -28,7 +28,6 @@ type command struct {
 func topics() map[string]topic {
 	return map[string]topic{
 		"auth":  {summary: "manage your Packrat sign-in"},
-		"setup": {summary: "set up Packrat in a project"},
 		"check": {summary: "schedule checks that verify a change in production"},
 		"pr":    {summary: "see how pull requests performed in production, and archive their verification"},
 	}
@@ -52,6 +51,18 @@ func commands() map[string]command {
 				"opens every org you belong to. The org marked * is the one commands read in this directory.",
 			examples: []string{"packrat auth status"},
 		},
+		"setup": {
+			summary: "set up Packrat for the repository you're in",
+			usage:   "packrat setup [--no-browser] [--no-claude]",
+			flags: [][2]string{{"--no-browser", "print the GitHub page instead of opening a browser"},
+				{"--no-claude", "print the Claude Code command instead of offering to start it"}},
+			description: "Does each step it can, shows how far the others have come, and names the next one. It signs\n" +
+				"you in, asks GitHub to let Packrat read the repository, installs the Claude Code plugin, and then\n" +
+				"follows the setup pull request to its deploy and its checks. Run it again at any time, and on\n" +
+				"each teammate's machine.\n\n" +
+				"packrat setup detect and packrat setup plan read a project without sending anything.",
+			examples: []string{"packrat setup", "packrat setup --no-browser"},
+		},
 		"setup detect": {
 			summary: "scan a project for existing observability tools",
 			usage:   "packrat setup detect [PATH] [-v] [--json] [--host]",
@@ -68,10 +79,10 @@ func commands() map[string]command {
 			summary: "sign in to Packrat in your browser",
 			usage:   "packrat login [--no-browser]",
 			flags:   [][2]string{{"--no-browser", "print the sign-in URL and code instead of opening a browser"}},
-			description: "Creates an API key for you on this machine, which opens every org you belong to. The key is\n" +
-				"stored in the macOS Keychain, or in ~/.config/packrat/credentials.json on other platforms. Each\n" +
-				"of your orgs lists it on its API keys page, where you can revoke it. It stops working after 90\n" +
-				"days unused.",
+			description: "Shows a code, then opens your browser when you press Enter. Creates an API key for you on\n" +
+				"this machine, which opens every org you belong to. The key is stored in the macOS Keychain, or\n" +
+				"in ~/.config/packrat/credentials.json on other platforms. Each of your orgs lists it on its API\n" +
+				"keys page, where you can revoke it. It stops working after 90 days unused.",
 			examples: []string{"packrat login"},
 		},
 		"logout": {
@@ -216,6 +227,15 @@ func commands() map[string]command {
 				"https://packrat.sh/docs/api#put-pullsnumberchecks for the fields. Once a deploy has shipped the pull\n" +
 				"request, add a check with packrat check add. Exits 3 when Packrat does not verify the repository.",
 			examples: []string{"packrat pr checks set --dry-run --file checks.json", "packrat pr checks set 482 --file checks.json"},
+		},
+		"pr checks setup": {
+			summary: "draft the checks of the pull request that adds Packrat to an app",
+			usage:   "packrat pr checks setup",
+			description: "Writes the draft for the branch you're on: after the deploy, Packrat receives request traces\n" +
+				"and log lines from the deployed version. Run it before gh pr create for the pull request that\n" +
+				"adds Packrat. The Packrat plugin for Claude Code declares the draft once the pull request has a\n" +
+				"number. For any other pull request, draft checks from its diff and use packrat pr checks set.",
+			examples: []string{"packrat pr checks setup"},
 		},
 		"sql": {
 			summary: "query your telemetry with SQL",
