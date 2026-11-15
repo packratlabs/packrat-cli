@@ -132,7 +132,7 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		none    bool
 	}{
 		{name: "login waits for the browser and keeps the key", args: []string{"login", "--no-browser"}, code: 0, stdout: "Signed in as dana@example.com, in every org you belong to.", request: "POST /cli/token device_code=dev"},
-		{name: "login with a browser says what to check", args: []string{"login"}, code: 0, stdout: "Confirm that it shows the code BCDF-GHJK"},
+		{name: "login with a browser says what to check", args: []string{"login"}, code: 0, stdout: "Confirm that the page shows the code BCDF-GHJK"},
 		{name: "auth status names the person and the orgs", args: []string{"auth", "status"}, login: true, code: 0, stdout: "Signed in as dana@example.com.\nKey key_1, \"CLI: laptop\", from packrat login.\n\nOrgs\n  Acme  org_a\n  Bolt  org_b\n\nCommands here find the org"},
 		{name: "auth status marks the org of this checkout", args: []string{"auth", "status"}, login: true, origin: "git@github.com:bolt/blog.git", code: 0, stdout: "  Acme  org_a\n* Bolt  org_b\n\n* is the org commands read here: an app in it reads bolt/blog, this checkout's origin.", request: "GET /apps?repo=bolt%2Fblog"},
 		{name: "auth status marks the org of --org", args: []string{"auth", "status", "--org", "org_a"}, login: true, code: 0, stdout: "* Acme  org_a\n  Bolt  org_b\n\n* is the org commands read here: --org."},

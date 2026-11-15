@@ -20,8 +20,6 @@ type Setup struct {
 		// Accounts is every GitHub account the org has approved Packrat for, whether or not it holds the repository.
 		Accounts   []string `json:"accounts"`
 		InstallURL string   `json:"install_url"`
-		// SettingsURL is where an owner of the account changes what Packrat may do.
-		SettingsURL string `json:"settings_url"`
 	} `json:"github"`
 	Connected  bool       `json:"connected"`
 	Apps       []SetupApp `json:"apps"`
@@ -44,17 +42,14 @@ type SetupApp struct {
 
 // SetupPull is the newest pull request of the repository that declared checks.
 type SetupPull struct {
-	Number     int        `json:"number"`
-	Title      string     `json:"title"`
-	State      string     `json:"state"`
-	Declared   []string   `json:"declared"`
-	None       string     `json:"none"`
-	Version    string     `json:"version"`
-	LiveAt     *time.Time `json:"live_at"`
-	Checks     []Check    `json:"checks"`
-	CommentURL string     `json:"comment_url"`
-	// CommentError is what GitHub said when it refused Packrat's comment.
-	CommentError string `json:"comment_error"`
+	Number   int        `json:"number"`
+	Title    string     `json:"title"`
+	State    string     `json:"state"`
+	Declared []string   `json:"declared"`
+	None     string     `json:"none"`
+	Version  string     `json:"version"`
+	LiveAt   *time.Time `json:"live_at"`
+	Checks   []Check    `json:"checks"`
 }
 
 // In is the client asking for one org and one repository.
