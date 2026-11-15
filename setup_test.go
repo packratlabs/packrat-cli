@@ -236,7 +236,8 @@ func runSetupCase(t *testing.T, tc setupCase) {
 	}))
 	defer server.Close()
 
-	env := map[string]string{"PACKRAT_QUERY_URL": server.URL, "PACKRAT_URL": server.URL}
+	// Nothing answers at the API's address: setup asks the site alone.
+	env := map[string]string{"PACKRAT_QUERY_URL": "http://127.0.0.1:1", "PACKRAT_URL": server.URL}
 	store := auth.Store{Dir: t.TempDir()}
 	if !tc.signedOut {
 		if err := store.Save(auth.SignIn{Email: "dana@example.com", Key: "key_1", Token: loginKey}); err != nil {
