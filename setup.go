@@ -410,7 +410,7 @@ func setupPull(out setupOut, state query.Setup) {
 	pull := state.Pull
 	switch {
 	case pull == nil:
-		out.row(markTodo, "Pull request", "None has declared checks yet.")
+		out.row(markTodo, "Pull request", out.dim("Opened by Claude Code"))
 	case pull.None != "":
 		out.row(markDone, "Pull request", fmt.Sprintf("%s declared no checks: %s", pullName(pull), pull.None))
 	default:
@@ -490,7 +490,7 @@ func setupNext(w world, out setupOut, state query.Setup, lock rails.Lockfile, cl
 	case hasGem:
 		out.printf("%s have Claude Code open a pull request with the change that adds packrat-rails.\n", out.bold("Next:"))
 	default:
-		out.printf("%s have Claude Code add Packrat to this app and open the pull request.\n", out.bold("Next:"))
+		out.printf("%s have Claude Code create a pull request to install Packrat.\n", out.bold("Next:"))
 		return startClaude(w, out, state, claude, stderr)
 	}
 	return exitOK
