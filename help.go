@@ -53,8 +53,9 @@ func commands() map[string]command {
 		},
 		"setup": {
 			summary: "set up Packrat for the repository you're in",
-			usage:   "packrat setup [--no-browser] [--no-claude]",
-			flags: [][2]string{{"--no-browser", "print the GitHub page instead of opening a browser"},
+			usage:   "packrat setup [--yes] [--no-browser] [--no-claude]",
+			flags: [][2]string{{"-y, --yes", "answer yes to every question: open the browser, install the plugin, start Claude Code"},
+				{"--no-browser", "print the GitHub page instead of opening a browser"},
 				{"--no-claude", "print the Claude Code command instead of offering to start it"}},
 			description: "Does each step it can, shows how far the others have come, and names the next one. It signs\n" +
 				"you in, asks GitHub to let Packrat read the repository, installs the Claude Code plugin, and then\n" +

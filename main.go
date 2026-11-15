@@ -61,7 +61,11 @@ type world struct {
 	readFile func(string) ([]byte, error)
 	// terminal says whether a person is at the keyboard, and colour whether stdout takes colour.
 	terminal bool
-	colour   bool
+	// width is the terminal's width in columns, 0 when it is not known.
+	width  func() int
+	colour bool
+	// yes is setup's --yes: every question is answered yes without being asked.
+	yes bool
 }
 
 // orgName is the variable that names the org when there is no --org.
@@ -76,7 +80,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		hostname: os.Hostname, origin: gitOrigin, browse: browse, now: time.Now, heard: &query.Heard{},
 		releases:   query.Releases{API: query.ReleasesAPI, Download: query.ReleasesDownload, HTTP: &http.Client{Timeout: updateLimit}},
 		executable: os.Executable, program: runProgram, replace: becomeProgram, readFile: os.ReadFile,
-		terminal: isTerminal(os.Stdin) && isTerminal(os.Stdout), colour: isTerminal(os.Stdout) && os.Getenv("NO_COLOR") == ""}
+		terminal: isTerminal(os.Stdin) && isTerminal(os.Stdout), width: terminalWidth, colour: isTerminal(os.Stdout) && os.Getenv("NO_COLOR") == ""}
 	dir, err := auth.Dir(os.Getenv)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat: %v\n", err), exitFailed)

@@ -52,7 +52,7 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 	msg := fmt.Sprintf("Open %s and enter the code %s\n", started.VerificationURI, started.UserCode)
 	browser := !*noBrowser && strings.HasPrefix(started.Complete, strings.TrimRight(siteURL(w), "/")+"/")
 	// A person at the keyboard says when the browser opens. The end of input is no answer, and opens nothing.
-	if browser && w.terminal {
+	if browser && w.terminal && !w.yes {
 		if code := say(stdout, fmt.Sprintf("Your sign-in code is %s.\nPress Enter to open Packrat in your browser and sign in... ", started.UserCode), exitOK); code != exitOK {
 			return code
 		}
@@ -60,7 +60,7 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 		browser = err == nil
 	}
 	if browser && w.browse(started.Complete) == nil {
-		msg = fmt.Sprintf("Opened %s in your browser.\nConfirm that it shows the code %s, then sign in.\n", started.VerificationURI, started.UserCode)
+		msg = fmt.Sprintf("Opened your browser. If it did not open, go to:\n  %s\nConfirm that the page shows the code %s, then sign in.\n", started.Complete, started.UserCode)
 	}
 	if code := say(stdout, msg+"Waiting...\n", exitOK); code != exitOK {
 		return code

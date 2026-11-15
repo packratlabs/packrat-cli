@@ -66,8 +66,9 @@ Run `packrat login` to sign in with your browser:
 $ packrat login
 Your sign-in code is BCDF-GHJK.
 Press Enter to open Packrat in your browser and sign in...
-Opened https://packrat.sh/cli/activate in your browser.
-Confirm that it shows the code BCDF-GHJK, then sign in.
+Opened your browser. If it did not open, go to:
+  https://packrat.sh/cli/activate?code=BCDF-GHJK
+Confirm that the page shows the code BCDF-GHJK, then sign in.
 Waiting...
 Signed in to Acme as dana@example.com.
 ```
@@ -334,14 +335,14 @@ have come, and names the next one. Run it again at any time, and on each teammat
 ```
 $ packrat setup
 
-✓ Signed in    dana@example.com
-✓ Repository   acme/shop (from origin)
-✓ Platform     Ruby on Rails 8.1.1 (from Gemfile.lock)
-✓ GitHub       Packrat can read acme/shop
-✓ App          shop/development in Acme
-✓ Plugin       packrat@packrat is installed in Claude Code
-✓ Pull request #1, 2 checks declared
-◷ Deploy       Waiting for a production deploy that ships #1.
+✓ Signed in       dana@example.com
+✓ Repository      acme/shop (from origin)
+✓ Platform        Ruby on Rails 8.1.1 (from Gemfile.lock)
+✓ GitHub          Packrat can read acme/shop
+✓ Plugin          packrat@packrat is installed in Claude Code
+✓ Data            Receiving from shop/development
+✓ Pull request    #1, 2 checks declared
+◷ PR Verification Waiting for a production deploy that ships #1.
 
 Next: merge #1 and deploy to production. Its checks start when the deploy goes live.
 ```
@@ -349,16 +350,23 @@ Next: merge #1 and deploy to production. Its checks start when the deploy goes l
 - **Signed in:** it signs you in first if you aren't.
 - **GitHub:** it waits for Enter, then opens GitHub for you to approve Packrat for the repository.
   Packrat reads code and comments on pull requests.
-- **Plugin:** it installs the Packrat plugin in Claude Code.
+- **Plugin:** it asks, then installs the Packrat plugin in Claude Code.
 - **Pull request:** it offers to start Claude Code, which adds `packrat-rails` to the app and opens
   the setup pull request. `packrat pr checks setup` writes that pull request's two checks: after
   the deploy, Packrat receives request traces and log lines from the deployed version.
-- **Deploy, Checks, Comment:** after you merge and deploy to production, Packrat runs the checks and
-  comments on the pull request. Setup is complete when the checks pass.
+- **PR Verification:** after you merge and deploy to production, Packrat runs the checks and
+  comments on the pull request. The row counts the checks that passed, and `packrat pr show`
+  lists each one. Setup is complete when they all pass.
 
-`--no-browser` prints the GitHub page instead of opening a browser, and `--no-claude` prints the
-Claude Code command instead of offering to start it. When nobody is at the keyboard, `packrat setup`
-prints the GitHub page, says to run it again after you approve, and exits.
+Setup changes nothing outside the project unless you say yes. It waits for Enter before it opens
+your browser, and asks before it installs the plugin or starts Claude Code.
+
+- `--yes` (or `-y`) answers yes to every question.
+- `--no-browser` prints the GitHub page instead of opening a browser.
+- `--no-claude` prints the Claude Code command instead of offering to start it.
+
+When nobody is at the keyboard, `packrat setup` asks nothing: without `--yes` it installs nothing,
+and when GitHub needs your approval it prints the page, says to run it again, and exits.
 
 `packrat setup detect` and `packrat setup plan` scan a project and suggest how to send its data to
 Packrat. Ruby on Rails is the only supported stack.
