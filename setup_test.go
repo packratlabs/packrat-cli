@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -353,7 +354,8 @@ func TestSetupChecksDraft(t *testing.T) {
 	if code := runIn(world{getenv: func(string) string { return "" }, program: git}, []string{"pr", "checks", "setup"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
-	draft, err := os.ReadFile(dir + "/packrat/checks/packrat-setup.json") // #nosec G304 -- the test's own directory
+	path := filepath.Join(dir, "packrat", "checks", "packrat-setup.json")
+	draft, err := os.ReadFile(path) // #nosec G304 -- the test's own directory
 	if err != nil {
 		t.Fatalf("no draft: %v", err)
 	}
@@ -366,7 +368,7 @@ func TestSetupChecksDraft(t *testing.T) {
 			t.Errorf("check lacks a field, or does not read the deployed version: %v", check)
 		}
 	}
-	if !strings.Contains(stdout.String(), dir+"/packrat/checks/packrat-setup.json") {
+	if !strings.Contains(stdout.String(), path) {
 		t.Errorf("stdout does not name the draft:\n%s", stdout.String())
 	}
 
