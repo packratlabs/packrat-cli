@@ -113,6 +113,8 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 	out.row(markDone, "Repository", client.Repo+" "+out.dim("(from origin)"))
 	lock := setupPlatform(w, out)
 
+	// Setup is the site's: it holds the GitHub App, and the pages this names are its own.
+	client = siteClient(w, client.Key).In(client.Org, client.Repo)
 	ctx := context.Background()
 	state, err := client.SetupState(ctx)
 	if err != nil {

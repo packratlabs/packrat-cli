@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Setup is the answer of GET /setup/state: how far setup has come for one repository.
+// Setup is the answer of GET /setup/state on the site: how far setup has come for one repository.
 type Setup struct {
 	Repository string `json:"repository"`
 	OrgOf      struct {
@@ -55,6 +55,12 @@ type SetupPull struct {
 	CommentURL string     `json:"comment_url"`
 	// CommentError is what GitHub said when it refused Packrat's comment.
 	CommentError string `json:"comment_error"`
+}
+
+// In is the client asking for one org and one repository.
+func (c Client) In(org, repo string) Client {
+	c.Org, c.Repo = org, repo
+	return c
 }
 
 // SetupState reads how far setup has come for the client's repository.
