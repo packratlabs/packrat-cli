@@ -44,7 +44,7 @@ func TestRun(t *testing.T) {
 		{name: "help after a path", args: []string{"setup", "detect", empty, "-h"}, code: 0, stdout: "scan a project for existing observability tools\n"},
 		{name: "a topic's help", args: []string{"help", "check"}, code: 0, stdout: "COMMANDS\n  check add    schedule a check"},
 		{name: "a subcommand's help", args: []string{"check", "close", "--help"}, code: 0, stdout: "USAGE\n  $ packrat check close ID"},
-		{name: "setup with no command", args: []string{"setup"}, code: 2, stderr: "specify a command: detect or plan"},
+		{name: "setup with an unknown option", args: []string{"setup", "--nope"}, code: 2, stderr: "the options are --no-browser and --no-claude"},
 		{name: "the old name is gone", args: []string{"detect"}, code: 2, stderr: `"detect" is not a packrat command`},
 		{name: "no help for nothing", args: []string{"help", "nope"}, code: 2, stderr: `no help for "nope"`},
 		{name: "plan", args: []string{"setup", "plan", railsOnly}, code: 0, stdout: "Exceptions  OpenTelemetry              subscribe to Rails.error", lastStdout: report.AppHint, absent: "Nothing was sent"},
@@ -165,6 +165,8 @@ func appStatusBody(app, seen string) string {
 func TestStatusAndApps(t *testing.T) {
 	fresh, newer, old := statusBody("2026-10-13T14:59:00Z"), statusBody("2026-10-13T15:00:00Z"), statusBody("2026-10-12T10:00:00Z")
 	devFresh, devOld := appStatusBody("shop/development", "2026-10-13T14:59:00Z"), appStatusBody("shop/development", "2026-10-12T10:00:00Z")
+	both := strings.Replace(statusBody("2026-10-13T15:00:01Z"), `"signal":"logs","quiet":false,"sources":[]`,
+		`"signal":"logs","quiet":false,"sources":[{"source":"otel","name":"OpenTelemetry","kept":true,"last_seen_at":"2026-10-13T15:00:01Z"}]`, 1)
 	noApps := `{"now":"2026-10-13T15:00:00Z","apps":[]}`
 	devApp := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
 	twoApps := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-12T10:00:00Z"}]}`
@@ -200,14 +202,16 @@ func TestStatusAndApps(t *testing.T) {
 			stdout: "[\n  {\n    \"app\": \"shop/production\"", asked: 2},
 		{name: "no app when the org has none", args: []string{"status"}, key: statusKey, apps: []string{noApps}, code: 1, stderr: "no app has sent data yet"},
 		{name: "the app as an argument", args: []string{"status", "shop/production"}, key: statusKey, code: 2, stderr: "--app SERVICE/ENV"},
-		{name: "wait with no app ends when an app first sends", args: []string{"status", "--wait"}, key: statusKey, apps: []string{noApps, noApps, devApp}, bodies: []string{fresh}, code: 0, stdout: "Waiting for data from your app.", asked: 1, sleeps: 2},
-		{name: "wait with no app ends when a known app sends again", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps, twoAppsNewer}, bodies: []string{fresh}, code: 0, stdout: "OpenTelemetry", asked: 1, sleeps: 1},
+		{name: "wait with no app ends when an app first sends", args: []string{"status", "--wait"}, key: statusKey, apps: []string{noApps, noApps, devApp}, bodies: []string{fresh}, code: 0, stdout: "Waiting for data from your app.", asked: 6, sleeps: 7},
+		{name: "wait with no app ends when a known app sends again", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps, twoAppsNewer}, bodies: []string{fresh}, code: 0, stdout: "OpenTelemetry", asked: 6, sleeps: 6},
 		{name: "wait with no app gives up", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100},
 		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "a refused key", args: []string{"status", "--app", "shop/production"}, key: "wrong", bodies: []string{fresh}, code: 1, stderr: "your key was rejected (401)"},
 		{name: "an app that is not there", args: []string{"status", "--app", "shop/staging"}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
-		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, fresh, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 3, sleeps: 2},
-		{name: "wait ends when the app first appears", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{"", "", fresh}, code: 0, stdout: "OpenTelemetry", asked: 3, sleeps: 2},
+		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, fresh, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 8, sleeps: 7},
+		{name: "wait gives the logs that follow the first trace time to arrive, and ends when both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, newer, newer, both}, code: 0, stdout: "Logs        OpenTelemetry", asked: 4, sleeps: 3},
+		{name: "wait ends at once when traces and logs both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, both}, code: 0, stdout: "2 of", asked: 2, sleeps: 1},
+		{name: "wait ends when the app first appears", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{"", "", fresh}, code: 0, stdout: "OpenTelemetry", asked: 8, sleeps: 7},
 		{name: "wait gives up", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100, asked: 101},
 	}
 	for _, tc := range tests {

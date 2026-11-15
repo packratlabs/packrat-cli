@@ -33,6 +33,7 @@ const (
 const (
 	pollEvery   = 3 * time.Second
 	waitLimit   = 5 * time.Minute
+	settleLimit = 15 * time.Second
 	httpLimit   = 30 * time.Second
 	updateLimit = 5 * time.Minute
 )
@@ -54,6 +55,13 @@ type world struct {
 	executable func() (string, error)
 	// org is --org, which any command takes.
 	org string
+	// program runs another program and gives its output, and replace becomes it. Both are for claude.
+	program  func(name string, args ...string) (string, error)
+	replace  func(name string, args ...string) error
+	readFile func(string) ([]byte, error)
+	// terminal says whether a person is at the keyboard, and colour whether stdout takes colour.
+	terminal bool
+	colour   bool
 }
 
 // orgName is the variable that names the org when there is no --org.
@@ -67,7 +75,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	w := world{getenv: os.Getenv, sleep: time.Sleep, stdin: os.Stdin, http: &http.Client{Timeout: httpLimit},
 		hostname: os.Hostname, origin: gitOrigin, browse: browse, now: time.Now, heard: &query.Heard{},
 		releases:   query.Releases{API: query.ReleasesAPI, Download: query.ReleasesDownload, HTTP: &http.Client{Timeout: updateLimit}},
-		executable: os.Executable}
+		executable: os.Executable, program: runProgram, replace: becomeProgram, readFile: os.ReadFile,
+		terminal: isTerminal(os.Stdin) && isTerminal(os.Stdout), colour: isTerminal(os.Stdout) && os.Getenv("NO_COLOR") == ""}
 	dir, err := auth.Dir(os.Getenv)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat: %v\n", err), exitFailed)
@@ -196,13 +205,18 @@ func runStatus(w world, args []string, stdout, stderr io.Writer) int {
 		if name, err = awaitApp(w, client); err == nil {
 			status, err = client.Status(context.Background(), name)
 		}
+		if err == nil {
+			status = settled(w, client, status)
+		}
 	case *wait:
 		if !*asJSON {
 			if code := say(stdout, fmt.Sprintf("Waiting for data from %s. Start your app and load a page.\n\n", *app), exitOK); code != exitOK {
 				return code
 			}
 		}
-		status, err = awaitData(w, client, *app)
+		if status, err = awaitData(w, client, *app); err == nil {
+			status = settled(w, client, status)
+		}
 	case *app == "":
 		return statusOfEach(client, *asJSON, stdout, stderr)
 	default:
@@ -279,10 +293,13 @@ func appNames(client query.Client) ([]string, error) {
 	return names, nil
 }
 
-// awaitApp asks for the org's apps until one is new or has sent data since the first answer, and
-// names it. That is the app being set up, whichever name it reports under.
+// awaitApp asks for the apps until one is new, or one of this checkout's has sent data since the first answer, and
+// names it. That is the app being set up, whichever name it reports under. A key from packrat login opens every
+// org its person belongs to, so another app that is merely busy is not the answer: in a checkout, an app that was
+// already there counts only when it is connected to the checkout's repository.
 func awaitApp(w world, client query.Client) (string, error) {
 	var first map[string]time.Time
+	var known map[string]bool
 	for waited := time.Duration(0); ; waited += pollEvery {
 		apps, err := client.Apps(context.Background())
 		if err != nil {
@@ -295,10 +312,14 @@ func awaitApp(w world, client query.Client) (string, error) {
 			}
 		}
 		if waited == 0 {
-			first = seen
+			first, known = seen, make(map[string]bool, len(apps.Apps))
+			for _, app := range apps.Apps {
+				known[app.Org+"/"+app.App] = true
+			}
 		} else {
 			for _, app := range apps.Apps {
-				if last, ok := seen[app.App]; ok && last.After(first[app.App]) {
+				here := client.Repo == "" || strings.EqualFold(app.Repository, client.Repo)
+				if last, ok := seen[app.App]; ok && last.After(first[app.App]) && (here || !known[app.Org+"/"+app.App]) {
 					return app.App, nil
 				}
 			}
@@ -330,6 +351,34 @@ func awaitData(w world, client query.Client, app string) (query.Status, error) {
 		}
 		w.sleep(pollEvery)
 	}
+}
+
+// settled gives the signals that follow the first a little time to arrive: a log line from the app's boot comes
+// before the first request's trace, and an answer taken between the two reads as tracing not working. It ends
+// early once traces and logs both have a source.
+func settled(w world, client query.Client, status query.Status) query.Status {
+	for waited := time.Duration(0); waited < settleLimit && !reporting(status, "traces", "logs"); waited += pollEvery {
+		w.sleep(pollEvery)
+		next, err := client.Status(context.Background(), status.App.App)
+		if err != nil {
+			break
+		}
+		status = next
+	}
+	return status
+}
+
+func reporting(status query.Status, signals ...string) bool {
+	sending := map[string]bool{}
+	for _, signal := range status.Signals {
+		sending[signal.Signal] = len(signal.Sources) > 0
+	}
+	for _, signal := range signals {
+		if !sending[signal] {
+			return false
+		}
+	}
+	return true
 }
 
 // takeOrg takes --org ORG or --org=ORG out of args, wherever it is. ok is false for an --org with no ORG.
@@ -381,7 +430,7 @@ func runSetup(w world, args []string, stdout, stderr io.Writer) int {
 	case len(args) > 0 && args[0] == "plan":
 		return runPlan(w, args[1:], stdout, stderr)
 	default:
-		return say(stderr, "packrat setup: specify a command: detect or plan. Run packrat help setup for details.\n", exitUsage)
+		return runSetupSteps(w, args, stdout, stderr)
 	}
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -48,7 +50,16 @@ func runLogin(w world, args []string, stdout, stderr io.Writer) int {
 		return say(stderr, fmt.Sprintf("packrat login: %v\n", err), exitFailed)
 	}
 	msg := fmt.Sprintf("Open %s and enter the code %s\n", started.VerificationURI, started.UserCode)
-	if !*noBrowser && strings.HasPrefix(started.Complete, strings.TrimRight(siteURL(w), "/")+"/") && w.browse(started.Complete) == nil {
+	browser := !*noBrowser && strings.HasPrefix(started.Complete, strings.TrimRight(siteURL(w), "/")+"/")
+	// A person at the keyboard says when the browser opens. The end of input is no answer, and opens nothing.
+	if browser && w.terminal {
+		if code := say(stdout, fmt.Sprintf("Your sign-in code is %s.\nPress Enter to open Packrat in your browser and sign in... ", started.UserCode), exitOK); code != exitOK {
+			return code
+		}
+		_, err := bufio.NewReader(w.stdin).ReadString('\n')
+		browser = err == nil
+	}
+	if browser && w.browse(started.Complete) == nil {
 		msg = fmt.Sprintf("Opened %s in your browser.\nConfirm that it shows the code %s, then sign in.\n", started.VerificationURI, started.UserCode)
 	}
 	if code := say(stdout, msg+"Waiting...\n", exitOK); code != exitOK {
@@ -213,6 +224,9 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	dryRun := fs.Bool("dry-run", false, "")
 	reason := fs.String("reason", "", "")
 	words, err := parseInterleaved(fs, args)
+	if err == nil && len(words) == 2 && words[0] == "checks" && words[1] == "setup" {
+		return draftSetupChecks(w, stdout, stderr)
+	}
 	if err == nil && len(words) >= 2 && words[0] == "checks" && words[1] == "set" {
 		return declareChecks(w, words[2:], *app, *file, *dryRun, *asJSON, stdout, stderr)
 	}
@@ -387,7 +401,42 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 	return exitOK
 }
 
-const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive or checks set. Run packrat help pr for details.\n"
+// setupDraft is the draft of the pull request that adds Packrat to an app: the deployed version reaches Packrat.
+// It is fixed, because that pull request changes nothing else that production could show.
+const setupDraft = `[
+  { "title": "Packrat receives request traces",
+    "claim": "After the deploy, Packrat receives at least one request trace from the deployed version.",
+    "sql": "SELECT count(*) AS seen FROM packrat_spans(since := getvariable('deployed_at'), until := getvariable('until')) WHERE parent_span_id IS NULL AND json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
+    "pass_when": "seen >= 1",
+    "window": "1d" },
+  { "title": "Packrat receives log lines",
+    "claim": "After the deploy, Packrat receives at least one log line from the deployed version.",
+    "sql": "SELECT count(*) AS seen FROM packrat_logs(since := getvariable('deployed_at'), until := getvariable('until')) WHERE json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
+    "pass_when": "seen >= 1",
+    "window": "1d" }
+]
+`
+
+// draftSetupChecks writes setupDraft as the draft of the branch it runs in, where the plugin's hook reads it.
+func draftSetupChecks(w world, stdout, stderr io.Writer) int {
+	const name = "pr checks setup"
+	common, err := w.program("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	branch, branchErr := w.program("git", "branch", "--show-current")
+	common, branch = strings.TrimSpace(common), strings.TrimSpace(branch)
+	if err != nil || branchErr != nil || common == "" || branch == "" {
+		return say(stderr, "packrat "+name+": run it in a git checkout, on the branch of the pull request that adds Packrat\n", exitUsage)
+	}
+	draft := filepath.Join(common, "packrat", "checks", branch+".json")
+	if err := os.MkdirAll(filepath.Dir(draft), 0o750); err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	}
+	if err := os.WriteFile(draft, []byte(setupDraft), 0o600); err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	}
+	return say(stdout, "Wrote the setup checks to "+draft+"\nOpen the pull request with gh pr create. The Packrat plugin declares them once it has a number.\n", exitOK)
+}
+
+const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive, checks set or checks setup. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, name, usage string, stdout, stderr io.Writer) int {
 	text, err := io.ReadAll(w.stdin)
@@ -403,7 +452,7 @@ func askCheck(w world, client query.Client, where query.Where, ask query.Ask, na
 		return fail(stderr, name, usage, err)
 	}
 	if check.Warning != "" {
-		fmt.Fprintf(stderr, "packrat %s: warning: %s\n", name, check.Warning)
+		return say(stderr, fmt.Sprintf("packrat %s: warning: %s\n", name, check.Warning), exitOK)
 	}
 	return exitOK
 }
