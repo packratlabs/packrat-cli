@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -189,7 +190,7 @@ func runSQL(w world, args []string, stdout, stderr io.Writer) int {
 	if len(bytes.TrimSpace(script)) == 0 {
 		return say(stderr, "packrat sql: the query is empty\n", exitUsage)
 	}
-	client, err := newClient(w)
+	client, err := waiting(w)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat sql: %v\n", err), exitUsage)
 	}
@@ -378,7 +379,7 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat %s: reading %s: %v\n", name, file, err), exitUsage)
 	}
-	client, err := newClient(w)
+	client, err := waiting(w)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
 	}
@@ -386,6 +387,10 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 	var notWatched *query.NotWatchedError
 	if errors.As(err, &notWatched) {
 		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, notWatched), exitNotWatched)
+	}
+	var late net.Error
+	if errors.As(err, &late) && late.Timeout() && number > 0 {
+		return say(stderr, fmt.Sprintf("packrat %s: Packrat did not answer in time, and may still have saved the checks. Run packrat pr show %d to see them before you send them again.\n", name, number), exitFailed)
 	}
 	if err != nil {
 		return fail(stderr, name, name+" --app %s", err)
@@ -471,7 +476,7 @@ func runCheck(w world, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat check: %v\n", err), exitUsage)
 	}
-	client, err := newClient(w)
+	client, err := waiting(w)
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat check: %v\n", err), exitUsage)
 	}

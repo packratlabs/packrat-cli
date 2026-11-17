@@ -35,16 +35,21 @@ const (
 	waitLimit   = 5 * time.Minute
 	settleLimit = 15 * time.Second
 	httpLimit   = 30 * time.Second
+	// A query, or a draft whose every check's SQL runs before the answer, may take up to the query app's
+	// 100 seconds; giving up sooner leaves it running there and saved when it finishes.
+	queryLimit  = 2 * time.Minute
 	updateLimit = 5 * time.Minute
 )
 
 // world is what a command reads from outside its arguments. Tests give their own.
 type world struct {
-	getenv   func(string) string
-	sleep    func(time.Duration)
-	store    auth.Store
-	stdin    io.Reader
-	http     *http.Client
+	getenv func(string) string
+	sleep  func(time.Duration)
+	store  auth.Store
+	stdin  io.Reader
+	http   *http.Client
+	// slow is http with the query app's time, for a request that runs SQL there (waiting).
+	slow     *http.Client
 	hostname func() (string, error)
 	origin   func() string
 	browse   func(string) error
@@ -76,7 +81,7 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
-	w := world{getenv: os.Getenv, sleep: time.Sleep, stdin: os.Stdin, http: &http.Client{Timeout: httpLimit},
+	w := world{getenv: os.Getenv, sleep: time.Sleep, stdin: os.Stdin, http: &http.Client{Timeout: httpLimit}, slow: &http.Client{Timeout: queryLimit},
 		hostname: os.Hostname, origin: gitOrigin, browse: browse, now: time.Now, heard: &query.Heard{},
 		releases:   query.Releases{API: query.ReleasesAPI, Download: query.ReleasesDownload, HTTP: &http.Client{Timeout: updateLimit}},
 		executable: os.Executable, program: runProgram, replace: becomeProgram, readFile: os.ReadFile,
@@ -424,6 +429,15 @@ func newClient(w world) (query.Client, error) {
 	}
 	return query.Client{BaseURL: base, Key: key, Org: org, Repo: originRepo(w), HTTP: w.http, Version: version,
 		Agent: query.Agent(w.getenv), Heard: w.heard}, nil
+}
+
+// waiting is newClient for a request that runs SQL at Packrat before it answers.
+func waiting(w world) (query.Client, error) {
+	client, err := newClient(w)
+	if err == nil && w.slow != nil {
+		client.HTTP = w.slow
+	}
+	return client, err
 }
 
 // runSetup is the setup topic: detect and plan, which read a project before it sends anything.
