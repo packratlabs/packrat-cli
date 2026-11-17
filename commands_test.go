@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -254,6 +256,59 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 				if (browsed != "") == (len(tc.args) > 1) {
 					t.Errorf("browsed %q with args %v", browsed, tc.args)
 				}
+			}
+		})
+	}
+}
+
+// A request that runs SQL at Packrat waits as long as the query app does; any other gives up at the usual limit.
+// A pull request's checks that were sent and not answered may be saved, and the message says how to look.
+func TestSlowAnswers(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		stdin  string
+		slow   time.Duration
+		code   int
+		stdout string
+		stderr string
+	}{
+		{name: "sql waits for a slow answer", args: []string{"sql", "--app", "shop", "select 1"}, slow: time.Second, code: 0},
+		{name: "a pull request's checks wait for a slow answer", args: []string{"pr", "checks", "set", "482", "--file", "-"}, stdin: "[]", slow: time.Second, code: 0, stdout: "Declared 2 checks for #482"},
+		{name: "checks that time out may be saved", args: []string{"pr", "checks", "set", "482", "--file", "-"}, stdin: "[]", slow: 50 * time.Millisecond, code: 1,
+			stderr: "may still have saved the checks. Run packrat pr show 482 to see them before you send them again."},
+		{name: "a command that runs no SQL keeps the short limit", args: []string{"apps"}, slow: time.Second, code: 1, stderr: "Client.Timeout"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fake, _ := fakePackrat(t)
+			target, err := url.Parse(fake.URL)
+			if err != nil {
+				t.Fatalf("parsing %s: %v", fake.URL, err)
+			}
+			proxy := httputil.NewSingleHostReverseProxy(target)
+			proxy.ErrorHandler = func(http.ResponseWriter, *http.Request, error) {}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(200 * time.Millisecond)
+				proxy.ServeHTTP(w, r)
+			}))
+			t.Cleanup(server.Close)
+			env := map[string]string{"PACKRAT_API_KEY": statusKey, "PACKRAT_QUERY_URL": server.URL, "PACKRAT_URL": server.URL}
+			w := world{getenv: func(name string) string { return env[name] }, sleep: func(time.Duration) {}, store: auth.Store{Dir: t.TempDir()},
+				stdin: strings.NewReader(tc.stdin), http: &http.Client{Timeout: 50 * time.Millisecond}, slow: &http.Client{Timeout: tc.slow},
+				origin: func() string { return "git@github.com:acme/shop.git" }}
+			var stdout, stderr bytes.Buffer
+
+			code := runIn(w, tc.args, &stdout, &stderr)
+
+			if code != tc.code {
+				t.Errorf("exit %d, want %d (stderr: %s)", code, tc.code, stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tc.stdout) {
+				t.Errorf("stdout lacks %q:\n%s", tc.stdout, stdout.String())
+			}
+			if !strings.Contains(stderr.String(), tc.stderr) {
+				t.Errorf("stderr lacks %q:\n%s", tc.stderr, stderr.String())
 			}
 		})
 	}
