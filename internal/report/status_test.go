@@ -68,6 +68,10 @@ func TestApps(t *testing.T) {
 			{App: "shop/dev", LastDataAt: &old},
 			{App: "rails/production"},
 		}, want: "APP               LAST DATA\nshop/production   now\nshop/dev          3 hours ago\nrails/production  none\n"},
+		{name: "two orgs that share a name are told apart by id", apps: []query.App{
+			{App: "shop/production", Org: "org_aaaa1111bbbb", OrgName: "acme", LastDataAt: &recent},
+			{App: "blog/production", Org: "org_cccc2222dddd", OrgName: "acme", LastDataAt: &old},
+		}, want: "APP              ORG   ORG ID            LAST DATA\nshop/production  acme  org_aaaa1111bbbb  now\nblog/production  acme  org_cccc2222dddd  3 hours ago\n"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

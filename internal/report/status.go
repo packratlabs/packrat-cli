@@ -34,27 +34,29 @@ func Apps(w io.Writer, apps query.Apps) error {
 	if len(apps.Apps) == 0 {
 		return put(w, NoApps+"\n")
 	}
-	width, orgWidth, orgs := len("APP"), len("ORG"), map[string]bool{}
+	width, orgWidth, idWidth, orgs := len("APP"), len("ORG"), len("ORG ID"), map[string]bool{}
 	for _, app := range apps.Apps {
 		width = max(width, len(app.App))
 		orgWidth = max(orgWidth, len(app.OrgName))
+		idWidth = max(idWidth, len(app.Org))
 		orgs[app.Org] = true
 	}
 	var b strings.Builder
-	row := func(name, org, last string) {
+	// With more than one org a command needs --org, which takes the id: two orgs can share a name.
+	row := func(name, org, id, last string) {
 		if len(orgs) > 1 {
-			fmt.Fprintf(&b, "%-*s  %-*s  %s\n", width, name, orgWidth, org, last)
+			fmt.Fprintf(&b, "%-*s  %-*s  %-*s  %s\n", width, name, orgWidth, org, idWidth, id, last)
 		} else {
 			fmt.Fprintf(&b, "%-*s  %s\n", width, name, last)
 		}
 	}
-	row("APP", "ORG", "LAST DATA")
+	row("APP", "ORG", "ORG ID", "LAST DATA")
 	for _, app := range apps.Apps {
 		last := "none"
 		if app.LastDataAt != nil {
 			last = ago(apps.Now.Sub(*app.LastDataAt))
 		}
-		row(app.App, app.OrgName, last)
+		row(app.App, app.OrgName, app.Org, last)
 	}
 	return put(w, b.String())
 }
