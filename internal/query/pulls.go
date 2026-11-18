@@ -100,6 +100,21 @@ type Pull struct {
 	Declared   []Declared `json:"declared"`
 	// Dropped are checks the coding agent could not make run, sent so they are seen; they never run.
 	Dropped []Declared `json:"dropped"`
+	// Settled is a pull request that did not work with nothing it opened still open.
+	Settled bool        `json:"settled"`
+	Issues  []IssueLink `json:"issues"`
+}
+
+// IssueLink is an issue a pull request opened, found already open, or fixes (Link). FixedBy is the
+// pull request that fixed one it opened or found, Check the check that opened it, and From the
+// pull request that opened one it fixes.
+type IssueLink struct {
+	ID      string `json:"id"`
+	Link    string `json:"link"`
+	Status  string `json:"status"`
+	FixedBy int    `json:"fixed_by,omitempty"`
+	Check   string `json:"check,omitempty"`
+	From    int    `json:"from,omitempty"`
 }
 
 // Declared is a check a pull request declared, waiting for the deploy that ships it. Window is how
