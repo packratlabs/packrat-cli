@@ -119,7 +119,12 @@ func (c Client) Page(ctx context.Context, address string, hosts ...string) (body
 	if err != nil {
 		return nil, "", fmt.Errorf("building the request to %s: %w", parsed.Host, err)
 	}
-	return c.do(request, "", "text/markdown, text/html;q=0.9, application/json;q=0.8", parsed.Path)
+	body, kind, err = c.do(request, "", "text/markdown, text/html;q=0.9, application/json;q=0.8", parsed.Path)
+	var missing *MissingError
+	if errors.As(err, &missing) {
+		return body, "", fmt.Errorf("there is no page at %s", parsed.Redacted())
+	}
+	return body, kind, err
 }
 
 func packratHost(address *url.URL, bases []string) bool {

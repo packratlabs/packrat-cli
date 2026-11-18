@@ -87,6 +87,14 @@ type NotFoundError struct{ Message string }
 
 func (e *NotFoundError) Error() string { return e.Message }
 
+// MissingError is a 404 with no sentence: an address the API does not have, which for an endpoint means the
+// API is older than the command.
+type MissingError struct{ Where, Path string }
+
+func (e *MissingError) Error() string {
+	return fmt.Sprintf("%s has no %s (404). The API is older than this command", e.Where, e.Path)
+}
+
 // NotWatchedError is a repository or app Packrat's analyst does not look at, so nothing would run a check
 // declared for it. Message is the API's sentence.
 type NotWatchedError struct{ Message string }
@@ -234,7 +242,7 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 		if said := message(body, ""); said != "" {
 			return body, "", &NotFoundError{Message: said}
 		}
-		return body, "", fmt.Errorf("%s has no %s (404). The API is older than this command", where, strings.SplitN(path, "?", 2)[0])
+		return body, "", &MissingError{Where: where, Path: strings.SplitN(path, "?", 2)[0]}
 	default:
 		var choose struct {
 			Apps    []string `json:"apps"`

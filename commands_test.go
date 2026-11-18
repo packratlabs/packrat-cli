@@ -202,6 +202,7 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "open a pasted curl line reads the report", args: []string{"open", `curl -sS QUERY/reports/rep_1 -H "Authorization: Bearer $(sed -nE 's/^PACKRAT_(API|QUERY)_KEY=//p' .env | tail -1)"`}, login: true, code: 0, stdout: "# Worked in part: #482", request: "GET /reports/rep_1"},
 		{name: "open a page", args: []string{"open", "SITE/orgs/org_a/apps/shop/production/analyst"}, login: true, code: 0, stdout: "<h1>Analyst</h1>"},
 		{name: "open a pull request", args: []string{"open", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total", request: "GET /pulls/482?repo=acme%2Fshop"},
+		{name: "open names a page Packrat does not have", args: []string{"open", "SITE/nowhere"}, login: true, code: 1, stderr: "packrat open: there is no page at http://"},
 		{name: "open never sends the key elsewhere", args: []string{"open", "https://example.com/orgs/x"}, login: true, code: 1, stderr: "not a Packrat URL", none: true},
 		{name: "open over plain http to packrat.sh is refused", args: []string{"open", "http://packrat.sh/orgs/x"}, login: true, code: 1, stderr: "not a Packrat URL", none: true},
 	}
