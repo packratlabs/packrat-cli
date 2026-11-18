@@ -17,24 +17,26 @@ import (
 )
 
 const (
-	setupUnread    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":false,"accounts":[],"install_url":"/github/setup?state=s1"},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
-	setupWrong     = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":false,"accounts":["dana"],"install_url":"/github/setup?state=s1"},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
-	setupNoApp     = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":false,"readable":false,"accounts":[],"install_url":null},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
-	setupReadable  = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"account":"acme","accounts":["acme"],"install_url":"/github/setup?state=s1"},"connected":true,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
-	setupApps      = `"apps":[{"app":"shop/development","env":"development","analysed":false,"last_data_at":"2026-11-14T16:00:00Z"}]`
-	setupDeclared  = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"pull":{"number":1,"declared":["Traces","Logs"],"checks":[]},"setup_url":"/s"}`
-	setupWaived    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"pull":{"number":1,"declared":[],"none":"It only adds the gem.","checks":[]},"setup_url":"/s"}`
-	setupProd      = `"production":{"app":"shop/production","last_data_at":"2026-11-14T17:00:00Z","version":"0000000aaaabbbb"}`
-	setupOtherShip = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,"pull":{"number":1,"declared":["Traces"],"checks":[]},"setup_url":"/s"}`
-	setupNoVersion = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"production":{"app":"shop/production","last_data_at":"2026-11-14T17:00:00Z","version":null},"pull":{"number":1,"declared":["Traces"],"checks":[]},"setup_url":"/s"}`
-	setupShipped   = `"pull":{"number":1,"title":"Set up Packrat","state":"pending","declared":[],"version":"15655c04acf7","live_at":"2026-11-14T17:05:00Z",`
-	setupRunning   = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","due_at":"2026-11-14T18:05:00Z"}]},"setup_url":"/s"}`
-	setupFailed    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","result":"failed","due_at":"2026-11-14T18:05:00Z"}]},"setup_url":"/s"}`
-	setupComplete  = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","result":"passed","due_at":"2026-11-14T18:05:00Z"}],"comment_url":"https://github.com/acme/shop/pull/1#issuecomment-1"},"setup_url":"/s"}`
-	pluginListed   = "Installed plugins:\n\n  ❯ packrat@packrat\n    Version: 0.4.1\n    Status: ✔ enabled\n"
-	pluginOff      = "Installed plugins:\n\n  ❯ packrat@packrat\n    Version: 0.4.1\n    Status: ✘ disabled\n\n  ❯ other@packrat\n    Status: ✔ enabled\n"
-	railsLock      = "GEM\n  remote: https://rubygems.org/\n  specs:\n    rails (8.1.0)\n"
-	packratLock    = railsLock + "    packrat-rails (0.3.1)\n"
+	setupUnread      = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":false,"accounts":[],"install_url":"/github/setup?state=s1"},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
+	setupWrong       = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":false,"accounts":["dana"],"install_url":"/github/setup?state=s1"},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
+	setupNoApp       = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":false,"readable":false,"accounts":[],"install_url":null},"connected":false,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
+	setupUnconnected = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"account":"acme","accounts":["acme"]},"connected":true,"unconnected":[{"service":"shop","envs":["development","production"],"last_data_at":"2026-11-14T17:58:00Z"},{"service":"blog","envs":["production"],"last_data_at":null}],"apps":[],"setup_url":"/s","now":"2026-11-14T18:00:00Z"}`
+	setupAdopted     = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,"unconnected":[],` + setupApps + `,"setup_url":"/s"}`
+	setupReadable    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"account":"acme","accounts":["acme"],"install_url":"/github/setup?state=s1"},"connected":true,"apps":[],"setup_url":"/orgs/org_a/apps/setup?framework=rails"}`
+	setupApps        = `"apps":[{"app":"shop/development","env":"development","analysed":false,"last_data_at":"2026-11-14T16:00:00Z"}]`
+	setupDeclared    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"pull":{"number":1,"declared":["Traces","Logs"],"checks":[]},"setup_url":"/s"}`
+	setupWaived      = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"pull":{"number":1,"declared":[],"none":"It only adds the gem.","checks":[]},"setup_url":"/s"}`
+	setupProd        = `"production":{"app":"shop/production","last_data_at":"2026-11-14T17:00:00Z","version":"0000000aaaabbbb"}`
+	setupOtherShip   = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,"pull":{"number":1,"declared":["Traces"],"checks":[]},"setup_url":"/s"}`
+	setupNoVersion   = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,"production":{"app":"shop/production","last_data_at":"2026-11-14T17:00:00Z","version":null},"pull":{"number":1,"declared":["Traces"],"checks":[]},"setup_url":"/s"}`
+	setupShipped     = `"pull":{"number":1,"title":"Set up Packrat","state":"pending","declared":[],"version":"15655c04acf7","live_at":"2026-11-14T17:05:00Z",`
+	setupRunning     = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","due_at":"2026-11-14T18:05:00Z"}]},"setup_url":"/s"}`
+	setupFailed      = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","result":"failed","due_at":"2026-11-14T18:05:00Z"}]},"setup_url":"/s"}`
+	setupComplete    = `{"repository":"acme/shop","org":{"id":"org_a","name":"Acme"},"github":{"configured":true,"readable":true,"accounts":["acme"]},"connected":true,` + setupApps + `,` + setupProd + `,` + setupShipped + `"checks":[{"id":"chk_1","title":"Traces","result":"passed","due_at":"2026-11-14T18:05:00Z"},{"id":"chk_2","title":"Logs","result":"passed","due_at":"2026-11-14T18:05:00Z"}],"comment_url":"https://github.com/acme/shop/pull/1#issuecomment-1"},"setup_url":"/s"}`
+	pluginListed     = "Installed plugins:\n\n  ❯ packrat@packrat\n    Version: 0.4.1\n    Status: ✔ enabled\n"
+	pluginOff        = "Installed plugins:\n\n  ❯ packrat@packrat\n    Version: 0.4.1\n    Status: ✘ disabled\n\n  ❯ other@packrat\n    Status: ✔ enabled\n"
+	railsLock        = "GEM\n  remote: https://rubygems.org/\n  specs:\n    rails (8.1.0)\n"
+	packratLock      = railsLock + "    packrat-rails (0.3.1)\n"
 )
 
 // setupCase is one run of packrat setup: what the API answers, what is on the machine, and what the person types.
@@ -244,6 +246,23 @@ func TestSetup(t *testing.T) {
 		{name: "connecting refused is said and fails",
 			states: []string{setupReadable}, connect: `{"type":"error","message":"GitHub does not let Packrat read acme/shop yet."}`, connectCode: 409, files: rails, code: 1,
 			stderr: "connecting acme/shop"},
+		{name: "an app that reported before setup ran is asked about, and the one picked is connected",
+			states: []string{setupUnconnected}, connect: setupAdopted, files: withGem, plugins: pluginListed, terminal: true, stdin: "x\n1\nn\n", code: 0,
+			stdout: []string{"Packrat already receives data from apps that have no repository:\n\n" +
+				"                    1  shop  development, production · last data 2 minutes ago\n" +
+				"                    2  blog  production\n" +
+				"                    3  Neither: this is a new app\n",
+				"Which app is acme/shop? [1-3] ", "✓ App             shop is connected to acme/shop", "✓ Data            Receiving from shop/development"},
+			asked: []string{"POST /setup/repository?repo=acme%2Fshop&service=shop"}},
+		{name: "a new app connects as before, to the org's next app",
+			states: []string{setupUnconnected}, files: rails, plugins: pluginListed, terminal: true, stdin: "3\nn\n", code: 0,
+			stdout: []string{"Which app is acme/shop? [1-3]"}, absent: []string{"✓ App"},
+			asked: []string{"POST /setup/repository?repo=acme%2Fshop\n"}},
+		{name: "with nobody to ask, the apps with no repository are named and nothing is picked",
+			states: []string{setupUnconnected}, files: rails, plugins: pluginListed, code: 0,
+			stdout: []string{"○ App             Packrat has apps with no repository: shop, blog.\n" +
+				"                  Run packrat setup in a terminal to pick one, or connect it on the app's Settings page."},
+			absent: []string{"Which app", "service="}},
 		{name: "an extra word is a usage error", args: []string{"now"}, states: []string{setupReadable}, code: 2, stderr: "the options are --yes, --no-browser and --no-claude"},
 	}
 	for _, tc := range tests {
@@ -378,7 +397,7 @@ func runSetupCase(t *testing.T, tc setupCase) {
 		t.Errorf("ran %q, want %q", ran, tc.ran)
 	}
 	for _, want := range tc.asked {
-		if !strings.Contains(strings.Join(asked, "\n"), want) {
+		if !strings.Contains(strings.Join(asked, "\n")+"\n", want) {
 			t.Errorf("did not ask %q:\n%s", want, strings.Join(asked, "\n"))
 		}
 	}

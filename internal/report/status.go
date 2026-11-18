@@ -54,7 +54,7 @@ func Apps(w io.Writer, apps query.Apps) error {
 	for _, app := range apps.Apps {
 		last := "none"
 		if app.LastDataAt != nil {
-			last = ago(apps.Now.Sub(*app.LastDataAt))
+			last = Ago(apps.Now.Sub(*app.LastDataAt))
 		}
 		row(app.App, app.OrgName, app.Org, last)
 	}
@@ -180,7 +180,7 @@ func quiet(s query.Status, signal query.Signal) string {
 			keptName = source.Name
 			keptAge = "has sent nothing"
 			if source.LastSeenAt != nil {
-				keptAge = "last sent " + ago(s.Now.Sub(*source.LastSeenAt))
+				keptAge = "last sent " + Ago(s.Now.Sub(*source.LastSeenAt))
 			}
 		case !source.Kept:
 			others = append(others, source.Name)
@@ -208,10 +208,11 @@ func seen(s query.Status, signal query.Signal, source query.Source) string {
 	if source.LastSeenAt == nil {
 		return "no " + signal.Signal + " yet"
 	}
-	return ago(s.Now.Sub(*source.LastSeenAt))
+	return Ago(s.Now.Sub(*source.LastSeenAt))
 }
 
-func ago(age time.Duration) string {
+// Ago is how long ago, in the words status uses: "now", "4 minutes ago".
+func Ago(age time.Duration) string {
 	if age < exact {
 		return "now"
 	}
