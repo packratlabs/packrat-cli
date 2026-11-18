@@ -123,6 +123,10 @@ func (o setupOut) printf(format string, args ...any) {
 func (o setupOut) row(mark, name, text string, more ...string) {
 	o.printf("%s %-*s%s\n", o.paint(mark), rowName, name, text)
 	for _, line := range more {
+		if line == "" {
+			o.printf("\n")
+			continue
+		}
 		o.printf("  %-*s%s\n", rowName, "", line)
 	}
 }
@@ -200,13 +204,13 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 	if code != exitOK {
 		return code
 	}
+	out.row(markDone, "Signed in", email)
 	if client.Repo == "" {
-		out.row(markWrong, "Repository", "This directory has no GitHub origin.",
-			"Run packrat setup in a checkout whose origin remote is on GitHub.")
-		out.rest("Repository")
+		setupNoRepository(w, out)
+		setupPlatform(w, out)
+		out.rest("Platform")
 		return exitFailed
 	}
-	out.row(markDone, "Signed in", email)
 	out.row(markDone, "Repository", client.Repo+" "+out.dim("(from origin)"))
 	lock := setupPlatform(w, out)
 
@@ -259,6 +263,43 @@ func setupSignIn(w world, out setupOut, stdout, stderr io.Writer) (query.Client,
 		return client, "", say(stderr, fmt.Sprintf("packrat setup: %v\n", err), exitFailed)
 	}
 	return client, who.Email, exitOK
+}
+
+// setupNoRepository says why this checkout has no GitHub repository, and gives the commands that put it on GitHub.
+func setupNoRepository(w world, out setupOut) {
+	origin := ""
+	if w.origin != nil {
+		origin = strings.TrimSpace(w.origin())
+	}
+	if origin != "" {
+		out.row(markWrong, "Repository", "This checkout's origin is "+origin+", which is not on GitHub.",
+			"Packrat verifies pull requests on GitHub only.")
+		return
+	}
+	text := "This app is not on GitHub yet."
+	more := []string{"Packrat verifies your pull requests, so it needs the app's GitHub repository."}
+	var steps []string
+	if _, err := w.program("git", "rev-parse", "--is-inside-work-tree"); err != nil {
+		text = "This directory is not a git repository."
+		more = []string{"Run packrat setup in your app's directory. If this is your app, Packrat needs it on GitHub."}
+		steps = append(steps, "git init")
+	}
+	if _, err := w.program("git", "rev-parse", "--verify", "HEAD"); err != nil {
+		steps = append(steps, `git add -A && git commit -m "First commit"`)
+	}
+	if _, err := w.program("gh", "--version"); err == nil {
+		more = append(more, "To create a private repository and push the app to it, run:")
+		steps = append(steps, "gh repo create --private --source . --push")
+	} else {
+		more = append(more, "Create a private repository at https://github.com/new, then run:")
+		steps = append(steps, "git remote add origin <the repository's URL>", "git push -u origin HEAD")
+	}
+	more = append(more, "")
+	for _, step := range steps {
+		more = append(more, "  "+step)
+	}
+	more = append(more, "", "Then run packrat setup again.")
+	out.row(markWrong, "Repository", text, more...)
 }
 
 func setupPlatform(w world, out setupOut) rails.Lockfile {
