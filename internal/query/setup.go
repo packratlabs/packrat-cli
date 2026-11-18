@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -21,15 +22,25 @@ type Setup struct {
 		Accounts   []string `json:"accounts"`
 		InstallURL string   `json:"install_url"`
 	} `json:"github"`
-	Connected  bool       `json:"connected"`
-	Apps       []SetupApp `json:"apps"`
-	Production *struct {
+	Connected bool `json:"connected"`
+	// Unconnected are the org's services that read no repository, while this repository is connected to none.
+	Unconnected []SetupService `json:"unconnected"`
+	Apps        []SetupApp     `json:"apps"`
+	Production  *struct {
 		App        string     `json:"app"`
 		LastDataAt *time.Time `json:"last_data_at"`
 		Version    string     `json:"version"`
 	} `json:"production"`
 	Pull     *SetupPull `json:"pull"`
 	SetupURL string     `json:"setup_url"`
+	Now      time.Time  `json:"now"`
+}
+
+// SetupService is one of the org's services that reads no repository: an app that reported before setup ran.
+type SetupService struct {
+	Service    string     `json:"service"`
+	Envs       []string   `json:"envs"`
+	LastDataAt *time.Time `json:"last_data_at"`
 }
 
 // SetupApp is one app connected to the repository.
@@ -64,10 +75,15 @@ func (c Client) SetupState(ctx context.Context) (Setup, error) {
 	return setup, c.get(ctx, "/setup/state", &setup)
 }
 
-// ConnectRepository connects the client's repository to the org's app, or to its next one when nothing reports yet.
-func (c Client) ConnectRepository(ctx context.Context) (Setup, error) {
+// ConnectRepository connects the client's repository to the service named, an app that reported before setup ran, or
+// else to the org's next app.
+func (c Client) ConnectRepository(ctx context.Context, service string) (Setup, error) {
 	var setup Setup
-	body, err := c.send(ctx, http.MethodPost, "/setup/repository", "", "application/json", nil)
+	path := "/setup/repository"
+	if service != "" {
+		path += "?" + url.Values{"service": {service}}.Encode()
+	}
+	body, err := c.send(ctx, http.MethodPost, path, "", "application/json", nil)
 	if err != nil {
 		return setup, err
 	}

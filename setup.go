@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/packratlabs/packrat-cli/internal/query"
 	"github.com/packratlabs/packrat-cli/internal/rails"
+	"github.com/packratlabs/packrat-cli/internal/report"
 )
 
 const (
@@ -226,9 +228,13 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 	} else if code != exitOK {
 		return code
 	}
+	service := setupExisting(out, client, state)
 	// Asked on every run: it is also what gives the org the ingest key the generator needs.
-	if state, err = client.ConnectRepository(ctx); err != nil {
+	if state, err = client.ConnectRepository(ctx, service); err != nil {
 		return say(stderr, fmt.Sprintf("\npackrat setup: connecting %s: %v\n", client.Repo, err), exitFailed)
+	}
+	if service != "" {
+		out.row(markDone, "App", service+" is connected to "+client.Repo)
 	}
 	plugin := setupPlugin(w, out)
 	setupApp(out, state)
@@ -241,6 +247,53 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 
 	out.printf("\n")
 	return setupNext(w, out, state, lock, plugin && !*noClaude, stderr)
+}
+
+// setupExisting asks which of the org's apps with no repository this checkout is. An app that reported before setup
+// ran is found by no repository, so without an answer setup would wait for a new app that never comes. It answers ""
+// for a new app, and when nobody is there to ask.
+func setupExisting(out setupOut, client query.Client, state query.Setup) string {
+	apps := state.Unconnected
+	if len(apps) == 0 {
+		return ""
+	}
+	if out.yes || !out.terminal {
+		names := make([]string, len(apps))
+		for i, app := range apps {
+			names[i] = app.Service
+		}
+		out.row(markTodo, "App", "Packrat has apps with no repository: "+strings.Join(names, ", ")+".",
+			"Run packrat setup in a terminal to pick one, or connect it on the app's Settings page.")
+		return ""
+	}
+	width := 0
+	for _, app := range apps {
+		width = max(width, utf8.RuneCountInString(app.Service))
+	}
+	out.printf("\n  %-*sPackrat already receives data from apps that have no repository:\n\n", rowName, "")
+	for i, app := range apps {
+		last := ""
+		if app.LastDataAt != nil {
+			last = " · last data " + report.Ago(state.Now.Sub(*app.LastDataAt))
+		}
+		out.printf("  %-*s  %d  %-*s  %s%s\n", rowName, "", i+1, width, app.Service, strings.Join(app.Envs, ", "), last)
+	}
+	out.printf("  %-*s  %d  Neither: this is a new app\n", rowName, "", len(apps)+1)
+	for {
+		out.printf("\n  %-*s%s ", rowName, "", out.bold(fmt.Sprintf("Which app is %s? [1-%d]", client.Repo, len(apps)+1)))
+		answer, given := out.answer()
+		if !given {
+			out.printf("\n")
+			return ""
+		}
+		if pick, err := strconv.Atoi(answer); err == nil && pick >= 1 && pick <= len(apps)+1 {
+			out.printf("\n")
+			if pick > len(apps) {
+				return ""
+			}
+			return apps[pick-1].Service
+		}
+	}
 }
 
 // setupSignIn finds the sign-in, and signs in first when there is none.
