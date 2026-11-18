@@ -58,6 +58,8 @@ type setupCase struct {
 	width        int
 	stdin        string
 	browseFails  bool
+	// noGit, noCommits and noGh are a directory outside git, a repository with no commit, and no gh on the PATH.
+	noGit, noCommits, noGh bool
 
 	code     int
 	stdout   []string
@@ -141,12 +143,30 @@ func TestSetup(t *testing.T) {
 			signedOut: true, states: []string{setupUnread, setupReadable}, files: rails, plugins: pluginListed, terminal: true, stdin: "\n\nn\n", code: 0,
 			stdout: []string{"Your sign-in code is BCDF-GHJK.\nPress Enter to open Packrat in your browser and sign in...", "✓ Signed in       dana@example.com",
 				"Press Enter to open GitHub and approve...", "[Y/n]", "  claude 'Set up Packrat"}, browsed: "SITE/github/setup?state=s1"},
-		{name: "no origin stops before anything is asked",
+		{name: "no origin says how to put the app on GitHub, and asks nothing past who is signed in",
 			origin: "none", states: []string{setupReadable}, files: rails, code: 1,
-			stdout: []string{"✗ Repository      This directory has no GitHub origin.", "○ Platform        The app's framework"}, absent: []string{"✓ Platform"}, asked: []string{"GET /cli/whoami"}},
-		{name: "an origin that is not on GitHub is no origin",
+			stdout: []string{"✓ Signed in       dana@example.com", "✗ Repository      This app is not on GitHub yet.",
+				"\n\n                    gh repo create --private --source . --push\n\n                  Then run packrat setup again.",
+				"✓ Platform        Ruby on Rails 8.1.0 (from Gemfile.lock)", "○ GitHub          You approve Packrat for the repository"},
+			absent: []string{"git add -A", "git init", "○ Platform"}, asked: []string{"GET /cli/whoami"}},
+		{name: "no origin and no commit commits before it creates the repository",
+			origin: "none", noCommits: true, states: []string{setupReadable}, files: rails, code: 1,
+			stdout: []string{"    git add -A && git commit -m \"First commit\"\n                    gh repo create --private --source . --push"}},
+		{name: "no git repository starts with git init",
+			origin: "none", noGit: true, states: []string{setupReadable}, code: 1,
+			stdout: []string{"✗ Repository      This directory is not a git repository.", "Run packrat setup in your app's directory.",
+				"    git init\n                    git add -A && git commit -m \"First commit\"\n                    gh repo create",
+				"○ Platform        Not a Rails app."}},
+		{name: "no origin and no gh names GitHub's page and the git commands",
+			origin: "none", noGh: true, states: []string{setupReadable}, files: rails, code: 1,
+			stdout: []string{"Create a private repository at https://github.com/new, then run:",
+				"    git remote add origin <the repository's URL>\n                    git push -u origin HEAD"},
+			absent: []string{"gh repo create"}},
+		{name: "an origin that is not on GitHub is named, with no commands to run",
 			origin: "git@gitlab.com:acme/shop.git", states: []string{setupReadable}, files: rails, code: 1,
-			stdout: []string{"✗ Repository      This directory has no GitHub origin."}},
+			stdout: []string{"✗ Repository      This checkout's origin is git@gitlab.com:acme/shop.git, which is not on GitHub.",
+				"Packrat verifies pull requests on GitHub only.", "✓ Platform"},
+			absent: []string{"gh repo create", "git remote add"}},
 		{name: "an HTTPS origin names the same repository",
 			origin: "https://github.com/acme/shop.git", states: []string{setupReadable}, files: rails, plugins: pluginListed, code: 0,
 			stdout: []string{"✓ Repository      acme/shop"}},
@@ -301,6 +321,12 @@ func runSetupCase(t *testing.T, tc setupCase) {
 			command := name + " " + strings.Join(args, " ")
 			ran = append(ran, command)
 			switch {
+			case tc.noGit && strings.HasPrefix(command, "git rev-parse"),
+				tc.noCommits && command == "git rev-parse --verify HEAD",
+				tc.noGh && command == "gh --version":
+				return "", errors.New("exit 128")
+			case strings.HasPrefix(command, "git ") || strings.HasPrefix(command, "gh "):
+				return "", nil
 			case tc.noClaude:
 				return "", errors.New("not found")
 			case command == "claude plugin list":
