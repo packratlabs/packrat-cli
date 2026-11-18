@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
@@ -101,16 +102,9 @@ func TestUpdate(t *testing.T) {
 	saved := version
 	t.Cleanup(func() { version = saved })
 	version = "0.1.0"
-	var archive bytes.Buffer
-	zipped := gzip.NewWriter(&archive)
-	files := tar.NewWriter(zipped)
 	content := []byte("#!/bin/sh\necho new\n")
-	_ = files.WriteHeader(&tar.Header{Name: "packrat", Mode: 0o755, Size: int64(len(content))})
-	_, _ = files.Write(content)
-	_ = files.Close()
-	_ = zipped.Close()
+	archive, name := releaseArchive(t, content)
 	sum := sha256.Sum256(archive.Bytes())
-	name := "packrat_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/releases/latest":
@@ -140,7 +134,7 @@ func TestUpdate(t *testing.T) {
 	if string(got) != string(content) {
 		t.Errorf("the binary is %q", got)
 	}
-	if info, _ := os.Stat(binary); info.Mode().Perm()&0o100 == 0 {
+	if info, _ := os.Stat(binary); runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("the new binary is not executable: %v", info.Mode())
 	}
 	if want := "Updated packrat from 0.1.0 to 0.2.0 in "; !strings.HasPrefix(stdout.String(), want) {
@@ -152,4 +146,28 @@ func TestUpdate(t *testing.T) {
 	if code := runIn(w, []string{"update"}, &stdout, &stderr); code != exitOK || stdout.String() != "packrat 0.2.0 is the newest release.\n" {
 		t.Errorf("exit %d, stdout %q", code, stdout.String())
 	}
+}
+
+// releaseArchive builds the archive a release holds for this platform: a zip with packrat.exe on
+// Windows, a tarball with packrat everywhere else.
+func releaseArchive(t *testing.T, content []byte) (*bytes.Buffer, string) {
+	t.Helper()
+	var archive bytes.Buffer
+	if runtime.GOOS == "windows" {
+		files := zip.NewWriter(&archive)
+		file, err := files.Create("packrat.exe")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = file.Write(content)
+		_ = files.Close()
+		return &archive, "packrat_windows_" + runtime.GOARCH + ".zip"
+	}
+	zipped := gzip.NewWriter(&archive)
+	files := tar.NewWriter(zipped)
+	_ = files.WriteHeader(&tar.Header{Name: "packrat", Mode: 0o755, Size: int64(len(content))})
+	_, _ = files.Write(content)
+	_ = files.Close()
+	_ = zipped.Close()
+	return &archive, "packrat_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
 }
