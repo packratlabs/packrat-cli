@@ -262,16 +262,15 @@ func commands() map[string]command {
 			examples:    []string{"packrat status --wait", "packrat status --app shop/production"},
 		},
 		"check add": {
-			summary: "schedule a check for Packrat's analyst",
-			usage:   "packrat check add [--app SERVICE] [--pull NUMBER] [--report ID] < check.json",
+			summary: "add a check to a deployed pull request",
+			usage:   "packrat check add --pull NUMBER [--app SERVICE] < check.json",
 			flags: [][2]string{
-				{"--app=<value>", "app to check, if your org has more than one"},
 				{"--pull=<value>", "pull request the check is for (sets the app from the origin remote)"},
-				{"--report=<value>", "analyst report whose email thread gets the result"},
+				{"--app=<value>", "app to check, if your org has more than one"},
 			},
 			description: "Reads one check from stdin as JSON, in the shape packrat pr checks set takes. Packrat runs its SQL\n" +
 				"once to check it, then every five minutes until its window ends.",
-			examples: []string{"packrat check add --pull 482 < check.json", "packrat check add --report rep_5k2m9x0qv7ha < check.json"},
+			examples: []string{"packrat check add --pull 482 < check.json"},
 		},
 		"check close": {
 			summary:  "cancel a check before it runs",

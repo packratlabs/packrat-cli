@@ -214,19 +214,15 @@ runs both commands for you when Claude opens a pull request.
 
 ### check
 
-`packrat check add` asks for one check, in the shape `packrat pr checks set` takes, read from stdin:
+`packrat check add` adds one check to a deployed pull request, in the shape `packrat pr checks set`
+takes, read from stdin:
 
 ```
 packrat check add --pull 482 < check.json
 ```
 
-Its window starts now. With `--pull` and no `--app`, the app is the one connected to the `origin`
-remote, and the check reads from the deploy that shipped the pull request. For a check that isn't tied
-to a pull request, pass `--report` instead, and the result is kept in the thread of that analyst report:
-
-```
-packrat check add --report rep_5k2m9x0qv7ha < check.json
-```
+Its window starts now. With no `--app`, the app is the one connected to the `origin` remote, and the
+check reads from the deploy that shipped the pull request.
 
 To manage checks:
 
