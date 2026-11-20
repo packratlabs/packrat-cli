@@ -364,6 +364,11 @@ your browser, and asks before it installs the plugin or starts Claude Code.
 When nobody is at the keyboard, `packrat setup` asks nothing: without `--yes` it installs nothing,
 and when GitHub needs your approval it prints the page, says to run it again, and exits.
 
+`packrat setup` tells Packrat how far it got, so that Packrat can see where setup stops: the name and
+mark of each row, the text of each row that isn't done, and the last error. It sends this before it
+waits for you and when it exits. Each request from one run carries the same `Packrat-Setup-Run`
+header, and so does each request from the Claude Code session it starts, through `PACKRAT_SETUP_RUN`.
+
 `packrat setup detect` and `packrat setup plan` scan a project and suggest how to send its data to
 Packrat. Ruby on Rails is the only supported stack.
 

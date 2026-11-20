@@ -1,11 +1,44 @@
 package query
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 )
+
+// SetupRunEnv names the run of packrat setup a process is part of. Setup sets it for the Claude Code it starts, so what
+// that session asks Packrat reads as part of the same run.
+const SetupRunEnv = "PACKRAT_SETUP_RUN"
+
+var setupRun = regexp.MustCompile(`^[0-9a-f]{8,32}$`)
+
+// SetupRun is the run PACKRAT_SETUP_RUN names, or "" when it names none.
+func SetupRun(getenv func(string) string) string {
+	if run := getenv(SetupRunEnv); setupRun.MatchString(run) {
+		return run
+	}
+	return ""
+}
+
+// SetupReport is what a run of packrat setup printed: its rows so far and, once it ends, its exit code and last error.
+type SetupReport struct {
+	Phase string      `json:"phase"`
+	Steps []SetupStep `json:"steps"`
+	Exit  *int        `json:"exit,omitempty"`
+	Error string      `json:"error,omitempty"`
+}
+
+// SetupStep is one row of packrat setup.
+type SetupStep struct {
+	Step string `json:"step"`
+	Mark string `json:"mark"`
+	Text string `json:"text,omitempty"`
+}
 
 // Setup is the answer of GET /setup/state on the site: how far setup has come for one repository.
 type Setup struct {
@@ -88,4 +121,16 @@ func (c Client) ConnectRepository(ctx context.Context, service string) (Setup, e
 		return setup, err
 	}
 	return setup, decode(c.BaseURL, body, &setup)
+}
+
+// ReportSetup sends what a run of packrat setup printed to the site, which keeps it on the request's span.
+func (c Client) ReportSetup(ctx context.Context, report SetupReport) error {
+	body, err := json.Marshal(report)
+	if err != nil {
+		return fmt.Errorf("encoding the setup report: %w", err)
+	}
+	if _, err := c.send(ctx, http.MethodPost, "/setup/events", "application/json", "application/json", bytes.NewReader(body)); err != nil {
+		return fmt.Errorf("reporting setup: %w", err)
+	}
+	return nil
 }

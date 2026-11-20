@@ -71,6 +71,8 @@ type setupCase struct {
 	ran      []string
 	replaced string
 	asked    []string
+	// reported are lines each of the run's reports to POST /setup/events must hold, the last report first.
+	reported []string
 }
 
 func TestSetup(t *testing.T) {
@@ -112,7 +114,8 @@ func TestSetup(t *testing.T) {
 			states: []string{setupUnread, setupReadable}, files: rails, plugins: pluginListed, terminal: true, stdin: "\n\n", code: 0,
 			stdout:  []string{"Press Enter to open GitHub and approve...", "Waiting for you to approve Packrat for acme/shop on GitHub", "Start Claude Code to do that now? [Y/n]"},
 			absent:  []string{"Open this page"},
-			browsed: "SITE/github/setup?state=s1", replaced: "claude Set up Packrat in this app."},
+			browsed: "SITE/github/setup?state=s1", replaced: "claude Set up Packrat in this app.",
+			reported: []string{`"phase":"exit"`, `"phase":"claude"`, `{"step":"Plugin","mark":"done"},{"step":"Data","mark":"todo"`, `{"step":"GitHub","mark":"wait","text":"Packrat requires`}},
 		{name: "answering no prints the command and starts nothing",
 			states: []string{setupReadable}, files: rails, plugins: pluginListed, terminal: true, stdin: "n\n", code: 0,
 			stdout: []string{"[Y/n]", "  claude 'Set up Packrat", "Run packrat setup again at any time"}},
@@ -133,7 +136,8 @@ func TestSetup(t *testing.T) {
 			stdout: []string{"You approved Packrat for dana, but it still cannot read acme/shop.\n                  On GitHub, choose acme and include this repository.", "✓ GitHub"}},
 		{name: "GitHub never approved gives up after the limit",
 			args: []string{"--no-browser"}, states: []string{setupUnread}, files: rails, plugins: pluginListed, terminal: true, code: 1,
-			stderr: "GitHub did not let Packrat read acme/shop within 5m0s. Run packrat setup again once you have approved it."},
+			stderr:   "GitHub did not let Packrat read acme/shop within 5m0s. Run packrat setup again once you have approved it.",
+			reported: []string{`"exit":1,"error":"packrat setup: GitHub did not let Packrat read acme/shop within 5m0s.`, `"phase":"waiting"`}},
 		{name: "a Packrat with no GitHub App stops at GitHub",
 			states: []string{setupNoApp}, files: rails, plugins: pluginListed, code: 1,
 			stdout: []string{"✗ GitHub          This Packrat has no GitHub App", "○ Plugin          Claude Code Packrat Plugin"}, absent: []string{"✓ Plugin"}},
@@ -147,6 +151,7 @@ func TestSetup(t *testing.T) {
 				"Press Enter to open GitHub and approve...", "[Y/n]", "  claude 'Set up Packrat"}, browsed: "SITE/github/setup?state=s1"},
 		{name: "no origin says how to put the app on GitHub, and asks nothing past who is signed in",
 			origin: "none", states: []string{setupReadable}, files: rails, code: 1,
+			reported: []string{`[{"step":"Signed in","mark":"done"},{"step":"Repository","mark":"wrong","text":"This app is not on GitHub yet.`},
 			stdout: []string{"✓ Signed in       dana@example.com", "✗ Repository      This app is not on GitHub yet.",
 				"\n\n                    gh repo create --private --source . --push\n\n                  Then run packrat setup again.",
 				"✓ Platform        Ruby on Rails 8.1.0 (from Gemfile.lock)", "○ GitHub          You approve Packrat for the repository"},
@@ -177,7 +182,8 @@ func TestSetup(t *testing.T) {
 			stdout: []string{"○ Platform        Not a Rails app.", "✓ GitHub"}},
 		{name: "Claude Code missing leaves the plugin and prints the command",
 			states: []string{setupReadable}, files: rails, noClaude: true, terminal: true, code: 0,
-			stdout: []string{"○ Plugin          Claude Code is not installed here"}, absent: []string{"[Y/n]"}},
+			stdout: []string{"○ Plugin          Claude Code is not installed here"}, absent: []string{"[Y/n]"},
+			reported: []string{`{"step":"Plugin","mark":"todo","text":"Claude Code is not installed here`}},
 		{name: "at a terminal it asks before it installs the plugin, and Enter installs it",
 			states: []string{setupReadable}, files: rails, plugins: "No plugins installed.\n", terminal: true, stdin: "\nn\n", code: 0,
 			stdout: []string{"◷ Plugin          Connects Claude Code to Packrat.\n\n" +
@@ -272,10 +278,13 @@ func TestSetup(t *testing.T) {
 
 func runSetupCase(t *testing.T, tc setupCase) {
 	t.Helper()
-	var asked []string
+	var asked, reports, runs []string
 	polls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked = append(asked, r.Method+" "+r.URL.RequestURI())
+		if r.Header.Get("Authorization") == "Bearer "+loginKey {
+			runs = append(runs, r.Header.Get("Packrat-Setup-Run"))
+		}
 		answer := func(code int, text string) {
 			if code == 0 {
 				code = 200
@@ -296,6 +305,10 @@ func runSetupCase(t *testing.T, tc setupCase) {
 			state := tc.states[min(polls, len(tc.states)-1)]
 			polls++
 			answer(tc.stateCode, state)
+		case r.URL.Path == "/setup/events" && r.Method == http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			reports = append([]string{string(body)}, reports...)
+			answer(204, "")
 		case r.URL.Path == "/setup/repository" && r.Method == http.MethodPost:
 			if tc.connect != "" {
 				answer(tc.connectCode, tc.connect)
@@ -324,6 +337,7 @@ func runSetupCase(t *testing.T, tc setupCase) {
 		origin = ""
 	}
 	var browsed, replaced string
+	var replacedEnv []string
 	var ran []string
 	w := world{getenv: func(name string) string { return env[name] }, sleep: func(time.Duration) {}, store: store,
 		stdin: strings.NewReader(tc.stdin), http: &http.Client{}, hostname: func() (string, error) { return "laptop", nil },
@@ -355,7 +369,11 @@ func runSetupCase(t *testing.T, tc setupCase) {
 			}
 			return "done", nil
 		},
-		replace: func(name string, args ...string) error { replaced = name + " " + strings.Join(args, " "); return nil },
+		replace: func(env []string, name string, args ...string) error {
+			replaced = name + " " + strings.Join(args, " ")
+			replacedEnv = env
+			return nil
+		},
 		readFile: func(name string) ([]byte, error) {
 			if text, found := tc.files[name]; found {
 				return []byte(text), nil
@@ -395,6 +413,20 @@ func runSetupCase(t *testing.T, tc setupCase) {
 	}
 	if tc.ran != nil && strings.Join(ran, "\n") != strings.Join(tc.ran, "\n") {
 		t.Errorf("ran %q, want %q", ran, tc.ran)
+	}
+	for i, want := range tc.reported {
+		if i >= len(reports) || !strings.Contains(reports[i], want) {
+			t.Errorf("report %d lacks %q:\n%s", i, want, strings.Join(reports, "\n"))
+		}
+	}
+	for _, run := range runs {
+		if run == "" || run != runs[0] {
+			t.Errorf("a request named the run %q, want every one to name the same run: %q", run, runs)
+			break
+		}
+	}
+	if replaced != "" && (len(replacedEnv) != 1 || replacedEnv[0] != "PACKRAT_SETUP_RUN="+runs[0]) {
+		t.Errorf("Claude Code was started with %q, want the run %q", replacedEnv, runs[0])
 	}
 	for _, want := range tc.asked {
 		if !strings.Contains(strings.Join(asked, "\n")+"\n", want) {

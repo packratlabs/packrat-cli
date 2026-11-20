@@ -151,3 +151,36 @@ func TestUserAgent(t *testing.T) {
 		}
 	}
 }
+
+func TestSetupRun(t *testing.T) {
+	for _, tc := range []struct{ name, env, want string }{
+		{name: "a run", env: "0123456789abcdef", want: "0123456789abcdef"},
+		{name: "none", env: "", want: ""},
+		{name: "not hex", env: "0123456789abcdeg", want: ""},
+		{name: "too long", env: strings.Repeat("a", 33), want: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := query.SetupRun(func(string) string { return tc.env }); got != tc.want {
+				t.Errorf("SetupRun() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetupRunHeader(t *testing.T) {
+	for _, run := range []string{"0123456789abcdef", ""} {
+		var got []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = r.Header.Values("Packrat-Setup-Run")
+			_, _ = w.Write([]byte(`{"apps":[]}`))
+		}))
+		client := query.Client{BaseURL: server.URL, Key: testKey, HTTP: server.Client(), Version: "0.1.1", SetupRun: run}
+		if _, err := client.Apps(context.Background()); err != nil {
+			t.Fatalf("Apps: %v", err)
+		}
+		server.Close()
+		if want := []string{run}; (run == "" && len(got) != 0) || (run != "" && strings.Join(got, ",") != strings.Join(want, ",")) {
+			t.Errorf("Packrat-Setup-Run = %q, want %q", got, run)
+		}
+	}
+}

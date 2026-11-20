@@ -2,7 +2,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,6 +28,7 @@ const (
 	pluginName        = "packrat@packrat"
 	pluginMarketplace = "packratlabs/claude-plugin"
 	programLimit      = 2 * time.Minute
+	reportLimit       = 3 * time.Second
 	rowName           = 16
 	titleLimit        = 48
 )
@@ -41,6 +45,8 @@ const (
 	markWrong = "✗"
 )
 
+var markWords = map[string]string{markDone: "done", markWait: "wait", markTodo: "todo", markWrong: "wrong"}
+
 // setupOut prints the rows of packrat setup, one as each is known, and reads what the person answers.
 type setupOut struct {
 	w      io.Writer
@@ -49,6 +55,63 @@ type setupOut struct {
 	// yes answers every question, and terminal says whether anyone is there to ask.
 	yes, terminal bool
 	screen        *screen
+	log           *setupLog
+}
+
+// setupLog is what one run of packrat setup printed, which the site keeps: no other request shows where a run on
+// someone's machine stopped. It is sent before the run waits on the person or hands off to Claude Code, and as it
+// ends, each time whole, so the newest report of a run is all of it.
+type setupLog struct {
+	client *query.Client
+	steps  []query.SetupStep
+	sent   int
+}
+
+// add keeps a row. A done row's text is left out: it says only what went right, and the first is the person's email.
+func (l *setupLog) add(mark, name, text string, more []string) {
+	if l == nil {
+		return
+	}
+	step := query.SetupStep{Step: name, Mark: markWords[mark]}
+	if mark != markDone {
+		step.Text = colourCode.ReplaceAllString(strings.TrimSpace(text+" "+strings.Join(more, " ")), "")
+	}
+	l.steps = append(l.steps, step)
+}
+
+// waiting sends the rows when there are new ones since the last report.
+func (l *setupLog) waiting() {
+	if l != nil && l.sent < len(l.steps) {
+		l.send(query.SetupReport{Phase: "waiting"})
+	}
+}
+
+func (l *setupLog) ended(phase string, code int, failure string) {
+	if l != nil {
+		l.send(query.SetupReport{Phase: phase, Exit: &code, Error: failure})
+	}
+}
+
+// send gives the site a few seconds, and says nothing when it does not answer: the report is never what setup is for.
+func (l *setupLog) send(report query.SetupReport) {
+	if l.client == nil {
+		return
+	}
+	l.sent = len(l.steps)
+	report.Steps = l.steps
+	ctx, cancel := context.WithTimeout(context.Background(), reportLimit)
+	defer cancel()
+	_ = l.client.ReportSetup(ctx, report)
+}
+
+// newSetupRun names a run of packrat setup, unless it runs inside one (Claude Code started by setup runs it again).
+func newSetupRun(getenv func(string) string) string {
+	if run := query.SetupRun(getenv); run != "" {
+		return run
+	}
+	var random [8]byte
+	_, _ = rand.Read(random[:])
+	return hex.EncodeToString(random[:])
 }
 
 // screen counts the terminal lines written since a row started to wait, so the row can be drawn again in place.
@@ -105,6 +168,7 @@ func (o setupOut) confirm(question string) bool {
 
 // answer reads one line. It is false at the end of input, which is no answer rather than a yes.
 func (o setupOut) answer() (string, bool) {
+	o.log.waiting()
 	line, err := o.in.ReadString('\n')
 	if err == nil && o.redraws() {
 		// The terminal echoes the Enter that ends the answer.
@@ -123,6 +187,11 @@ func (o setupOut) printf(format string, args ...any) {
 }
 
 func (o setupOut) row(mark, name, text string, more ...string) {
+	o.log.add(mark, name, text, more)
+	o.draw(mark, name, text, more...)
+}
+
+func (o setupOut) draw(mark, name, text string, more ...string) {
 	o.printf("%s %-*s%s\n", o.paint(mark), rowName, name, text)
 	for _, line := range more {
 		if line == "" {
@@ -153,7 +222,7 @@ func (o setupOut) rest(after string) {
 	reached := false
 	for _, row := range setupRows {
 		if reached {
-			o.row(markTodo, row[0], o.dim(row[1]))
+			o.draw(markTodo, row[0], o.dim(row[1]))
 		}
 		reached = reached || row[0] == after
 	}
@@ -184,6 +253,22 @@ func (o setupOut) dim(text string) string {
 // runSetupSteps does each step of setup that it can for the repository it runs in, says how far the rest have
 // come, and names the next one. It is safe to run again at any time.
 func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
+	run := newSetupRun(w.getenv)
+	getenv := w.getenv
+	w.getenv = func(name string) string {
+		if name == query.SetupRunEnv {
+			return run
+		}
+		return getenv(name)
+	}
+	log := &setupLog{}
+	var said bytes.Buffer
+	code := setupSteps(w, log, args, stdout, io.MultiWriter(stderr, &said))
+	log.ended("exit", code, lastLine(said.String()))
+	return code
+}
+
+func setupSteps(w world, log *setupLog, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	noBrowser := fs.Bool("no-browser", false, "")
@@ -196,7 +281,7 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 	// One reader for every question, sign-in's included: bufio.NewReader hands back a reader it is given.
 	in := bufio.NewReader(w.stdin)
 	w.stdin = in
-	out := setupOut{w: stdout, colour: w.colour, in: in, yes: w.yes, terminal: w.terminal, screen: &screen{}}
+	out := setupOut{w: stdout, colour: w.colour, in: in, yes: w.yes, terminal: w.terminal, screen: &screen{}, log: log}
 	if w.width != nil {
 		out.screen.width = w.width()
 	}
@@ -206,6 +291,8 @@ func runSetupSteps(w world, args []string, stdout, stderr io.Writer) int {
 	if code != exitOK {
 		return code
 	}
+	site := siteClient(w, client.Key)
+	log.client = &site
 	out.row(markDone, "Signed in", email)
 	if client.Repo == "" {
 		setupNoRepository(w, out)
@@ -407,6 +494,7 @@ func setupGitHub(w world, out setupOut, client query.Client, state query.Setup, 
 		out.printf("\n  %-*sOpen this page and approve Packrat for %s:\n  %-*s%s\n", rowName, "", client.Repo, rowName, "", state.GitHub.InstallURL)
 	}
 	out.printf("  %-*sWaiting for you to approve Packrat for %s on GitHub...\n\n", rowName, "", client.Repo)
+	out.log.waiting()
 	for waited := time.Duration(0); waited < waitLimit; waited += pollEvery {
 		w.sleep(pollEvery)
 		next, err := client.SetupState(context.Background())
@@ -615,7 +703,8 @@ func startClaude(w world, out setupOut, state query.Setup, claude bool, stderr i
 			return exitOK
 		}
 	}
-	if err := w.replace("claude", prompt); err != nil {
+	out.log.ended("claude", exitOK, "")
+	if err := w.replace([]string{query.SetupRunEnv + "=" + query.SetupRun(w.getenv)}, "claude", prompt); err != nil {
 		return say(stderr, fmt.Sprintf("packrat setup: starting Claude Code: %v\n", err), exitFailed)
 	}
 	return exitOK
@@ -641,12 +730,12 @@ func runProgram(name string, args ...string) (string, error) {
 }
 
 // becomeProgram replaces this process with the program, so that it owns the terminal.
-func becomeProgram(name string, args ...string) error {
+func becomeProgram(env []string, name string, args ...string) error {
 	path, err := exec.LookPath(name)
 	if err != nil {
 		return fmt.Errorf("finding %s: %w", name, err)
 	}
-	if err := syscall.Exec(path, append([]string{name}, args...), os.Environ()); err != nil { // #nosec G204 -- claude, as above
+	if err := syscall.Exec(path, append([]string{name}, args...), append(os.Environ(), env...)); err != nil { // #nosec G204 -- claude, as above
 		return fmt.Errorf("starting %s: %w", name, err)
 	}
 	return nil
