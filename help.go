@@ -130,7 +130,6 @@ func commands() map[string]command {
 				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
 				{"--status=<value>", "unresolved (default), resolved, archived or all"},
 				{"--kind=<value>", "error or detected (default: both)"},
-				{"--environment=<value>", "count only this environment's events"},
 				{"--sort=<value>", "priority (default), date, freq, new or user"},
 				{"--period=<value>", "how far back to count events, such as 24h or 14d (default: 14d)"},
 				{"--limit=<value>", "1 to 100 (default: 25)"},
