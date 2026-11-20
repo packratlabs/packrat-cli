@@ -239,6 +239,23 @@ HTML otherwise. You can pass a whole pasted line, such as the last line of a Pac
 `packrat open` only sends your key to `https://packrat.sh` and its subdomains, and to
 `PACKRAT_URL` and `PACKRAT_QUERY_URL` if they're set.
 
+### feedback
+
+`packrat feedback` reports to the Packrat team that Packrat got in your way: a command that's missing,
+broken or unclear, or an idea. It's meant for your coding agent, which writes the report when it hits the
+problem, so you don't have to send it on yourself. The description is read from stdin:
+
+```sh
+packrat feedback --task "connect the repository" --kind broken --impact worked_around \
+  --about "packrat status --wait" <<'EOF'
+packrat status --wait timed out after 5 minutes, but packrat apps showed data arriving.
+EOF
+```
+
+`--kind` is `missing`, `broken`, `confusing` or `idea`, and `--impact` is `blocked`, `worked_around` or
+`friction`. Packrat mails the report to the team, who reply to the email you signed in with. A key sends at
+most ten reports an hour.
+
 ### sql
 
 `packrat sql` runs a SQL query against an app:

@@ -9,7 +9,7 @@ environment value read. These
 three are promises checked by tests (`internal/detect/canary_test.go`, `nonetwork_test.go`); do not
 weaken a test to make a change pass.
 
-`login`, `logout`, `auth`, `pr`, `check`, `open`, `sql`, `apps` and `status` are the other half:
+`login`, `logout`, `auth`, `pr`, `check`, `open`, `sql`, `apps`, `status` and `feedback` are the other half:
 they ask Packrat. `internal/query` is the only package that sends a request. The key is
 `PACKRAT_API_KEY` from the environment, else the sign-in that `internal/auth` keeps (the macOS
 Keychain, or `credentials.json`); no env file is read for it. A key must never reach stdout, stderr
