@@ -53,19 +53,17 @@ type Issues struct {
 
 // IssueFilter narrows the list. An empty field is the API's default.
 type IssueFilter struct {
-	Status      string
-	Kind        string
-	Environment string
-	Sort        string
-	Period      string
-	Limit       int
+	Status string
+	Kind   string
+	Sort   string
+	Period string
+	Limit  int
 }
 
 // Issues lists the app's issues.
 func (c Client) Issues(ctx context.Context, where Where, filter IssueFilter) (Issues, error) {
 	values := where.values()
-	for name, value := range map[string]string{"status": filter.Status, "kind": filter.Kind, "environment": filter.Environment,
-		"sort": filter.Sort, "period": filter.Period} {
+	for name, value := range map[string]string{"status": filter.Status, "kind": filter.Kind, "sort": filter.Sort, "period": filter.Period} {
 		if value != "" {
 			values.Set(name, value)
 		}

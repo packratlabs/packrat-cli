@@ -272,7 +272,6 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	var filter query.IssueFilter
 	fs.StringVar(&filter.Status, "status", "", "")
 	fs.StringVar(&filter.Kind, "kind", "", "")
-	fs.StringVar(&filter.Environment, "environment", "", "")
 	fs.StringVar(&filter.Sort, "sort", "priority", "")
 	fs.StringVar(&filter.Period, "period", "", "")
 	fs.IntVar(&filter.Limit, "limit", 0, "")
