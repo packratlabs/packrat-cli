@@ -39,6 +39,8 @@ type Issue struct {
 	Errors        []string  `json:"errors,omitempty"`
 	Pull          int       `json:"pull,omitempty"`
 	Reasons       []string  `json:"reasons,omitempty"`
+	// Unread is whether it changed since the person whose key asks last opened it; absent for an org's key.
+	Unread *bool `json:"unread,omitempty"`
 }
 
 // Issues is an app's issues, counted over Period.
@@ -106,6 +108,16 @@ func (c Client) ActOnIssue(ctx context.Context, id string, where Where, action I
 		return Issue{}, fmt.Errorf("%q is not something to do to an issue", action.Do)
 	}
 	body, err := c.act(ctx, method, path+query(values), action.Reason)
+	if err != nil {
+		return Issue{}, err
+	}
+	var issue Issue
+	return issue, decode(c.BaseURL, body, &issue)
+}
+
+// SeenIssue marks issue id seen by the person whose key asks.
+func (c Client) SeenIssue(ctx context.Context, id string, where Where) (Issue, error) {
+	body, err := c.act(ctx, http.MethodPut, "/issues/"+url.PathEscape(id)+"/seen"+query(where.values()), "")
 	if err != nil {
 		return Issue{}, err
 	}

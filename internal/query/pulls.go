@@ -74,6 +74,8 @@ type Check struct {
 	Review       string     `json:"review,omitempty"`
 	// Warning is set by check add when the check already passes before now, so passing would prove nothing.
 	Warning string `json:"warning,omitempty"`
+	// New is whether its result arrived since the person whose key asks last opened its pull request.
+	New *bool `json:"new,omitempty"`
 }
 
 // Run is one time the analyst verified a check.
@@ -103,6 +105,8 @@ type Pull struct {
 	// Settled is a pull request that did not work with nothing it opened still open.
 	Settled bool        `json:"settled"`
 	Issues  []IssueLink `json:"issues"`
+	// Unread is whether it changed since the person whose key asks last opened it; absent for an org's key.
+	Unread *bool `json:"unread,omitempty"`
 }
 
 // IssueLink is an issue a pull request opened, found already open, or fixes (Link). FixedBy is the
@@ -201,6 +205,35 @@ func (c Client) ArchivePull(ctx context.Context, number int, where Where, archiv
 	}
 	var pull Pull
 	return pull, decode(c.BaseURL, body, &pull)
+}
+
+// SeenPull marks a pull request's verification seen by the person whose key asks.
+func (c Client) SeenPull(ctx context.Context, number int, where Where) (Pull, error) {
+	body, err := c.act(ctx, http.MethodPut, "/pulls/"+strconv.Itoa(number)+"/seen"+query(where.values()), "")
+	if err != nil {
+		return Pull{}, err
+	}
+	var pull Pull
+	return pull, decode(c.BaseURL, body, &pull)
+}
+
+// Seen is the answer of PUT /pulls/seen and PUT /issues/seen: how many rows of App were marked.
+type Seen struct {
+	App  string `json:"app"`
+	Seen int    `json:"seen"`
+}
+
+// SeenAll marks every pull request ("pulls") or every changed issue ("issues") of the app seen.
+func (c Client) SeenAll(ctx context.Context, kind string, where Where) (Seen, error) {
+	if kind != "pulls" && kind != "issues" {
+		return Seen{}, fmt.Errorf("%q is not pulls or issues", kind)
+	}
+	body, err := c.act(ctx, http.MethodPut, "/"+kind+"/seen"+query(where.values()), "")
+	if err != nil {
+		return Seen{}, err
+	}
+	var seen Seen
+	return seen, decode(c.BaseURL, body, &seen)
 }
 
 // Checks lists the app's open checks, and the asked ones closed this week. A pull above 0 keeps the

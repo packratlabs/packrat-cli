@@ -47,6 +47,9 @@ func IssueList(w io.Writer, list query.Issues, status string, width int) error {
 // IssueJSON writes one issue as the API answered it.
 func IssueJSON(w io.Writer, issue query.Issue) error { return putJSON(w, issue) }
 
+// SeenJSON writes the answer of a PUT …/seen as it was read.
+func SeenJSON(w io.Writer, answer any) error { return putJSON(w, answer) }
+
 // IssueListJSON writes the answer of the API as it was read.
 func IssueListJSON(w io.Writer, list query.Issues) error { return putJSON(w, list) }
 

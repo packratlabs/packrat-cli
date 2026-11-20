@@ -68,6 +68,14 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","pull":482,"state":"archived","archive_reason":"Reverted in #483.","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/pulls/482/archive" && r.Method == http.MethodDelete:
 			answer(200, `{"app":"shop/production","pull":482,"state":"pending","deploys":[],"checks":[]}`)
+		case r.URL.Path == "/pulls/482/seen" && r.Method == http.MethodPut:
+			answer(200, `{"app":"shop/production","pull":482,"state":"pending","unread":false,"deploys":[],"checks":[{"id":"chk_1","what":"x","due_at":"2026-10-20T21:00:00Z","new":false}]}`)
+		case r.URL.Path == "/pulls/seen" && r.Method == http.MethodPut:
+			answer(200, `{"app":"shop/production","seen":12}`)
+		case r.URL.Path == "/issues/SHOP-3/seen" && r.Method == http.MethodPut:
+			answer(200, `{"id":"SHOP-3","kind":"detected","status":"unresolved","unread":false}`)
+		case r.URL.Path == "/issues/seen" && r.Method == http.MethodPut:
+			answer(200, `{"app":"shop","seen":1}`)
 		case r.URL.Path == "/pulls/490/archive":
 			answer(409, `{"message":"#490 is confirmed, and only a pending verification can be archived"}`)
 		case r.URL.Path == "/pulls/483":
@@ -169,7 +177,7 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "issues by the origin remote, by priority", args: []string{"issues"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
 			stdout: "=== shop issues · unresolved, events over 14d\n\nID      SEVERITY  EVENTS  USERS  TITLE\nSHOP-3  high          12      4  AI: Checkout fails for gift cards\nSHOP-2  —              3      1  NoMethodError", request: "GET /issues?repo=acme%2Fshop&sort=priority"},
 		{name: "issues as JSON keep the summary and reasons", args: []string{"issues", "--app", "shop", "--kind", "detected", "--json"}, login: true, code: 0, stdout: `"normal": "Gift card failures run at this level most days."`, request: "GET /issues?app=shop&kind=detected&sort=priority"},
-		{name: "issues take only flags or an action", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "resolve, archive or reopen and an issue ID", none: true},
+		{name: "issues take only flags or an action", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "resolve, archive, reopen or seen and an issue ID", none: true},
 		{name: "resolve an issue with a reason", args: []string{"issues", "resolve", "SHOP-3", "--reason", "The check measured the wrong thing."}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
 			stdout: "Resolved SHOP-3.\nReason: The check measured the wrong thing.\n", request: `PATCH /issues/SHOP-3/resolve?repo=acme%2Fshop {"reason":"The check measured the wrong thing."}`},
 		{name: "archive an issue for good", args: []string{"issues", "archive", "SHOP-3", "--until", "forever", "--app", "shop"}, login: true, code: 0, stdout: "Archived SHOP-3 for good.\n", request: "PATCH /issues/SHOP-3/archive?app=shop&until=forever"},
@@ -183,6 +191,14 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "unarchive a pull request's verification", args: []string{"pr", "unarchive", "https://github.com/acme/shop/pull/482"}, login: true, code: 0,
 			stdout: "Moved #482 in shop/production back to pending", request: "DELETE /pulls/482/archive?repo=acme%2Fshop"},
 		{name: "a verification with a verdict is not archived", args: []string{"pr", "archive", "490", "--app", "shop"}, login: true, code: 1, stderr: "only a pending verification can be archived"},
+		{name: "mark a pull request seen", args: []string{"pr", "seen", "482"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
+			stdout: "Marked #482 in shop/production seen.\n", request: "PUT /pulls/482/seen?repo=acme%2Fshop"},
+		{name: "a pull request marked seen as JSON keeps unread and new", args: []string{"pr", "seen", "482", "--app", "shop", "--json"}, login: true, code: 0, stdout: `"new": false`},
+		{name: "mark every pull request seen", args: []string{"pr", "seen", "--all", "--app", "shop"}, login: true, code: 0,
+			stdout: "Marked 12 pull requests in shop/production seen.\n", request: "PUT /pulls/seen?app=shop"},
+		{name: "mark an issue seen", args: []string{"issues", "seen", "SHOP-3", "--app", "shop"}, login: true, code: 0, stdout: "Marked SHOP-3 seen.\n", request: "PUT /issues/SHOP-3/seen?app=shop"},
+		{name: "mark every issue seen", args: []string{"issues", "seen", "--all", "--app", "shop"}, login: true, code: 0, stdout: "Marked 1 issue in shop seen.\n", request: "PUT /issues/seen?app=shop"},
+		{name: "seen takes one row or --all", args: []string{"issues", "seen", "SHOP-3", "--all"}, login: true, code: 2, stderr: "specify one issue ID or --all", none: true},
 		{name: "pr needs show", args: []string{"pr", "482"}, login: true, code: 2, stderr: "specify a command: show", none: true},
 		{name: "a check for a pull request asks by the origin remote", args: []string{"check", "add", "--pull", "482"}, login: true, origin: "git@github.com:acme/shop.git\n", stdin: `{"title":"Gift card totals are right"}`, code: 0, stdout: `"id": "chk_2"`, stderr: "packrat check add: warning: it already passes on the 1h before now", request: `POST /checks?pull=482&repo=acme%2Fshop {"title":"Gift card totals are right"}`},
 		{name: "a check needs a body", args: []string{"check", "add", "--pull", "482"}, login: true, code: 2, stderr: "on stdin as JSON", none: true},
