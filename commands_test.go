@@ -112,6 +112,10 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(404, `{"type":"error","message":"No check chk_0 in your org."}`)
 		case r.URL.Path == "/checks/chk_1":
 			answer(200, `{"id":"chk_1","what":"x","due_at":"2026-10-20T21:00:00Z","closed_at":"2026-10-16T10:00:00Z","outcome":"Closed by a developer before it was verified."}`)
+		case r.URL.Path == "/feedback" && strings.Contains(string(body), "pull request"):
+			answer(429, `{"type":"error","message":"too many reports from this key. Try again in an hour."}`)
+		case r.URL.Path == "/feedback":
+			answer(202, `{"id":"fbk_5k2m9x0qv7ha","message":"Sent to the Packrat team as fbk_5k2m9x0qv7ha."}`)
 		case r.URL.Path == "/sql":
 			answer(200, "{\"type\":\"schema\"}\n{\"type\":\"row\",\"values\":[1]}\n{\"type\":\"end\",\"rows\":1,\"seconds\":0.01,\"app\":\"shop/production\"}\n")
 		case r.URL.Path == "/reports/rep_1":
@@ -217,6 +221,13 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "sql prints rows and a summary", args: []string{"sql", "--app", "shop", "select 1"}, login: true, code: 0, stdout: `"values":[1]`, stderr: "1 rows in 0.01s from shop/production", request: "POST /sql?app=shop select 1"},
 		{name: "sql from stdin", args: []string{"sql"}, login: true, stdin: "select 2", code: 0, request: "POST /sql select 2"},
 		{name: "sql with no script", args: []string{"sql"}, login: true, code: 2, stderr: "the query is empty", none: true},
+		{name: "feedback sends the description from stdin", args: []string{"feedback", "--task", "connect the repository", "--kind", "broken", "--impact", "worked_around", "--about", "packrat status"}, login: true, origin: "git@github.com:acme/shop.git", stdin: "status --wait timed out\n", code: 0,
+			stdout: "Sent to the Packrat team as fbk_5k2m9x0qv7ha.\n", request: `POST /feedback?repo=acme%2Fshop {"task":"connect the repository","kind":"broken","impact":"worked_around","about":"packrat status","description":"status --wait timed out"}`},
+		{name: "feedback says what the site refused", args: []string{"feedback", "--task", "open a pull request", "--kind", "idea", "--impact", "friction"}, login: true, stdin: "x", code: 1, stderr: "answered 429: too many reports from this key"},
+		{name: "feedback needs a description", args: []string{"feedback", "--task", "t", "--kind", "idea", "--impact", "friction"}, login: true, stdin: " \n", code: 2, stderr: "provide the description on stdin", none: true},
+		{name: "feedback needs a known kind", args: []string{"feedback", "--task", "t", "--kind", "praise", "--impact", "friction"}, login: true, stdin: "x", code: 2, stderr: "--kind is one of missing, broken, confusing, idea", none: true},
+		{name: "feedback needs a known impact", args: []string{"feedback", "--task", "t", "--kind", "idea", "--impact", "none"}, login: true, stdin: "x", code: 2, stderr: "--impact is one of blocked, worked_around, friction", none: true},
+		{name: "feedback needs a task", args: []string{"feedback", "--kind", "idea", "--impact", "friction"}, login: true, stdin: "x", code: 2, stderr: "--task names what you were doing", none: true},
 		{name: "open a pasted curl line reads the report", args: []string{"open", `curl -sS QUERY/reports/rep_1 -H "Authorization: Bearer $(sed -nE 's/^PACKRAT_(API|QUERY)_KEY=//p' .env | tail -1)"`}, login: true, code: 0, stdout: "# Worked in part: #482", request: "GET /reports/rep_1"},
 		{name: "open a page", args: []string{"open", "SITE/orgs/org_a/apps/shop/production/analyst"}, login: true, code: 0, stdout: "<h1>Analyst</h1>"},
 		{name: "open a pull request", args: []string{"open", "https://github.com/acme/shop/pull/482"}, login: true, code: 0, stdout: "=== #482 Cache the cart total", request: "GET /pulls/482?repo=acme%2Fshop"},

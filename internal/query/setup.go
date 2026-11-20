@@ -134,3 +134,28 @@ func (c Client) ReportSetup(ctx context.Context, report SetupReport) error {
 	}
 	return nil
 }
+
+// Feedback is a report to the Packrat team of what Packrat got in the way of: packrat feedback.
+type Feedback struct {
+	Task        string `json:"task"`
+	Kind        string `json:"kind"`
+	Impact      string `json:"impact"`
+	About       string `json:"about,omitempty"`
+	Description string `json:"description"`
+}
+
+// SendFeedback posts a report to the site, which mails it to the Packrat team, and gives back what the site said.
+func (c Client) SendFeedback(ctx context.Context, feedback Feedback) (string, error) {
+	body, err := json.Marshal(feedback)
+	if err != nil {
+		return "", fmt.Errorf("encoding the feedback: %w", err)
+	}
+	answer, err := c.send(ctx, http.MethodPost, "/feedback", "application/json", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("sending feedback: %w", err)
+	}
+	var sent struct {
+		Message string `json:"message"`
+	}
+	return sent.Message, decode(c.BaseURL, answer, &sent)
+}

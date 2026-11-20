@@ -145,6 +145,8 @@ func dispatch(w world, args []string, stdout, stderr io.Writer) int {
 		return runOpen(w, args[1:], stdout, stderr)
 	case "update":
 		return runUpdate(w, args[1:], stdout, stderr)
+	case "feedback":
+		return runFeedback(w, args[1:], stdout, stderr)
 	default:
 		return say(stderr, fmt.Sprintf("packrat: %q is not a packrat command. Run packrat help to see all commands.\n", args[0]), exitUsage)
 	}

@@ -100,6 +100,29 @@ func commands() map[string]command {
 				"day, after a command that asks it something. Set PACKRAT_NO_UPDATE_NOTICE=1 to stop the notice.",
 			examples: []string{"packrat update"},
 		},
+		"feedback": {
+			summary: "report to the Packrat team what Packrat got in your way",
+			usage:   "packrat feedback --task TASK --kind KIND --impact IMPACT [--about NAME] < DESCRIPTION",
+			flags: [][2]string{
+				{"--task=<value>", "a short phrase naming what you were asked to do"},
+				{"--kind=<value>", "missing, broken, confusing or idea"},
+				{"--impact=<value>", "blocked, worked_around (you finished another way) or friction"},
+				{"--about=<value>", "the command or page the report is about, such as \"packrat setup\""},
+			},
+			description: "Reads the description from stdin: what you ran, the error or answer you got, what you expected,\n" +
+				"and a fix if you have one. Packrat mails it to the Packrat team, who reply to the person signed in.\n" +
+				"Send one report a task, and only when Packrat was missing a command, failed, or got in your way:\n" +
+				"not to report progress, not when the task went well, and never with a key, password or token.\n" +
+				"A kind of missing means no command could do it, broken that a command failed or answered wrongly,\n" +
+				"and confusing that a command, message or page was unclear.",
+			examples: []string{
+				"packrat feedback --task \"connect the repository\" --kind broken --impact worked_around \\\n" +
+					"    --about \"packrat status --wait\" <<'EOF'\n" +
+					"  packrat status --wait timed out after 5 minutes, but packrat apps showed shop/development receiving\n" +
+					"  data. The repository was not connected; the message should say so.\n" +
+					"  EOF",
+			},
+		},
 		"open": {
 			summary: "read a Packrat page",
 			usage:   "packrat open URL",
