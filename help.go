@@ -169,6 +169,17 @@ func commands() map[string]command {
 				"app; resolve one that is fixed.",
 			examples: []string{"packrat issues archive SHOP-41", `packrat issues archive SHOP-41 --until forever --reason "Bots probing old URLs."`},
 		},
+		"issues seen": {
+			summary: "mark an issue seen, as opening it in Claude Code does",
+			usage:   "packrat issues seen ID|--all [--app SERVICE] [--json]",
+			args:    [][2]string{{"ID", "issue ID, such as SHOP-41, from packrat issues"}},
+			flags: [][2]string{{"--all", "mark every issue of the app that changed"},
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"}, {"--json", "output the API response as JSON"}},
+			description: "Read with the key from packrat login, each issue in packrat issues --json says whether it is unread:\n" +
+				"it opened, changed status or got an analyst update since you last opened it. Marking it seen clears\n" +
+				"that. Resolving, archiving or reopening it marks it too.",
+			examples: []string{"packrat issues seen SHOP-41", "packrat issues seen --all"},
+		},
 		"issues reopen": {
 			summary:  "reopen a resolved or archived issue",
 			usage:    "packrat issues reopen ID [--app SERVICE] [--json]",
@@ -209,6 +220,17 @@ func commands() map[string]command {
 			flags:       [][2]string{{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"}, {"--json", "output the API response as JSON"}},
 			description: "Moves the verification back to pending and opens again the checks the archive cancelled.",
 			examples:    []string{"packrat pr unarchive 482"},
+		},
+		"pr seen": {
+			summary: "mark a pull request's verification seen, as opening it in Claude Code does",
+			usage:   "packrat pr seen NUMBER|URL|--all [--app SERVICE] [--json]",
+			args:    [][2]string{{"NUMBER|URL", "pull request number or GitHub URL"}},
+			flags: [][2]string{{"--all", "mark every pull request of the app"},
+				{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"}, {"--json", "output the API response as JSON"}},
+			description: "Read with the key from packrat login, packrat pr show --json says whether a pull request is unread:\n" +
+				"it deployed, a check got a result or its verdict landed since you last opened it. Each check says\n" +
+				"whether its result is new. Marking it seen clears both.",
+			examples: []string{"packrat pr seen 482", "packrat pr seen --all"},
 		},
 		"pr checks set": {
 			summary: "declare the checks a pull request ships with",

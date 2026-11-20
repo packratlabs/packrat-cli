@@ -224,7 +224,11 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	file := fs.String("file", "", "")
 	dryRun := fs.Bool("dry-run", false, "")
 	reason := fs.String("reason", "", "")
+	all := fs.Bool("all", false, "")
 	words, err := parseInterleaved(fs, args)
+	if err == nil && len(words) >= 1 && words[0] == "seen" {
+		return markSeen(w, "pr", words[1:], *app, *all, *asJSON, stdout, stderr)
+	}
 	if err == nil && len(words) == 2 && words[0] == "checks" && words[1] == "setup" {
 		return draftSetupChecks(w, stdout, stderr)
 	}
@@ -275,13 +279,17 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	var action query.IssueAction
 	fs.StringVar(&action.Until, "until", "", "")
 	fs.StringVar(&action.Reason, "reason", "", "")
+	all := fs.Bool("all", false, "")
 	words, err := parseInterleaved(fs, args)
+	if err == nil && len(words) >= 1 && words[0] == "seen" {
+		return markSeen(w, "issues", words[1:], *app, *all, *asJSON, stdout, stderr)
+	}
 	if err == nil && len(words) == 2 && (words[0] == "resolve" || words[0] == "archive" || words[0] == "reopen") {
 		action.Do = words[0]
 		return actOnIssue(w, words[1], *app, action, *asJSON, stdout, stderr)
 	}
 	if err != nil || len(words) > 0 {
-		return say(stderr, "packrat issues: specify only flags to list issues, or resolve, archive or reopen and an issue ID. Run packrat help issues for details.\n", exitUsage)
+		return say(stderr, "packrat issues: specify only flags to list issues, or resolve, archive, reopen or seen and an issue ID. Run packrat help issues for details.\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -319,6 +327,61 @@ func actOnIssue(w world, id, app string, action query.IssueAction, asJSON bool, 
 		err = report.IssueJSON(stdout, issue)
 	} else {
 		err = report.IssueActed(stdout, issue)
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	}
+	return exitOK
+}
+
+// markSeen marks one pull request or issue seen by the person whose key asks, as opening it in the Claude Code pane
+// does, or with all every one of the app.
+func markSeen(w world, command string, refs []string, app string, all, asJSON bool, stdout, stderr io.Writer) int {
+	name := command + " seen"
+	if all == (len(refs) == 1) || len(refs) > 1 {
+		return say(stderr, "packrat "+name+": specify one "+map[string]string{"pr": "pull request", "issues": "issue ID"}[command]+" or --all\n", exitUsage)
+	}
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
+	}
+	ctx := context.Background()
+	where := query.Where{App: app, Repo: originRepo(w)}
+	var line string
+	var answer any
+	switch {
+	case all:
+		kind := map[string]string{"pr": "pulls", "issues": "issues"}[command]
+		seen, err := client.SeenAll(ctx, kind, where)
+		if err != nil {
+			return fail(stderr, name, name+" --all --app %s", err)
+		}
+		noun := map[string]string{"pr": "pull request", "issues": "issue"}[command]
+		if seen.Seen != 1 {
+			noun += "s"
+		}
+		answer, line = seen, fmt.Sprintf("Marked %d %s in %s seen.", seen.Seen, noun, seen.App)
+	case command == "pr":
+		number, pullWhere, ok := pullRef(w, refs[0], app)
+		if !ok {
+			return say(stderr, fmt.Sprintf("packrat %s: %q is not a pull request number or URL\n", name, refs[0]), exitUsage)
+		}
+		pull, err := client.SeenPull(ctx, number, pullWhere)
+		if err != nil {
+			return fail(stderr, name, name+" "+refs[0]+" --app %s", err)
+		}
+		answer, line = pull, fmt.Sprintf("Marked #%d in %s seen.", pull.Pull, pull.App)
+	default:
+		issue, err := client.SeenIssue(ctx, refs[0], where)
+		if err != nil {
+			return fail(stderr, name, name+" "+refs[0]+" --app %s", err)
+		}
+		answer, line = issue, "Marked "+issue.ID+" seen."
+	}
+	if asJSON {
+		err = report.SeenJSON(stdout, answer)
+	} else {
+		_, err = fmt.Fprintln(stdout, line)
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
@@ -441,7 +504,7 @@ func draftSetupChecks(w world, stdout, stderr io.Writer) int {
 	return say(stdout, "Wrote the setup checks to "+draft+"\nOpen the pull request with gh pr create. The Packrat plugin declares them once it has a number.\n", exitOK)
 }
 
-const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive, checks set or checks setup. Run packrat help pr for details.\n"
+const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive, seen, checks set or checks setup. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, name, usage string, stdout, stderr io.Writer) int {
 	text, err := io.ReadAll(w.stdin)
