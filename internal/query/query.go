@@ -155,6 +155,8 @@ type Client struct {
 	Version string
 	Agent   string
 	Heard   *Heard
+	// SetupRun names the run of packrat setup this request is part of, for the site to read the run as one.
+	SetupRun string
 }
 
 // Apps lists the apps the key opens.
@@ -213,6 +215,9 @@ func (c Client) do(request *http.Request, contentType, accept, path string) (bod
 	request.Header.Set("Authorization", "Bearer "+c.Key)
 	request.Header.Set("Accept", accept)
 	request.Header.Set("User-Agent", c.userAgent())
+	if c.SetupRun != "" {
+		request.Header.Set("Packrat-Setup-Run", c.SetupRun)
+	}
 	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}

@@ -62,7 +62,7 @@ type world struct {
 	org string
 	// program runs another program and gives its output, and replace becomes it. Both are for claude.
 	program  func(name string, args ...string) (string, error)
-	replace  func(name string, args ...string) error
+	replace  func(env []string, name string, args ...string) error
 	readFile func(string) ([]byte, error)
 	// terminal says whether a person is at the keyboard, and colour whether stdout takes colour.
 	terminal bool
@@ -428,7 +428,7 @@ func newClient(w world) (query.Client, error) {
 		org = strings.TrimSpace(w.getenv(orgName))
 	}
 	return query.Client{BaseURL: base, Key: key, Org: org, Repo: originRepo(w), HTTP: w.http, Version: version,
-		Agent: query.Agent(w.getenv), Heard: w.heard}, nil
+		Agent: query.Agent(w.getenv), Heard: w.heard, SetupRun: query.SetupRun(w.getenv)}, nil
 }
 
 // waiting is newClient for a request that runs SQL at Packrat before it answers.

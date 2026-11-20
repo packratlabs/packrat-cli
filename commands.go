@@ -668,7 +668,8 @@ func siteURL(w world) string {
 }
 
 func siteClient(w world, key string) query.Client {
-	return query.Client{BaseURL: siteURL(w), Key: key, HTTP: w.http, Version: version, Agent: query.Agent(w.getenv), Heard: w.heard}
+	return query.Client{BaseURL: siteURL(w), Key: key, HTTP: w.http, Version: version, Agent: query.Agent(w.getenv), Heard: w.heard,
+		SetupRun: query.SetupRun(w.getenv)}
 }
 
 func gitOrigin() string {
