@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	loginKey = "packrat_query_fromlogin"
-	madeKey  = "packrat_query_madebykeys"
+	loginKey = "packrat_api_fromlogin"
+	madeKey  = "packrat_api_madebykeys"
 )
 
 // fakePackrat answers the site's and the API's addresses the way packrat.sh and query.packrat.sh do,
