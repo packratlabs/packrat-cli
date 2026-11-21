@@ -29,6 +29,7 @@ func topics() map[string]topic {
 	return map[string]topic{
 		"auth":  {summary: "manage your Packrat sign-in"},
 		"check": {summary: "schedule checks that verify a change in production"},
+		"keys":  {summary: "make API keys for agents that run where nobody can sign in"},
 		"pr":    {summary: "see how pull requests performed in production, and archive their verification"},
 	}
 }
@@ -99,6 +100,24 @@ func commands() map[string]command {
 				"replaces this packrat with it. Packrat tells you when a newer release is out, at most once a\n" +
 				"day, after a command that asks it something. Set PACKRAT_NO_UPDATE_NOTICE=1 to stop the notice.",
 			examples: []string{"packrat update"},
+		},
+		"keys create": {
+			summary: "make an API key of your org for an agent",
+			usage:   "packrat keys create --name NAME [--plain]",
+			flags: [][2]string{
+				{"--name=<value>", "what the key is for; the org's keys page lists keys by name"},
+				{"--plain", "print only the key, to set it on a platform with $(…)"},
+			},
+			description: "Makes an API key of your org in your name, for an agent that runs where nobody can run packrat\n" +
+				"login. The agent reads it from PACKRAT_API_KEY. The key is shown once. It reads every app in the\n" +
+				"org, and stops working if you leave the org. Needs your own sign-in from packrat login.\n\n" +
+				"With --plain, put the command inside $(…) so the key goes to your platform's config without\n" +
+				"passing through your terminal. In Claude Code, run it yourself with ! so the key stays out of\n" +
+				"the conversation.",
+			examples: []string{
+				"packrat keys create --name \"deploy agent\"",
+				"bld config:set PACKRAT_API_KEY=$(packrat keys create --name \"deploy agent\" --plain) -a shop",
+			},
 		},
 		"feedback": {
 			summary: "report to the Packrat team what Packrat got in your way",

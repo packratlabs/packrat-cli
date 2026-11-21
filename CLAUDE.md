@@ -9,13 +9,14 @@ environment value read. These
 three are promises checked by tests (`internal/detect/canary_test.go`, `nonetwork_test.go`); do not
 weaken a test to make a change pass.
 
-`login`, `logout`, `auth`, `pr`, `check`, `open`, `sql`, `apps`, `status` and `feedback` are the other half:
+`login`, `logout`, `auth`, `pr`, `check`, `open`, `sql`, `apps`, `status`, `keys` and `feedback` are the other half:
 they ask Packrat. `internal/query` is the only package that sends a request. The key is
 `PACKRAT_API_KEY` from the environment, else the sign-in that `internal/auth` keeps (the macOS
 Keychain, or `credentials.json`); no env file is read for it. A key must never reach stdout, stderr
 or an error; `main_test.go`, `commands_test.go` and `internal/query/query_test.go` check this. The key
 goes only to a Packrat host (`query.Page` checks the host of an address it did not build). `detect`
 must not import `internal/query`. `plan` asks the API only with `--app`.
+`keys create` is the one exception: it prints the key it made, once, and never the key that asked.
 
 Go, standard library only. `make check` (gofmt, vet, staticcheck, golangci-lint, tests) must be
 green before every commit. No `panic`, `log.Fatal` or `os.Exit` outside `main.go`. Every error is
