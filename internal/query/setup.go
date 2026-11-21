@@ -159,3 +159,26 @@ func (c Client) SendFeedback(ctx context.Context, feedback Feedback) (string, er
 	}
 	return sent.Message, decode(c.BaseURL, answer, &sent)
 }
+
+// MadeKey is the answer of POST /keys: an org's API key, whose token is in this answer and nowhere else.
+type MadeKey struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Org     string `json:"org"`
+	OrgName string `json:"org_name"`
+	Token   string `json:"token"`
+}
+
+// CreateKey makes an API key of the client's org, in the name of the person whose key asks.
+func (c Client) CreateKey(ctx context.Context, name string) (MadeKey, error) {
+	body, err := json.Marshal(map[string]string{"name": name})
+	if err != nil {
+		return MadeKey{}, fmt.Errorf("encoding the key's name: %w", err)
+	}
+	answer, err := c.send(ctx, http.MethodPost, "/keys", "application/json", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return MadeKey{}, fmt.Errorf("making the key: %w", err)
+	}
+	var made MadeKey
+	return made, decode(c.BaseURL, answer, &made)
+}

@@ -239,6 +239,25 @@ HTML otherwise. You can pass a whole pasted line, such as the last line of a Pac
 `packrat open` only sends your key to `https://packrat.sh` and its subdomains, and to
 `PACKRAT_URL` and `PACKRAT_QUERY_URL` if they're set.
 
+### keys
+
+An agent that runs on a server, where nobody can run `packrat login`, reads `PACKRAT_API_KEY`.
+`packrat keys create` makes an API key of your org and shows it once:
+
+```sh
+packrat keys create --name "deploy agent"
+```
+
+With `--plain` it prints the key alone, so you can set it on your platform without it passing through your
+terminal. In Claude Code, run it yourself with `!` so the key stays out of the conversation:
+
+```sh
+bld config:set PACKRAT_API_KEY=$(packrat keys create --name "deploy agent" --plain) -a shop
+```
+
+The key is made in your name, so it stops working if you leave the org, and the org's keys page lists it,
+where you can revoke it. It reads every app in the org. You need your own sign-in from `packrat login`.
+
 ### feedback
 
 `packrat feedback` reports to the Packrat team that Packrat got in your way: a command that's missing,

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,10 @@ import (
 	"github.com/packratlabs/packrat-cli/internal/auth"
 )
 
-const loginKey = "packrat_query_fromlogin"
+const (
+	loginKey = "packrat_query_fromlogin"
+	madeKey  = "packrat_query_madebykeys"
+)
 
 // fakePackrat answers the site's and the API's addresses the way packrat.sh and query.packrat.sh do,
 // and keeps each request it was sent.
@@ -114,6 +118,10 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"id":"chk_1","what":"x","due_at":"2026-10-20T21:00:00Z","closed_at":"2026-10-16T10:00:00Z","outcome":"Closed by a developer before it was verified."}`)
 		case r.URL.Path == "/feedback" && strings.Contains(string(body), "pull request"):
 			answer(429, `{"type":"error","message":"too many reports from this key. Try again in an hour."}`)
+		case r.URL.Path == "/keys" && r.Header.Get("Authorization") == "Bearer "+statusKey:
+			answer(403, `{"type":"error","message":"an org's key cannot make keys. Run packrat login and make it as yourself."}`)
+		case r.URL.Path == "/keys":
+			answer(201, `{"id":"key_9","name":"deploy agent","org":"org_a","org_name":"Acme","token":"`+madeKey+`"}`)
 		case r.URL.Path == "/feedback":
 			answer(202, `{"id":"fbk_5k2m9x0qv7ha","message":"Sent to the Packrat team as fbk_5k2m9x0qv7ha."}`)
 		case r.URL.Path == "/sql":
@@ -339,6 +347,65 @@ func TestSlowAnswers(t *testing.T) {
 			}
 			if !strings.Contains(stderr.String(), tc.stderr) {
 				t.Errorf("stderr lacks %q:\n%s", tc.stderr, stderr.String())
+			}
+		})
+	}
+}
+
+// packrat keys create is the one command that prints a key, and only the key it made.
+func TestKeysCreate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		key     string
+		code    int
+		stdout  string
+		stderr  string
+		request string
+		none    bool
+	}{
+		{name: "shows the key it made once, with where to revoke it", args: []string{"keys", "create", "--name", "deploy agent"}, code: 0,
+			stdout: "Made the API key \"deploy agent\" in Acme.\n\n  " + madeKey + "\n\nThis is the only time it's shown.", request: `POST /keys?repo=acme%2Fshop {"name":"deploy agent"}`},
+		{name: "names the org's keys page", args: []string{"keys", "create", "--name", "deploy agent"}, code: 0, stdout: "/orgs/org_a/keys"},
+		{name: "plain prints the key alone", args: []string{"keys", "create", "--name", "deploy agent", "--plain"}, code: 0, stdout: madeKey + "\n"},
+		{name: "an org's key cannot make one", args: []string{"keys", "create", "--name", "deploy agent"}, key: statusKey, code: 1, stderr: "Run packrat login"},
+		{name: "needs a name", args: []string{"keys", "create", "--name", " "}, code: 2, stderr: "--name says what the key is for", none: true},
+		{name: "needs create", args: []string{"keys", "--name", "x"}, code: 2, stderr: "packrat keys create --name NAME", none: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server, asked := fakePackrat(t)
+			env := map[string]string{"PACKRAT_API_KEY": tc.key, "PACKRAT_QUERY_URL": server.URL, "PACKRAT_URL": server.URL}
+			store := auth.Store{Dir: t.TempDir()}
+			if err := store.Save(auth.SignIn{Email: "dana@example.com", Key: "key_1", Token: loginKey}); err != nil {
+				t.Fatalf("saving the sign-in: %v", err)
+			}
+			w := world{getenv: func(name string) string { return env[name] }, store: store, http: &http.Client{},
+				origin: func() string { return "git@github.com:acme/shop.git" }}
+			var stdout, stderr bytes.Buffer
+
+			code := runIn(w, tc.args, &stdout, &stderr)
+
+			if code != tc.code {
+				t.Errorf("exit %d, want %d (stderr: %s)", code, tc.code, stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tc.stdout) || !strings.Contains(stderr.String(), tc.stderr) {
+				t.Errorf("stdout lacks %q or stderr lacks %q:\n%s%s", tc.stdout, tc.stderr, stdout.String(), stderr.String())
+			}
+			if slices.Contains(tc.args, "--plain") && code == 0 && stdout.String() != madeKey+"\n" {
+				t.Errorf("--plain printed more than the key:\n%s", stdout.String())
+			}
+			for _, key := range []string{statusKey, loginKey} {
+				if strings.Contains(stdout.String()+stderr.String(), key) {
+					t.Errorf("the key that asked was printed:\n%s%s", stdout.String(), stderr.String())
+				}
+			}
+			all := strings.Join(*asked, "\n")
+			if tc.request != "" && !strings.Contains(all, tc.request) {
+				t.Errorf("no request %q in:\n%s", tc.request, all)
+			}
+			if tc.none && len(*asked) > 0 {
+				t.Errorf("asked Packrat when it must not:\n%s", all)
 			}
 		})
 	}
