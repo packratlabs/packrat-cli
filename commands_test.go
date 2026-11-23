@@ -98,6 +98,8 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(409, `{"type":"error","message":"#9 shipped in 9f2c41e8 at 2026-10-14 16:02 UTC, and its checks are scheduled."}`)
 		case r.URL.Path == "/issues":
 			answer(200, `{"app":"shop","org":"org_a","period":"14d","issues":[{"id":"SHOP-3","kind":"detected","title":"Checkout fails for gift cards","severity":"high","summary":"Gift card carts fail to pay.","status":"unresolved","events":12,"users":4,"normal":"Gift card failures run at this level most days.","errors":["SHOP-1"],"reasons":["rising"]},{"id":"SHOP-2","kind":"error","title":"NoMethodError: undefined method 'total' for nil","severity":null,"status":"unresolved","events":3,"users":1,"part_of":null}]}`)
+		case r.URL.Path == "/pulls/9":
+			answer(200, `{"app":"shop/production","pull":9,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[],"checks":[],"queue":{"taken_at":"2026-10-16T09:00:00Z","ended_at":"2026-10-16T09:04:00Z","ending":"fix","note":"The job ran a query for each table. It now reads the rows once.","fix":"#490"}}`)
 		case r.URL.Path == "/pulls/8":
 			answer(200, `{"app":"shop/production","pull":8,"state":"not_observable","analysed":true,"repository":"acme/shop","none":"Renames a heading.","deploys":[],"checks":[]}`)
 		case r.URL.Path == "/pulls/7":
@@ -175,6 +177,9 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request as JSON keeps the issues it opened and who fixed them", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"fixed_by": 486`},
 		{name: "a pull request as JSON keeps whether it is settled", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"settled": true`},
 		{name: "a pull request as JSON keeps each check's runs", args: []string{"pr", "show", "482", "--json"}, login: true, code: 0, stdout: `"evidence": "3 carts off by the card"`},
+		{name: "a pull request a loop ended says how", args: []string{"pr", "show", "9"}, login: true, code: 0,
+			stdout: "=== Loop\nA loop ended it 2026-10-16 09:04 UTC: fix #490. The job ran a query for each table."},
+		{name: "a pull request as JSON keeps what a loop did", args: []string{"pr", "show", "9", "--json"}, login: true, code: 0, stdout: `"ending": "fix"`},
 		{name: "a pull request that declared no checks says why", args: []string{"pr", "show", "8"}, login: true, code: 0, stdout: "=== Checks\nNo checks: Renames a heading.\n"},
 		{name: "a pull request as JSON keeps why it declared no checks", args: []string{"pr", "show", "8", "--json"}, login: true, code: 0, stdout: `"none": "Renames a heading."`},
 		{name: "a pull request with no deploy and no repository", args: []string{"pr", "show", "7"}, login: true, code: 0, stdout: "GitHub repository is not connected"},
