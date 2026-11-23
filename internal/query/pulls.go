@@ -107,6 +107,17 @@ type Pull struct {
 	Issues  []IssueLink `json:"issues"`
 	// Unread is whether it changed since the person whose key asks last opened it; absent for an org's key.
 	Unread *bool `json:"unread,omitempty"`
+	// Queue is what a loop did with it once it failed; absent until one takes it.
+	Queue *Taken `json:"queue,omitempty"`
+}
+
+// Taken is a failed pull request a loop took from the queue, and how the loop ended it.
+type Taken struct {
+	TakenAt time.Time  `json:"taken_at"`
+	EndedAt *time.Time `json:"ended_at"`
+	Ending  string     `json:"ending"`
+	Note    string     `json:"note"`
+	Fix     string     `json:"fix"`
 }
 
 // IssueLink is an issue a pull request opened, found already open, or fixes (Link). FixedBy is the

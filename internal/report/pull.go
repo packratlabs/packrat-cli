@@ -59,6 +59,13 @@ func Pull(w io.Writer, p query.Pull, reports string, width int) error {
 		}
 		b.WriteString("\n")
 	}
+	if p.Queue != nil {
+		line := "A loop took it " + stamp(p.Queue.TakenAt) + " and has not ended it."
+		if p.Queue.EndedAt != nil {
+			line = strings.TrimSpace("A loop ended it "+stamp(*p.Queue.EndedAt)+": "+Endings[p.Queue.Ending]+" "+p.Queue.Fix) + ". " + p.Queue.Note
+		}
+		b.WriteString("=== Loop\n" + fold(line, width, "") + "\n")
+	}
 	if len(p.Declared) > 0 {
 		b.WriteString("=== Waiting for the deploy\n")
 		b.WriteString(declaredTable(p.Declared, width) + "\n")

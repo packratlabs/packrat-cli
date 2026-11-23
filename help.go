@@ -31,6 +31,7 @@ func topics() map[string]topic {
 		"check": {summary: "schedule checks that verify a change in production"},
 		"keys":  {summary: "make API keys for agents that run where nobody can sign in"},
 		"pr":    {summary: "see how pull requests performed in production, and archive their verification"},
+		"queue": {summary: "work the pull requests that failed in production, one at a time"},
 	}
 }
 
@@ -227,6 +228,66 @@ func commands() map[string]command {
 			args:     [][2]string{{"ID", "issue ID, such as SHOP-41"}},
 			flags:    [][2]string{{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"}, {"--json", "output the API response as JSON"}},
 			examples: []string{"packrat issues reopen SHOP-41"},
+		},
+		"queue list": {
+			summary: "list the failed pull requests that wait for a loop",
+			usage:   "packrat queue list [--app SERVICE] [--json]",
+			flags:   [][2]string{{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"}, {"--json", "output the API response as JSON"}},
+			description: "A loop is a Claude Code session that takes one failed pull request at a time, finds out why its\n" +
+				"check failed in production, and ends it. The Packrat plugin runs one with /packrat:loop.\n\n" +
+				"A pull request waits in the queue while it did not work or worked in part, it went live in the\n" +
+				"last 30 days, an issue it opened is still unresolved (or it has none), and no loop has ended it.\n" +
+				"The list is in the order packrat queue next hands them out: the oldest verdict first.",
+			examples: []string{"packrat queue list"},
+		},
+		"queue next": {
+			summary: "take the next failed pull request",
+			usage:   "packrat queue next [--wait] [--app SERVICE] [--json]",
+			flags: [][2]string{{"--wait", "when nothing waits, ask again each minute until something does"},
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"}, {"--json", "output the API response as JSON"}},
+			description: "Takes the first waiting pull request and prints it: the deploy, each failed check with what was\n" +
+				"expected and what happened instead, and the issues it left open. Packrat hands a pull request to\n" +
+				"one loop, so report how it ends with packrat queue done. One taken with no ending goes back to\n" +
+				"the queue after two hours.\n\n" +
+				"With --json, the answer is {\"app\", \"item\", \"waiting\"}, and item is null when nothing waits.\n" +
+				"Each pull request taken is a line in the loop's log (packrat queue log).",
+			examples: []string{"packrat queue next", "packrat queue next --wait --json"},
+		},
+		"queue done": {
+			summary: "report how a failed pull request ended",
+			usage:   "packrat queue done NUMBER|URL --ending ENDING --note TEXT [--fix PR|COMMIT] [--check ID] [--file FILE] [--app SERVICE] [--json]",
+			args:    [][2]string{{"NUMBER|URL", "pull request number or GitHub URL"}},
+			flags: [][2]string{
+				{"--ending=<value>", "fix, fixed-already, excuse, replace or needs-person"},
+				{"--note=<value>", "the cause and what you did, in two plain sentences"},
+				{"--fix=<value>", "with fix, the pull request you opened; with fixed-already, the commit or pull request that fixed it"},
+				{"--check=<value>", "with excuse or replace, the failed check (chk_…); not needed when only one failed"},
+				{"--file=<value>", "with replace, the check that takes its place, as JSON (- reads stdin)"},
+				{"--app=<value>", "app to use (default: the app connected to the pull request's repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Reporting the ending makes the change it names, and takes the pull request out of the queue:\n\n" +
+				"  fix            keeps the pull request that fixes it\n" +
+				"  fixed-already  keeps the commit or pull request that fixed it\n" +
+				"  excuse         excuses the failed check, with the note as its reason, and works the verdict out again\n" +
+				"  replace        excuses the failed check and asks for the check in --file in its place\n" +
+				"  needs-person   changes nothing\n\n" +
+				"The check in --file has the shape packrat check add takes. Packrat runs its SQL once, and refuses\n" +
+				"the ending when it fails. Each ending is an entry in the loop's log (packrat queue log), with\n" +
+				"what it changed and the note.",
+			examples: []string{`packrat queue done 482 --ending fix --fix "#490" --note "The job ran a query for each table. It now reads the rows once."`,
+				`packrat queue done 482 --ending excuse --check chk_7ha5k2m9x0qv --note "The 300 ms target was measured with a warm cache. Production serves the first request cold."`,
+				`packrat queue done 482 --ending replace --file check.json --note "A timing limit did not test the failure. The new check counts failed syncs."`},
+		},
+		"queue log": {
+			summary: "print what the loop took and how each ended",
+			usage:   "packrat queue log [-n LINES]",
+			flags:   [][2]string{{"-n=<value>", "how many lines to print, from the end (default: 40)"}},
+			description: "The log is a text file on this computer, in this repository's .git directory\n" +
+				"(.git/packrat/loop.log), so it is never committed and every worktree of the repository shares it.\n" +
+				"packrat queue next adds a line for each pull request it hands out, and packrat queue done adds\n" +
+				"one for each ending, with what Packrat changed and the note.",
+			examples: []string{"packrat queue log", "packrat queue log -n 100"},
 		},
 		"pr show": {
 			summary: "show how a pull request performed in production",

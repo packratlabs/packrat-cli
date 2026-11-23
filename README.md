@@ -230,6 +230,28 @@ To manage checks:
 - `packrat check show chk_…` shows a check's full text, and its result once it has run.
 - `packrat check close chk_…` cancels a check before it runs.
 
+### queue
+
+A pull request that failed in production waits in a queue for a loop: a Claude Code session that
+takes one at a time, finds out why its check failed, and ends it. The Packrat plugin for Claude
+Code runs one with `/packrat:loop`. These are the commands it uses:
+
+```
+packrat queue list
+packrat queue next --wait --json
+packrat queue done 482 --ending fix --fix "#490" --note "The job ran a query for each table. It now reads the rows once."
+packrat queue log
+```
+
+- `packrat queue list` lists the pull requests that wait, and the ones a loop has taken.
+- `packrat queue next` takes the next one, so no other loop is handed it. With `--wait`, it asks
+  again each minute until one waits.
+- `packrat queue done` reports how it ended: `fix`, `fixed-already`, `excuse`, `replace` or
+  `needs-person`, with a note. Reporting makes the change: `excuse` excuses the failed check with the
+  note as its reason, and `replace` also asks for the check in `--file`.
+- `packrat queue log` prints what the loop took and how each ended. The log is a text file in the
+  repository's `.git` directory (`.git/packrat/loop.log`), so it is never committed.
+
 ### open
 
 `packrat open URL` prints a Packrat page: as markdown when the page has a markdown version, and as
