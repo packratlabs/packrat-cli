@@ -206,6 +206,10 @@ packrat pr checks set --dry-run --file checks.json
 packrat pr checks set 482 --file checks.json
 ```
 
+In a git worktree, write the draft with `packrat pr checks draft --file checks.json`. It keeps the draft
+in the repository's `.git` directory, where the plugin's hook reads it and a session's file tools cannot
+write.
+
 Packrat runs each check's SQL once to check it. A draft whose SQL fails is refused with what DuckDB
 said, and a check that already passes before the deploy is kept with a warning. Declaring again
 replaces the list. Once a deploy has shipped the pull request, add a check with `packrat check add`.
