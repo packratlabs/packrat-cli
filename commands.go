@@ -232,6 +232,9 @@ func runPR(w world, args []string, stdout, stderr io.Writer) int {
 	if err == nil && len(words) == 2 && words[0] == "checks" && words[1] == "setup" {
 		return draftSetupChecks(w, stdout, stderr)
 	}
+	if err == nil && len(words) == 2 && words[0] == "checks" && words[1] == "draft" {
+		return draftChecks(w, *file, stdout, stderr)
+	}
 	if err == nil && len(words) >= 2 && words[0] == "checks" && words[1] == "set" {
 		return declareChecks(w, words[2:], *app, *file, *dryRun, *asJSON, stdout, stderr)
 	}
@@ -487,23 +490,66 @@ const setupDraft = `[
 // draftSetupChecks writes setupDraft as the draft of the branch it runs in, where the plugin's hook reads it.
 func draftSetupChecks(w world, stdout, stderr io.Writer) int {
 	const name = "pr checks setup"
-	common, err := w.program("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
-	branch, branchErr := w.program("git", "branch", "--show-current")
-	common, branch = strings.TrimSpace(common), strings.TrimSpace(branch)
-	if err != nil || branchErr != nil || common == "" || branch == "" {
-		return say(stderr, "packrat "+name+": run it in a git checkout, on the branch of the pull request that adds Packrat\n", exitUsage)
-	}
-	draft := filepath.Join(common, "packrat", "checks", branch+".json")
-	if err := os.MkdirAll(filepath.Dir(draft), 0o750); err != nil {
-		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
-	}
-	if err := os.WriteFile(draft, []byte(setupDraft), 0o600); err != nil {
-		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
+	draft, err := writeDraft(w, []byte(setupDraft))
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
 	}
 	return say(stdout, "Wrote the setup checks to "+draft+"\nOpen the pull request with gh pr create. The Packrat plugin declares them once it has a number.\n", exitOK)
 }
 
-const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive, seen, checks set or checks setup. Run packrat help pr for details.\n"
+// draftChecks keeps the checks in file as the draft of the branch it runs in. The draft lives in the repository's
+// .git directory, which a session in a worktree cannot write with its file tools, so the CLI writes it.
+func draftChecks(w world, file string, stdout, stderr io.Writer) int {
+	const name = "pr checks draft"
+	var text []byte
+	var err error
+	switch file {
+	case "":
+		return say(stderr, "packrat "+name+": specify --file: packrat pr checks draft --file checks.json (- reads stdin)\n", exitUsage)
+	case "-":
+		text, err = io.ReadAll(w.stdin)
+	default:
+		text, err = os.ReadFile(file) // #nosec G304 -- the file the user named
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: reading %s: %v\n", name, file, err), exitUsage)
+	}
+	if !json.Valid(text) {
+		return say(stderr, fmt.Sprintf("packrat %s: %s is not JSON. A draft is a list of checks, or {\"none\": \"why\"}.\n", name, file), exitUsage)
+	}
+	draft, err := writeDraft(w, text)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitUsage)
+	}
+	return say(stdout, "Wrote the draft to "+draft+"\nValidate it with packrat pr checks set --dry-run --file "+draft+"\n", exitOK)
+}
+
+// writeDraft writes text as the checks draft of the branch it runs in, where the plugin's hook reads it.
+func writeDraft(w world, text []byte) (string, error) {
+	if w.program == nil {
+		return "", errors.New("run it in a git checkout, on the branch of the pull request")
+	}
+	common, err := w.program("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	branch, branchErr := w.program("git", "branch", "--show-current")
+	common, branch = strings.TrimSpace(common), strings.TrimSpace(branch)
+	if err != nil || branchErr != nil || common == "" || branch == "" {
+		return "", errors.New("run it in a git checkout, on the branch of the pull request")
+	}
+	drafts := filepath.Join(common, "packrat", "checks")
+	draft := filepath.Join(drafts, branch+".json")
+	if !strings.HasPrefix(draft, drafts+string(filepath.Separator)) {
+		return "", fmt.Errorf("the branch %q does not name a draft inside %s", branch, drafts)
+	}
+	if err := os.MkdirAll(filepath.Dir(draft), 0o750); err != nil {
+		return "", fmt.Errorf("making %s: %w", filepath.Dir(draft), err)
+	}
+	if err := os.WriteFile(draft, text, 0o600); err != nil { // #nosec G703 -- inside .git/packrat/checks, checked above
+		return "", fmt.Errorf("writing %s: %w", draft, err)
+	}
+	return draft, nil
+}
+
+const prUsage = "packrat pr: specify a command: show NUMBER|URL, archive, unarchive, seen, checks draft, checks set or checks setup. Run packrat help pr for details.\n"
 
 func askCheck(w world, client query.Client, where query.Where, ask query.Ask, name, usage string, stdout, stderr io.Writer) int {
 	text, err := io.ReadAll(w.stdin)

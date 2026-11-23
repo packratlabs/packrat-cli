@@ -353,6 +353,16 @@ func commands() map[string]command {
 				"request, add a check with packrat check add. Exits 3 when Packrat does not verify the repository.",
 			examples: []string{"packrat pr checks set --dry-run --file checks.json", "packrat pr checks set 482 --file checks.json"},
 		},
+		"pr checks draft": {
+			summary: "keep the checks draft of the branch you're on",
+			usage:   "packrat pr checks draft --file FILE",
+			flags:   [][2]string{{"--file=<value>", "the draft, as JSON (- reads stdin)"}},
+			description: "Writes the draft where the Packrat plugin's hook reads it when you run gh pr create: in the\n" +
+				"repository's .git directory, at packrat/checks/<branch>.json. The file is never committed. Use\n" +
+				"it in a git worktree, where a session's file tools cannot write to the shared .git directory.\n" +
+				"Validate the draft with packrat pr checks set --dry-run --file and the path it prints.",
+			examples: []string{"packrat pr checks draft --file checks.json", "packrat pr checks draft --file - < checks.json"},
+		},
 		"pr checks setup": {
 			summary: "draft the checks of the pull request that adds Packrat to an app",
 			usage:   "packrat pr checks setup",
