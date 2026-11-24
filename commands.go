@@ -472,7 +472,8 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 }
 
 // setupDraft is the draft of the pull request that adds Packrat to an app: the deployed version reaches Packrat.
-// It is fixed, because that pull request changes nothing else that production could show.
+// It is fixed, because that pull request changes nothing else that production could show. Page views are read from
+// packrat_logs, not packrat_replay_events, because a new app has no compacted hour and only the raw macros answer.
 const setupDraft = `[
   { "title": "Packrat receives request traces",
     "claim": "After the deploy, Packrat receives at least one request trace from the deployed version.",
@@ -486,7 +487,7 @@ const setupDraft = `[
     "window": "1d" },
   { "title": "Packrat receives page views",
     "claim": "After the deploy, Packrat receives at least one page view from a visitor's browser on the deployed version.",
-    "sql": "SELECT count(*) AS seen FROM packrat_replay_events(since := getvariable('deployed_at'), until := getvariable('until')) WHERE kind = 'page' AND version = getvariable('version')",
+    "sql": "SELECT count(*) AS seen FROM packrat_logs(since := getvariable('deployed_at'), until := getvariable('until')) WHERE scope_name = 'packrat.browser' AND json_extract_string(log_attributes, '$.\"replay.kind\"') = 'page' AND json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
     "pass_when": "seen >= 1",
     "window": "1d" }
 ]
@@ -678,6 +679,10 @@ func fail(stderr io.Writer, name, usage string, err error) int {
 	var noApp *query.AppRequiredError
 	if errors.As(err, &noApp) {
 		return say(stderr, fmt.Sprintf("Error: %v\nUSAGE: packrat "+usage+"\n", noApp, "<app-name>"), exitUsage)
+	}
+	var notWatched *query.NotWatchedError
+	if errors.As(err, &notWatched) {
+		return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, notWatched), exitNotWatched)
 	}
 	return say(stderr, fmt.Sprintf("packrat %s: %v\n", name, err), exitFailed)
 }

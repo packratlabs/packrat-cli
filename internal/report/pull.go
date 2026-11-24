@@ -18,8 +18,9 @@ const NoDeploy = "No deploy has shipped it yet."
 // NotConnected is printed when the app's repository is not connected, so no deploy has a pull request.
 const NotConnected = "The app's GitHub repository is not connected in Packrat, so no deploy names a pull request. Connect it on the app's Analyst page."
 
-// NotAnalysed is printed when the analyst does not look at the app.
-const NotAnalysed = "The analyst is off for this app, so no deploy gets a verdict and no check is read."
+// NotAnalysed is printed when Packrat does not verify the app, which is most often a development app whose service has
+// no production app yet: the setup pull request's checks wait for it.
+const NotAnalysed = "Packrat runs these checks once this pull request deploys to production."
 
 var verdicts = map[string]string{
 	"confirmed": "worked", "partly": "worked in part", "refuted": "did not work",

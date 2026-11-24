@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -52,14 +54,18 @@ type setupCase struct {
 	signedOut   bool
 	origin      string
 	files       map[string]string
-	// plugins is what claude plugin list prints; noClaude means the program is missing, and installFails that install does.
+	// plugins is what claude plugin list prints; noClaude means the program is missing, listFails that it fails, and
+	// installFails that install does.
 	plugins      string
 	noClaude     bool
+	listFails    bool
 	installFails bool
 	terminal     bool
 	width        int
-	stdin        string
-	browseFails  bool
+	// env is set beside the API's addresses, such as the AI_AGENT a coding agent runs the CLI with.
+	env         map[string]string
+	stdin       string
+	browseFails bool
 	// noGit, noCommits and noGh are a directory outside git, a repository with no commit, and no gh on the PATH.
 	noGit, noCommits, noGh bool
 
@@ -102,8 +108,13 @@ func TestSetup(t *testing.T) {
 			stdout: []string{"✓ GitHub          Packrat can read acme/shop", "○ Data            None yet. Install packrat-rails", "✓ Plugin          packrat@packrat is installed in Claude Code",
 				"○ Pull request    Opened by Claude Code", "○ PR Verification Packrat runs its first PR verification",
 				"Next: have Claude Code create a pull request to install Packrat.",
-				"  claude 'Set up Packrat in this app. Run `packrat open SITE/orgs/org_a/apps/setup?framework=rails` and follow its steps.'"},
+				"  claude 'Set up Packrat in this app. Run `packrat open \"SITE/orgs/org_a/apps/setup?framework=rails\"` and follow its steps.'"},
 			absent: []string{"[Y/n]", "\x1b["}, asked: []string{"POST /setup/repository?repo=acme%2Fshop"}},
+		{name: "run by Claude Code, it names the page for Claude Code to open rather than starting another",
+			states: []string{setupReadable}, files: rails, plugins: pluginListed, env: map[string]string{"AI_AGENT": "claude-code_2-1-331_agent"}, code: 0,
+			stdout: []string{"Next: have Claude Code create a pull request to install Packrat.",
+				"  Run `packrat open \"SITE/orgs/org_a/apps/setup?framework=rails\"` and follow its steps."},
+			absent: []string{"claude 'Set up", "[Y/n]"}},
 		{name: "on a terminal of known width the GitHub row is drawn again in place",
 			states: []string{setupUnread, setupReadable}, files: rails, plugins: pluginListed, terminal: true, width: 120, stdin: "\nn\n", code: 0,
 			stdout: []string{"\x1b[9A\r\x1b[J✓ GitHub          Packrat can read acme/shop"}, browsed: "SITE/github/setup?state=s1"},
@@ -182,8 +193,13 @@ func TestSetup(t *testing.T) {
 			stdout: []string{"○ Platform        Not a Rails app.", "✓ GitHub"}},
 		{name: "Claude Code missing leaves the plugin and prints the command",
 			states: []string{setupReadable}, files: rails, noClaude: true, terminal: true, code: 0,
-			stdout: []string{"○ Plugin          Claude Code is not installed here"}, absent: []string{"[Y/n]"},
-			reported: []string{`{"step":"Plugin","mark":"todo","text":"Claude Code is not installed here`}},
+			stdout: []string{"○ Plugin          Claude Code is not on this shell's PATH, so setup cannot install the plugin.\n" +
+				"                  Run packrat setup in the shell where you run claude"}, absent: []string{"[Y/n]"},
+			reported: []string{`{"step":"Plugin","mark":"todo","text":"Claude Code is not on this shell's PATH`}},
+		{name: "a claude that fails to list its plugins says why, rather than that it is missing",
+			states: []string{setupReadable}, files: rails, listFails: true, terminal: true, code: 0,
+			stdout: []string{"✗ Plugin          claude plugin list failed:\n                  Error: settings.json is not valid JSON"},
+			absent: []string{"not on this shell's PATH", "[Y/n]"}},
 		{name: "at a terminal it asks before it installs the plugin, and Enter installs it",
 			states: []string{setupReadable}, files: rails, plugins: "No plugins installed.\n", terminal: true, stdin: "\nn\n", code: 0,
 			stdout: []string{"◷ Plugin          Connects Claude Code to Packrat.\n\n" +
@@ -323,6 +339,9 @@ func runSetupCase(t *testing.T, tc setupCase) {
 
 	// Nothing answers at the API's address: setup asks the site alone.
 	env := map[string]string{"PACKRAT_QUERY_URL": "http://127.0.0.1:1", "PACKRAT_URL": server.URL}
+	for name, value := range tc.env {
+		env[name] = value
+	}
 	store := auth.Store{Dir: t.TempDir()}
 	if !tc.signedOut {
 		if err := store.Save(auth.SignIn{Email: "dana@example.com", Key: "key_1", Token: loginKey}); err != nil {
@@ -361,7 +380,9 @@ func runSetupCase(t *testing.T, tc setupCase) {
 			case strings.HasPrefix(command, "git ") || strings.HasPrefix(command, "gh "):
 				return "", nil
 			case tc.noClaude:
-				return "", errors.New("not found")
+				return "", fmt.Errorf("running claude: %w", exec.ErrNotFound)
+			case tc.listFails && command == "claude plugin list":
+				return "Error: settings.json is not valid JSON\n", errors.New("exit status 1")
 			case command == "claude plugin list":
 				return tc.plugins, nil
 			case tc.installFails && strings.Contains(command, "plugin install"):

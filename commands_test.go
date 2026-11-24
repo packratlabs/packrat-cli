@@ -54,6 +54,8 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(401, "")
 		case r.URL.Path == "/cli/token":
 			answer(204, "")
+		case r.URL.Query().Get("repo") == "acme/blog":
+			answer(400, `{"type":"error","message":"no app is connected to acme/blog on GitHub.","watched":false}`)
 		case r.URL.Path == "/cli/whoami":
 			answer(200, `{"key":"key_1","name":"CLI: laptop","source":"cli","email":"dana@example.com","orgs":[{"org":"org_a","name":"Acme"},{"org":"org_b","name":"Bolt"}]}`)
 		case r.URL.Path == "/apps":
@@ -86,8 +88,6 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"app":"shop/production","pull":483,"state":"pending","analysed":true,"deploys":[],"checks":[{"id":"chk_3","what":"Filters by brand.","title":"Filters by brand","due_at":"2026-10-23T16:02:00Z","pull":483,"kind":"appears","seen":40,"min_seen":200}],"dropped":[{"title":"Gift cards","dropped":"Rejected twice."}]}`)
 		case r.URL.Path == "/pulls/482":
 			answer(200, `{"app":"shop/production","pull":482,"state":"partly","analysed":true,"repository":"acme/shop","deploys":[{"id":"dep_1","version":"9f2c41e8aa","deployed_at":"2026-10-14T16:02:00Z","pull":482,"title":"Cache the cart total","verdict":"partly","intent":"A faster cart","evidence":"p95 840 to 210 ms","next_step":"Key the cache on gift cards","report":"rep_1"}],"checks":[{"id":"chk_1","what":"Gift card totals are right.\nselect 1","due_at":"2026-10-20T21:00:00Z","runs_at":"2026-10-20T21:07:00Z","pull":482,"asked":true,"title":"Gift card totals","source":"asked","result":"failed","runs":[{"at":"2026-10-20T21:07:00Z","result":"failed","evidence":"3 carts off by the card"}]}],"settled":true,"issues":[{"id":"SHOP-41","link":"opened","status":"resolved","fixed_by":486,"check":"chk_1"}]}`)
-		case r.URL.Path == "/pulls/checks" && r.URL.Query().Get("repo") == "acme/blog":
-			answer(400, `{"type":"error","message":"no app is connected to acme/blog on GitHub.","watched":false}`)
 		case r.URL.Path == "/pulls/checks":
 			answer(200, `{"app":"shop/production","pull":null,"dry_run":true,"checks":[{"title":"The cart is faster","claim":"x","window":"1h"}],"warnings":["check 1 (The cart is faster): it already passes on the 1h before now, so passing would prove nothing about the change"]}`)
 		case r.URL.Path == "/pulls/482/checks" && strings.Contains(string(body), "none"):
@@ -188,6 +188,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "a pull request declares its checks", args: []string{"pr", "checks", "set", "https://github.com/acme/shop/pull/482", "--file", "-"}, login: true, stdin: "[]", code: 0, stdout: "Declared 2 checks for #482 in shop/production.", request: "PUT /pulls/482/checks?repo=acme%2Fshop []"},
 		{name: "a pull request declares none", args: []string{"pr", "checks", "set", "482", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git", stdin: `{"none":"Docs only."}`, code: 0, stdout: "#482 declares no checks in shop/production: Docs only."},
 		{name: "a repository Packrat does not verify exits 3", args: []string{"pr", "checks", "set", "--dry-run", "--file", "-"}, login: true, origin: "git@github.com:acme/blog.git", stdin: "[]", code: 3, stderr: "no app is connected to acme/blog"},
+		{name: "pr show in a repository Packrat does not verify exits 3", args: []string{"pr", "show", "#482"}, login: true, origin: "git@github.com:acme/blog.git", code: 3, stderr: "packrat pr show: no app is connected to acme/blog"},
+		{name: "issues in a repository Packrat does not verify exits 3", args: []string{"issues", "--json"}, login: true, origin: "git@github.com:acme/blog.git", code: 3, stderr: "packrat issues: no app is connected to acme/blog"},
 		{name: "a shipped pull request says how to add a check", args: []string{"pr", "checks", "set", "9", "--file", "-"}, login: true, origin: "git@github.com:acme/shop.git", stdin: "[]", code: 1, stderr: "its checks are scheduled"},
 		{name: "declaring needs a file", args: []string{"pr", "checks", "set", "482"}, login: true, code: 2, stderr: "specify the pull request and --file", none: true},
 		{name: "declaring needs a pull request unless it is a dry run", args: []string{"pr", "checks", "set", "--file", "-"}, login: true, code: 2, stderr: "specify the pull request and --file", none: true},
