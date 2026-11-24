@@ -336,27 +336,28 @@ whether Packrat keeps it.
 $ packrat status --app colorbook/production
 packrat status  colorbook/production
 
-  SIGNAL      SOURCE           KEPT  LAST DATA
-  Exceptions  Sentry           yes   2 minutes ago
-              OpenTelemetry    no    2 minutes ago
-  Traces      Sentry           yes   now
-              Datadog          no    3 minutes ago
-              Sentry browser   yes   6 minutes ago
-  Logs        Datadog          yes   4 minutes ago
-              OpenTelemetry    yes   now
-  Metrics     nothing yet
-  Replays     Sentry browser   yes   6 minutes ago
+  SIGNAL          SOURCE           KEPT  LAST DATA
+  Exceptions      Sentry           yes   2 minutes ago
+                  OpenTelemetry    no    2 minutes ago
+  Traces          Sentry           yes   now
+                  Datadog          no    3 minutes ago
+  Logs            Datadog          yes   4 minutes ago
+                  OpenTelemetry    yes   now
+  Browser events  packrat-rails    yes   6 minutes ago
 
   Packrat keeps the first source of exceptions and of traces.
   To use a different source, ask us to switch it.
 
-4 of 5 signals are connected.
+3 of 3 signals are connected.
 ```
 
 - `--app` names the app, as `SERVICE/ENV` from `packrat apps`. Without it, `status` shows every app
   your key opens, one after another.
 - A signal is connected when it has a source. A source that hasn't sent anything yet, such as
   packrat-rails before the app's first exception, shows `no exceptions yet` in LAST DATA.
+- **Browser events** are what your pages' browsers send: page views, clicks, JavaScript errors and the
+  page's requests. The row appears once a browser has sent something, and isn't counted as a signal:
+  a page loaded with `curl` runs no JavaScript, so setup never waits for it.
 - `no` in the KEPT column means a source sends the signal, but Packrat doesn't store it, because the
   app already keeps that signal from another source. Logs, metrics and all browser data are kept
   from every source.
@@ -410,8 +411,8 @@ Next: merge #1 and deploy to production. Its checks start when the deploy goes l
   Packrat reads code and comments on pull requests.
 - **Plugin:** it asks, then installs the Packrat plugin in Claude Code.
 - **Pull request:** it offers to start Claude Code, which adds `packrat-rails` to the app and opens
-  the setup pull request. `packrat pr checks setup` writes that pull request's two checks: after
-  the deploy, Packrat receives request traces and log lines from the deployed version.
+  the setup pull request. `packrat pr checks setup` writes that pull request's three checks: after
+  the deploy, Packrat receives request traces, log lines and page views from the deployed version.
 - **PR Verification:** after you merge and deploy to production, Packrat runs the checks and
   comments on the pull request. The row counts the checks that passed, and `packrat pr show`
   lists each one. Setup is complete when they all pass.

@@ -1,0 +1,9 @@
+packrat status  shop/production
+
+  SIGNAL          SOURCE           KEPT  LAST DATA
+  Exceptions      OpenTelemetry    yes   2 minutes ago
+  Traces          OpenTelemetry    yes   now
+  Logs            OpenTelemetry    yes   now
+  Browser events  packrat-rails    yes   6 minutes ago
+
+3 of 3 signals are connected.

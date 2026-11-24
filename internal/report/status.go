@@ -25,8 +25,13 @@ const Fresh = time.Hour
 // A source's time is written at most once a minute, so a younger age is not known.
 const exact = 2 * time.Minute
 
+// browser is everything a page's browser sends, one row left out of the count of connected signals: an agent's
+// setup loads pages with curl, which runs no JavaScript.
+const browser = "browser"
+
 var signalLabels = map[string]string{
 	"exceptions": "Exceptions", "traces": "Traces", "logs": "Logs", "metrics": "Metrics", "replays": "Replays",
+	browser: "Browser events",
 }
 
 // Apps writes one line for each app the key opens.
@@ -66,26 +71,29 @@ func Status(w io.Writer, s query.Status) error {
 	var b strings.Builder
 	b.WriteString("packrat status  " + s.App.App + "\n\n")
 	unkept, connected := false, 0
-	width := len("Datadog browser")
+	width, labelWidth := len("Datadog browser"), len("Exceptions")
 	for _, signal := range s.Signals {
+		labelWidth = max(labelWidth, len(signalLabel(signal.Signal)))
 		for _, source := range signal.Sources {
 			width = max(width, len(source.Name))
 		}
 	}
-	fmt.Fprintf(&b, "  %-10s  %-*s  %-4s  %s\n", "SIGNAL", width, "SOURCE", "KEPT", "LAST DATA")
+	fmt.Fprintf(&b, "  %-*s  %-*s  %-4s  %s\n", labelWidth, "SIGNAL", width, "SOURCE", "KEPT", "LAST DATA")
 	for _, signal := range s.Signals {
 		label := signalLabel(signal.Signal)
 		if len(signal.Sources) == 0 {
-			fmt.Fprintf(&b, "  %-10s  %s\n", label, NothingYet)
+			fmt.Fprintf(&b, "  %-*s  %s\n", labelWidth, label, NothingYet)
 			continue
 		}
-		connected++
+		if signal.Signal != browser {
+			connected++
+		}
 		for i, source := range signal.Sources {
 			if i > 0 {
 				label = ""
 			}
 			unkept = unkept || !source.Kept
-			line := fmt.Sprintf("  %-10s  %-*s  %-4s  %s", label, width, source.Name, kept(source), seen(s, signal, source))
+			line := fmt.Sprintf("  %-*s  %-*s  %-4s  %s", labelWidth, label, width, source.Name, kept(source), seen(s, signal, source))
 			b.WriteString(strings.TrimRight(line, " ") + "\n")
 		}
 	}
@@ -143,6 +151,16 @@ func Sending(s query.Status) bool {
 	return last != nil && s.Now.Sub(*last) <= Fresh
 }
 
+func serverSignals(s query.Status) int {
+	n := 0
+	for _, signal := range s.Signals {
+		if signal.Signal != browser {
+			n++
+		}
+	}
+	return n
+}
+
 // Last is the newest time anything arrived for the app, or nil when nothing did.
 func Last(s query.Status) *time.Time {
 	last := s.LastDataAt
@@ -165,9 +183,9 @@ func statusSummary(s query.Status, connected int) string {
 	case s.Now.Sub(*last) > Fresh:
 		return "Nothing has arrived for " + span(s.Now.Sub(*last)) + "."
 	case connected == 1:
-		return fmt.Sprintf("1 of %d signals is connected.", len(s.Signals))
+		return fmt.Sprintf("1 of %d signals is connected.", serverSignals(s))
 	default:
-		return fmt.Sprintf("%d of %d signals are connected.", connected, len(s.Signals))
+		return fmt.Sprintf("%d of %d signals are connected.", connected, serverSignals(s))
 	}
 }
 
