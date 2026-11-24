@@ -476,12 +476,17 @@ func declareChecks(w world, words []string, app, file string, dryRun, asJSON boo
 const setupDraft = `[
   { "title": "Packrat receives request traces",
     "claim": "After the deploy, Packrat receives at least one request trace from the deployed version.",
-    "sql": "SELECT count(*) AS seen FROM packrat_spans(since := getvariable('deployed_at'), until := getvariable('until')) WHERE parent_span_id IS NULL AND json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
+    "sql": "SELECT count(*) AS seen FROM packrat_spans(since := getvariable('deployed_at'), until := getvariable('until')) WHERE parent_span_id IS NULL AND scope_name <> 'packrat.browser' AND json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
     "pass_when": "seen >= 1",
     "window": "1d" },
   { "title": "Packrat receives log lines",
     "claim": "After the deploy, Packrat receives at least one log line from the deployed version.",
-    "sql": "SELECT count(*) AS seen FROM packrat_logs(since := getvariable('deployed_at'), until := getvariable('until')) WHERE json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
+    "sql": "SELECT count(*) AS seen FROM packrat_logs(since := getvariable('deployed_at'), until := getvariable('until')) WHERE scope_name <> 'packrat.browser' AND json_extract_string(resource_attributes, '$.\"service.version\"') = getvariable('version')",
+    "pass_when": "seen >= 1",
+    "window": "1d" },
+  { "title": "Packrat receives page views",
+    "claim": "After the deploy, Packrat receives at least one page view from a visitor's browser on the deployed version.",
+    "sql": "SELECT count(*) AS seen FROM packrat_replay_events(since := getvariable('deployed_at'), until := getvariable('until')) WHERE kind = 'page' AND version = getvariable('version')",
     "pass_when": "seen >= 1",
     "window": "1d" }
 ]

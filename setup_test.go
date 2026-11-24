@@ -472,8 +472,8 @@ func TestSetupChecksDraft(t *testing.T) {
 		t.Fatalf("no draft: %v", err)
 	}
 	var checks []map[string]string
-	if err := json.Unmarshal(draft, &checks); err != nil || len(checks) != 2 {
-		t.Fatalf("the draft is not a list of two checks: %v\n%s", err, draft)
+	if err := json.Unmarshal(draft, &checks); err != nil || len(checks) != 3 {
+		t.Fatalf("the draft is not a list of three checks: %v\n%s", err, draft)
 	}
 	for _, check := range checks {
 		if check["title"] == "" || check["claim"] == "" || check["pass_when"] != "seen >= 1" || !strings.Contains(check["sql"], "getvariable('version')") {
