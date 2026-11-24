@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -534,9 +533,18 @@ func setupApp(out setupOut, state query.Setup) {
 // it changes Claude Code for every project on the machine, not this one.
 func setupPlugin(w world, out setupOut) bool {
 	listed, err := w.program("claude", "plugin", "list")
+	// Claude Code is often installed in another shell than the one running setup, such as WSL beside PowerShell.
+	if errors.Is(err, exec.ErrNotFound) {
+		out.row(markTodo, "Plugin", "Claude Code is not on this shell's PATH, so setup cannot install the plugin.",
+			"Run packrat setup in the shell where you run claude, or install Claude Code: https://claude.com/claude-code")
+		return false
+	}
 	if err != nil {
-		out.row(markTodo, "Plugin", "Claude Code is not installed here, so there is no plugin to install.",
-			"Packrat's checks are declared by Claude Code. See https://claude.com/claude-code")
+		reason := lastLine(listed)
+		if reason == "" {
+			reason = err.Error()
+		}
+		out.row(markWrong, "Plugin", "claude plugin list failed:", reason)
 		return false
 	}
 	if pluginEnabled(listed) {
@@ -690,7 +698,14 @@ func allPassed(checks []query.Check) bool {
 // startClaude becomes Claude Code with the prompt that sets the app up, when the person says yes.
 func startClaude(w world, out setupOut, state query.Setup, claude bool, stderr io.Writer) int {
 	page := strings.TrimRight(siteURL(w), "/") + state.SetupURL
-	prompt := "Set up Packrat in this app. Run `packrat open " + page + "` and follow its steps."
+	// Quoted, because the ? in the page's address is a glob to zsh.
+	open := `packrat open "` + page + `"`
+	prompt := "Set up Packrat in this app. Run `" + open + "` and follow its steps."
+	// A coding agent is already the Claude Code this step needs, so it does the step rather than start another.
+	if query.Agent(w.getenv) != "" {
+		out.printf("\n  Run `%s` and follow its steps.\n", open)
+		return exitOK
+	}
 	command := "claude " + quoteArg(prompt)
 	if !claude || !w.terminal {
 		out.printf("\n  %s\n\n%s\n", command, out.dim("Run packrat setup again at any time to see what is left."))
@@ -727,18 +742,6 @@ func runProgram(name string, args ...string) (string, error) {
 		return string(out), fmt.Errorf("running %s: %w", name, err)
 	}
 	return string(out), nil
-}
-
-// becomeProgram replaces this process with the program, so that it owns the terminal.
-func becomeProgram(env []string, name string, args ...string) error {
-	path, err := exec.LookPath(name)
-	if err != nil {
-		return fmt.Errorf("finding %s: %w", name, err)
-	}
-	if err := syscall.Exec(path, append([]string{name}, args...), append(os.Environ(), env...)); err != nil { // #nosec G204 -- claude, as above
-		return fmt.Errorf("starting %s: %w", name, err)
-	}
-	return nil
 }
 
 func isTerminal(file *os.File) bool {

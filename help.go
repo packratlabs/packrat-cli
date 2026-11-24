@@ -180,7 +180,8 @@ func commands() map[string]command {
 			},
 			description: "Lists the app's issues in the order of its Issues page: the analyst's severity first, then how\n" +
 				"many events and people each reaches. An issue marked AI is one the analyst raised from the data\n" +
-				"rather than an exception. To change one, run packrat issues resolve, archive or reopen.",
+				"rather than an exception. To change one, run packrat issues resolve, archive or reopen. Exits 3\n" +
+				"when no app is connected to this checkout's repository: run packrat setup.",
 			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
 		},
 		"issues resolve": {
@@ -298,7 +299,8 @@ func commands() map[string]command {
 				{"--json", "output the API response as JSON"},
 			},
 			description: "Shows each deploy that included the pull request, with the analyst's verdict, the evidence and\n" +
-				"any checks. With a number, the repository is the origin remote of the current directory.",
+				"any checks. With a number, the repository is the origin remote of the current directory. Exits 3\n" +
+				"when no app is connected to the repository: run packrat setup.",
 			examples: []string{"packrat pr show 482", "packrat pr show https://github.com/acme/shop/pull/482"},
 		},
 		"pr archive": {
