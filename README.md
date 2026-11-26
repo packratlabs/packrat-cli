@@ -416,7 +416,7 @@ Next: merge #1 and deploy to production. Its checks start when the deploy goes l
 - **Plugin:** it asks, then installs the Packrat plugin in Claude Code.
 - **Pull request:** it offers to start Claude Code, which adds `packrat-rails` to the app and opens
   the setup pull request. `packrat pr checks setup` writes that pull request's three checks: after
-  the deploy, Packrat receives request traces, log lines and page views from the deployed version.
+  the deploy, Packrat receives request traces, log lines and page views from the app.
 - **PR Verification:** after you merge and deploy to production, Packrat runs the checks and
   comments on the pull request. The row counts the checks that passed, and `packrat pr show`
   lists each one. Setup is complete when they all pass.

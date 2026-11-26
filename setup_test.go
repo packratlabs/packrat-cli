@@ -525,8 +525,9 @@ func TestSetupChecksDraft(t *testing.T) {
 		t.Fatalf("the draft is not a list of three checks: %v\n%s", err, draft)
 	}
 	for _, check := range checks {
-		if check["title"] == "" || check["claim"] == "" || check["pass_when"] != "seen >= 1" || !strings.Contains(check["sql"], "getvariable('version')") {
-			t.Errorf("check lacks a field, or does not read the deployed version: %v", check)
+		if check["title"] == "" || check["claim"] == "" || check["pass_when"] != "seen >= 1" ||
+			!strings.Contains(check["sql"], "since := getvariable('deployed_at')") || strings.Contains(check["sql"], "getvariable('version')") {
+			t.Errorf("check lacks a field, or reads one version rather than the window from the deploy: %v", check)
 		}
 	}
 	if !strings.Contains(stdout.String(), path) {
