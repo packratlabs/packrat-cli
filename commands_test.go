@@ -68,7 +68,11 @@ func fakePackrat(t *testing.T) (*httptest.Server, *[]string) {
 			answer(200, `{"id":"SHOP-3","kind":"detected","status":"archived","archived_until":"escalating"}`)
 		case r.URL.Path == "/issues/SHOP-3/resolve" && r.Method == http.MethodDelete:
 			answer(200, `{"id":"SHOP-3","kind":"detected","status":"unresolved"}`)
-		case r.URL.Path == "/issues/SHOP-9/resolve":
+		case r.URL.Path == "/issues/SHOP-2" && r.Method == http.MethodGet:
+			answer(200, `{"id":"SHOP-2","kind":"error","title":"NoMethodError: undefined method 'total' for nil","culprit":"CartsController#show","status":"unresolved","substatus":"regressed","severity":null,"events":3,"users":1,"times_seen":3,"first_seen":"2026-10-12T08:00:00Z","last_seen":"2026-10-20T20:41:00Z","part_of":"SHOP-3","first_release":"9f2c41e8aa","last_release":"a71b0c33dd","tags":{"browser":{"top":"Safari","count":2}},"event":{"event_id":"ev_1","occurred_at":"2026-10-20T20:41:00Z","release":"a71b0c33dd","transaction":"GET /cart","trace_id":"4bf92f35","exceptions":[{"type":"NoMethodError","value":"undefined method 'total' for nil","frames":[{"filename":"gems/rack.rb","lineno":9,"function":"call","in_app":false},{"filename":"app/controllers/carts_controller.rb","lineno":12,"function":"show","in_app":true},{"filename":"app/models/cart.rb","lineno":40,"function":"total","in_app":true}]}]}}`)
+		case r.URL.Path == "/issues/SHOP-3" && r.Method == http.MethodGet:
+			answer(200, `{"id":"SHOP-3","kind":"detected","title":"Checkout fails for gift cards","severity":"high","summary":"Gift card carts fail to pay.","status":"unresolved","events":3,"users":1,"times_seen":0,"first_seen":"2026-10-12T08:00:00Z","last_seen":"2026-10-20T20:41:00Z","errors":["SHOP-2"],"pull":486,"tags":{},"event":null}`)
+		case r.URL.Path == "/issues/SHOP-9/resolve" || r.URL.Path == "/issues/SHOP-9":
 			answer(404, `{"message":"shop has no issue SHOP-9"}`)
 		case r.URL.Path == "/pulls/482/archive" && r.Method == http.MethodPatch:
 			answer(200, `{"app":"shop/production","pull":482,"state":"archived","archive_reason":"Reverted in #483.","deploys":[],"checks":[]}`)
@@ -197,6 +201,14 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 			stdout: "=== shop issues · unresolved, events over 14d\n\nID      SEVERITY  EVENTS  USERS  TITLE\nSHOP-3  high          12      4  AI: Checkout fails for gift cards\nSHOP-2  —              3      1  NoMethodError", request: "GET /issues?repo=acme%2Fshop&sort=priority"},
 		{name: "issues as JSON keep the summary and reasons", args: []string{"issues", "--app", "shop", "--kind", "detected", "--json"}, login: true, code: 0, stdout: `"normal": "Gift card failures run at this level most days."`, request: "GET /issues?app=shop&kind=detected&sort=priority"},
 		{name: "issues take only flags or an action", args: []string{"issues", "SHOP-3"}, login: true, code: 2, stderr: "resolve, archive, reopen or seen and an issue ID", none: true},
+		{name: "show an error with its latest event, innermost in-app frame first", args: []string{"issues", "show", "SHOP-2"}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
+			stdout:  "=== SHOP-2 NoMethodError: undefined method 'total' for nil\nStatus      unresolved, regressed\nSeverity    unrated\nEvents      3 from 1 user\nFirst seen  2026-10-12 08:00 UTC in 9f2c41e8\nLast seen   2026-10-20 20:41 UTC in a71b0c33\nWhere       CartsController#show\nPart of     SHOP-3\n\n=== Latest event ev_1\n2026-10-20 20:41 UTC · a71b0c33 · GET /cart\nTrace 4bf92f35\n\nNoMethodError: undefined method 'total' for nil\n  app/models/cart.rb:40 in total\n  app/controllers/carts_controller.rb:12 in show\n\n=== Tags (commonest value)\nbrowser              Safari (2)\n",
+			request: "GET /issues/SHOP-2?repo=acme%2Fshop"},
+		{name: "show an AI-detected issue with the errors under it", args: []string{"issues", "show", "SHOP-3", "--app", "shop"}, login: true, code: 0,
+			stdout: "=== SHOP-3 AI: Checkout fails for gift cards\nStatus      unresolved\nSeverity    high\nFirst seen  2026-10-12 08:00 UTC\nLast seen   2026-10-20 20:41 UTC\nErrors      SHOP-2\nPull        #486 (packrat pr show 486)\n\nSummary\n  Gift card carts fail to pay.\n", request: "GET /issues/SHOP-3?app=shop"},
+		{name: "show an issue as JSON keeps the event", args: []string{"issues", "show", "SHOP-2", "--app", "shop", "--json"}, login: true, code: 0, stdout: `"transaction": "GET /cart"`},
+		{name: "show an issue that is not there", args: []string{"issues", "show", "SHOP-9", "--app", "shop"}, login: true, code: 1, stderr: "packrat issues show: shop has no issue SHOP-9"},
+		{name: "show needs one issue ID", args: []string{"issues", "show"}, login: true, code: 2, stderr: "show, resolve, archive, reopen or seen and an issue ID", none: true},
 		{name: "resolve an issue with a reason", args: []string{"issues", "resolve", "SHOP-3", "--reason", "The check measured the wrong thing."}, login: true, origin: "git@github.com:acme/shop.git", code: 0,
 			stdout: "Resolved SHOP-3.\nReason: The check measured the wrong thing.\n", request: `PATCH /issues/SHOP-3/resolve?repo=acme%2Fshop {"reason":"The check measured the wrong thing."}`},
 		{name: "archive an issue for good", args: []string{"issues", "archive", "SHOP-3", "--until", "forever", "--app", "shop"}, login: true, code: 0, stdout: "Archived SHOP-3 for good.\n", request: "PATCH /issues/SHOP-3/archive?app=shop&until=forever"},

@@ -132,6 +132,10 @@ SHOP-9   —              3      1  NoMethodError: undefined method 'total' for 
 
 `--status`, `--kind`, `--sort` and `--json` change what it lists; see `packrat help issues`.
 
+`packrat issues show SHOP-9` reads one issue: its status, severity, counts and summary. For an error, it
+also shows the latest event's exception with its in-app frames, innermost first, and the commonest value of
+each tag. For an AI-detected issue, it lists the errors under it.
+
 `packrat issues resolve SHOP-14`, `packrat issues archive SHOP-14` and `packrat issues reopen SHOP-14`
 change an issue as the buttons on its Issues page do. `--reason` says why, and the analyst reads it in its
 next daily summary:

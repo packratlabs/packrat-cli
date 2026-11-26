@@ -180,9 +180,23 @@ func commands() map[string]command {
 			},
 			description: "Lists the app's issues in the order of its Issues page: the analyst's severity first, then how\n" +
 				"many events and people each reaches. An issue marked AI is one the analyst raised from the data\n" +
-				"rather than an exception. To change one, run packrat issues resolve, archive or reopen. Exits 3\n" +
-				"when no app is connected to this checkout's repository: run packrat setup.",
+				"rather than an exception. To read one, run packrat issues show. To change one, run packrat issues\n" +
+				"resolve, archive or reopen. Exits 3 when no app is connected to this checkout's repository: run\n" +
+				"packrat setup.",
 			examples: []string{"packrat issues", "packrat issues --kind detected --json"},
+		},
+		"issues show": {
+			summary: "show one issue and its latest event",
+			usage:   "packrat issues show ID [--app SERVICE] [--json]",
+			args:    [][2]string{{"ID", "issue ID, such as SHOP-41"}},
+			flags: [][2]string{
+				{"--app=<value>", "app to use (default: the app connected to this checkout's repository)"},
+				{"--json", "output the API response as JSON"},
+			},
+			description: "Shows the issue's status, severity, counts and summary. For an error, it also shows the latest\n" +
+				"event's exception and in-app frames, and the commonest value of each tag. For an AI-detected\n" +
+				"issue, it lists the errors under it.",
+			examples: []string{"packrat issues show SHOP-41", "packrat issues show SHOP-41 --json"},
 		},
 		"issues resolve": {
 			summary: "resolve an issue",

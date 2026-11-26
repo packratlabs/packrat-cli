@@ -81,6 +81,59 @@ func (c Client) Issues(ctx context.Context, where Where, filter IssueFilter) (Is
 	return issues, nil
 }
 
+// IssueDetail is one issue as GET /issues/:id answers it: the issue, the releases it spans, the tags of its
+// events with the commonest value of each, and its latest event. An AI-detected issue has no events of its own.
+type IssueDetail struct {
+	Issue
+	FirstRelease string              `json:"first_release"`
+	LastRelease  string              `json:"last_release"`
+	Tags         map[string]TagValue `json:"tags"`
+	Event        *IssueEvent         `json:"event"`
+}
+
+// TagValue is the commonest value of one tag over an issue's latest events, and how many carried it.
+type TagValue struct {
+	Top   string `json:"top"`
+	Count int    `json:"count"`
+}
+
+// IssueEvent is one occurrence of an error, with its exception chain oldest cause first.
+type IssueEvent struct {
+	EventID     string           `json:"event_id"`
+	OccurredAt  time.Time        `json:"occurred_at"`
+	Environment string           `json:"environment"`
+	Release     string           `json:"release"`
+	Transaction string           `json:"transaction"`
+	TraceID     string           `json:"trace_id"`
+	User        json.RawMessage  `json:"user,omitempty"`
+	Handled     *bool            `json:"handled"`
+	Exceptions  []EventException `json:"exceptions"`
+}
+
+// EventException is one exception of an event's chain, its frames innermost last.
+type EventException struct {
+	Type   string       `json:"type"`
+	Value  string       `json:"value"`
+	Frames []EventFrame `json:"frames"`
+}
+
+// EventFrame is one line of a stack trace.
+type EventFrame struct {
+	Filename string `json:"filename"`
+	Function string `json:"function"`
+	Lineno   int    `json:"lineno"`
+	InApp    *bool  `json:"in_app"`
+}
+
+// Issue reads issue id with its latest event.
+func (c Client) Issue(ctx context.Context, id string, where Where) (IssueDetail, error) {
+	var issue IssueDetail
+	if err := c.get(ctx, "/issues/"+url.PathEscape(id)+query(where.values()), &issue); err != nil {
+		return IssueDetail{}, err
+	}
+	return issue, nil
+}
+
 // IssueAction is what a member does to an issue: resolve, archive or reopen it.
 type IssueAction struct {
 	Do     string
