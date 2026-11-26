@@ -55,16 +55,21 @@ func commands() map[string]command {
 		},
 		"setup": {
 			summary: "set up Packrat for the repository you're in",
-			usage:   "packrat setup [--yes] [--no-browser] [--no-claude]",
-			flags: [][2]string{{"-y, --yes", "answer yes to every question: open the browser, install the plugin, start Claude Code"},
+			usage:   "packrat setup [--app APP | --new] [--yes] [--no-browser] [--no-claude]",
+			flags: [][2]string{{"--app=<value>", "connect the repository to this app, one Packrat receives data from that has no repository"},
+				{"--new", "set the repository up as a new app, not one Packrat already receives data from"},
+				{"-y, --yes", "answer yes to every question: open the browser, install the plugin, start Claude Code"},
 				{"--no-browser", "print the GitHub page instead of opening a browser"},
 				{"--no-claude", "print the Claude Code command instead of offering to start it"}},
 			description: "Does each step it can, shows how far the others have come, and names the next one. It signs\n" +
 				"you in, asks GitHub to let Packrat read the repository, installs the Claude Code plugin, and then\n" +
 				"follows the setup pull request to its deploy and its checks. Run it again at any time, and on\n" +
 				"each teammate's machine.\n\n" +
+				"When Packrat already receives data from apps with no repository, setup connects the one whose name\n" +
+				"config/application.rb gives, or asks which one it is. With nobody to ask, it stops and names them:\n" +
+				"run it again with --app or --new.\n\n" +
 				"packrat setup detect and packrat setup plan read a project without sending anything.",
-			examples: []string{"packrat setup", "packrat setup --no-browser"},
+			examples: []string{"packrat setup", "packrat setup --no-browser", "packrat setup --app shop"},
 		},
 		"setup detect": {
 			summary: "scan a project for existing observability tools",

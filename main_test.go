@@ -44,7 +44,7 @@ func TestRun(t *testing.T) {
 		{name: "help after a path", args: []string{"setup", "detect", empty, "-h"}, code: 0, stdout: "scan a project for existing observability tools\n"},
 		{name: "a topic's help", args: []string{"help", "check"}, code: 0, stdout: "COMMANDS\n  check add    add a check to a deployed pull request"},
 		{name: "a subcommand's help", args: []string{"check", "close", "--help"}, code: 0, stdout: "USAGE\n  $ packrat check close ID"},
-		{name: "setup with an unknown option", args: []string{"setup", "--nope"}, code: 2, stderr: "the options are --yes, --no-browser and --no-claude"},
+		{name: "setup with an unknown option", args: []string{"setup", "--nope"}, code: 2, stderr: "the options are --app or --new, --yes, --no-browser and --no-claude"},
 		{name: "the old name is gone", args: []string{"detect"}, code: 2, stderr: `"detect" is not a packrat command`},
 		{name: "no help for nothing", args: []string{"help", "nope"}, code: 2, stderr: `no help for "nope"`},
 		{name: "plan", args: []string{"setup", "plan", railsOnly}, code: 0, stdout: "Exceptions  OpenTelemetry              subscribe to Rails.error", lastStdout: report.AppHint, absent: "Nothing was sent"},
