@@ -300,7 +300,13 @@ func setupSteps(w world, log *setupLog, args []string, stdout, stderr io.Writer)
 		return exitFailed
 	}
 	out.row(markDone, "Repository", client.Repo+" "+out.dim("(from origin)"))
-	lock := setupPlatform(w, out)
+	lock, next := setupPlatform(w, out)
+	// Stopping here leaves the repository unconnected, so its pull requests are not held for data it cannot send.
+	if next != "" {
+		out.rest("Platform")
+		out.printf("\n%s %s\n", out.bold("Next:"), next)
+		return exitFailed
+	}
 
 	// Setup is the site's: it holds the GitHub App, and the pages this names are its own.
 	client = siteClient(w, client.Key).In(client.Org, client.Repo)
@@ -441,16 +447,43 @@ func setupNoRepository(w world, out setupOut) {
 	out.row(markWrong, "Repository", text, more...)
 }
 
-func setupPlatform(w world, out setupOut) rails.Lockfile {
+// minimumRails is the oldest Rails that OpenTelemetry's Rails instrumentation, and so packrat-rails, runs on.
+const minimumRails = "7.1"
+
+const quickstartURL = "https://packrat.sh/docs/quickstart"
+
+// setupPlatform says the next step when setup cannot go on, because the app cannot take packrat-rails.
+func setupPlatform(w world, out setupOut) (rails.Lockfile, string) {
 	data, err := w.readFile("Gemfile.lock")
 	lock := rails.ParseLockfile(data)
 	gem, found := lock.Gems["rails"]
 	if err != nil || !found {
-		out.row(markTodo, "Platform", "Not a Rails app. See https://packrat.sh/docs/quickstart for other stacks.")
-		return lock
+		out.row(markWrong, "Platform", "Not a Rails app.", "packrat setup sets up Rails apps. For other stacks, see "+quickstartURL)
+		return lock, "send OpenTelemetry from the app to Packrat: " + quickstartURL
 	}
-	out.row(markDone, "Platform", "Ruby on Rails "+gem.Version+" "+out.dim("(from Gemfile.lock)"))
-	return lock
+	text := "Ruby on Rails " + gem.Version + " " + out.dim("(from Gemfile.lock)")
+	if olderThan(gem.Version, minimumRails) {
+		out.row(markWrong, "Platform", text, "Packrat requires Rails "+minimumRails+" or later.")
+		return lock, "upgrade the app to Rails " + minimumRails + " or later, then run packrat setup again."
+	}
+	out.row(markDone, "Platform", text)
+	return lock, ""
+}
+
+// olderThan compares the major and minor parts. A version it cannot read is not older.
+func olderThan(version, minimum string) bool {
+	parts := func(v string) (int, int, bool) {
+		fields := strings.SplitN(v, ".", 3)
+		if len(fields) < 2 {
+			return 0, 0, false
+		}
+		major, errMajor := strconv.Atoi(fields[0])
+		minor, errMinor := strconv.Atoi(fields[1])
+		return major, minor, errMajor == nil && errMinor == nil
+	}
+	major, minor, ok := parts(version)
+	wantMajor, wantMinor, _ := parts(minimum)
+	return ok && (major < wantMajor || major == wantMajor && minor < wantMinor)
 }
 
 // setupGitHub opens GitHub for the person to let Packrat read the repository, and waits until it can.

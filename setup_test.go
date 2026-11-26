@@ -77,6 +77,7 @@ type setupCase struct {
 	ran      []string
 	replaced string
 	asked    []string
+	unasked  []string
 	// reported are lines each of the run's reports to POST /setup/events must hold, the last report first.
 	reported []string
 }
@@ -112,6 +113,15 @@ func TestSetup(t *testing.T) {
 			absent: []string{"[Y/n]", "\x1b["}, asked: []string{"POST /setup/repository?repo=acme%2Fshop"},
 			reported: []string{`[{"step":"Signed in","mark":"done"},{"step":"Repository","mark":"done","text":"acme/shop (from origin)"},` +
 				`{"step":"Platform","mark":"done","text":"Ruby on Rails 8.1.0 (from Gemfile.lock)"}`}},
+		{name: "a Rails older than 7.1 stops at the platform and connects nothing",
+			states: []string{setupReadable}, files: map[string]string{"Gemfile.lock": strings.Replace(railsLock, "rails (8.1.0)", "rails (6.1.7.10)", 1)}, code: 1,
+			stdout: []string{"✗ Platform        Ruby on Rails 6.1.7.10 (from Gemfile.lock)\n                  Packrat requires Rails 7.1 or later.\n○ GitHub          You approve Packrat for the repository\n",
+				"Next: upgrade the app to Rails 7.1 or later, then run packrat setup again."},
+			unasked:  []string{"/setup/state", "/setup/repository"},
+			reported: []string{`{"step":"Platform","mark":"wrong","text":"Ruby on Rails 6.1.7.10 (from Gemfile.lock) Packrat requires Rails 7.1 or later."}`}},
+		{name: "Rails 7.1 goes on to GitHub",
+			states: []string{setupReadable}, files: map[string]string{"Gemfile.lock": strings.Replace(railsLock, "rails (8.1.0)", "rails (7.1.6)", 1)}, plugins: pluginListed, code: 0,
+			stdout: []string{"✓ Platform        Ruby on Rails 7.1.6 (from Gemfile.lock)", "✓ GitHub          Packrat can read acme/shop"}},
 		{name: "run by Claude Code, it names the page for Claude Code to open rather than starting another",
 			states: []string{setupReadable}, files: rails, plugins: pluginListed, env: map[string]string{"AI_AGENT": "claude-code_2-1-331_agent"}, code: 0,
 			stdout: []string{"Next: have Claude Code create a pull request to install Packrat.",
@@ -176,7 +186,7 @@ func TestSetup(t *testing.T) {
 			origin: "none", noGit: true, states: []string{setupReadable}, code: 1,
 			stdout: []string{"✗ Repository      This directory is not a git repository.", "Run packrat setup in your app's directory.",
 				"    git init\n                    git add -A && git commit -m \"First commit\"\n                    gh repo create",
-				"○ Platform        Not a Rails app."}},
+				"✗ Platform        Not a Rails app."}},
 		{name: "no origin and no gh names GitHub's page and the git commands",
 			origin: "none", noGh: true, states: []string{setupReadable}, files: rails, code: 1,
 			stdout: []string{"Create a private repository at https://github.com/new, then run:",
@@ -190,9 +200,12 @@ func TestSetup(t *testing.T) {
 		{name: "an HTTPS origin names the same repository",
 			origin: "https://github.com/acme/shop.git", states: []string{setupReadable}, files: rails, plugins: pluginListed, code: 0,
 			stdout: []string{"✓ Repository      acme/shop"}},
-		{name: "not a Rails app says so and still connects",
-			states: []string{setupReadable}, plugins: pluginListed, code: 0,
-			stdout: []string{"○ Platform        Not a Rails app.", "✓ GitHub"}},
+		{name: "not a Rails app stops at the platform and connects nothing",
+			states: []string{setupReadable}, plugins: pluginListed, code: 1,
+			stdout: []string{"✗ Platform        Not a Rails app.\n                  packrat setup sets up Rails apps. For other stacks, see https://packrat.sh/docs/quickstart\n" +
+				"○ GitHub          You approve Packrat for the repository\n",
+				"Next: send OpenTelemetry from the app to Packrat: https://packrat.sh/docs/quickstart"},
+			unasked: []string{"/setup/state", "/setup/repository"}},
 		{name: "Claude Code missing leaves the plugin and prints the command",
 			states: []string{setupReadable}, files: rails, noClaude: true, terminal: true, code: 0,
 			stdout: []string{"○ Plugin          Claude Code is not on this shell's PATH, so setup cannot install the plugin.\n" +
@@ -454,6 +467,19 @@ func runSetupCase(t *testing.T, tc setupCase) {
 	for _, want := range tc.asked {
 		if !strings.Contains(strings.Join(asked, "\n")+"\n", want) {
 			t.Errorf("did not ask %q:\n%s", want, strings.Join(asked, "\n"))
+		}
+	}
+	for _, unwanted := range tc.unasked {
+		if strings.Contains(strings.Join(asked, "\n")+"\n", unwanted) {
+			t.Errorf("asked %q:\n%s", unwanted, strings.Join(asked, "\n"))
+		}
+	}
+}
+
+func TestOlderThan(t *testing.T) {
+	for version, want := range map[string]bool{"6.1.7.10": true, "7.0.10": true, "7.1.0": false, "7.2.4": false, "8.1.4.1": false, "10.0.0": false, "": false, "edge": false} {
+		if got := olderThan(version, minimumRails); got != want {
+			t.Errorf("olderThan(%q) = %v, want %v", version, got, want)
 		}
 	}
 }
