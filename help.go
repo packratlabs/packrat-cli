@@ -369,7 +369,7 @@ func commands() map[string]command {
 			summary: "draft the checks of the pull request that adds Packrat to an app",
 			usage:   "packrat pr checks setup",
 			description: "Writes the draft for the branch you're on: after the deploy, Packrat receives request traces,\n" +
-				"log lines and page views from the deployed version. Run it before gh pr create for the pull request that\n" +
+				"log lines and page views from the app. Run it before gh pr create for the pull request that\n" +
 				"adds Packrat. The Packrat plugin for Claude Code declares the draft once the pull request has a\n" +
 				"number. For any other pull request, draft checks from its diff and use packrat pr checks set.",
 			examples: []string{"packrat pr checks setup"},
