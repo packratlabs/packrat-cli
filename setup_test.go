@@ -85,6 +85,9 @@ type setupCase struct {
 func TestSetup(t *testing.T) {
 	rails := map[string]string{"Gemfile.lock": railsLock}
 	withGem := map[string]string{"Gemfile.lock": packratLock, "config/initializers/packrat.rb": "Packrat.configure"}
+	namedShop := map[string]string{"Gemfile.lock": packratLock, "config/initializers/packrat.rb": "Packrat.configure",
+		"config/application.rb": "require_relative \"boot\"\n\nmodule Shop\n  class Application < Rails::Application\n  end\nend\n"}
+	namedOther := map[string]string{"Gemfile.lock": railsLock, "config/application.rb": "module Storefront\n  class Application < Rails::Application\n"}
 	gemOnly := map[string]string{"Gemfile.lock": packratLock}
 	tests := []setupCase{
 		{name: "piped, with GitHub not approved: it prints the page, says to run setup again, and ends without waiting",
@@ -295,12 +298,29 @@ func TestSetup(t *testing.T) {
 			states: []string{setupUnconnected}, files: rails, plugins: pluginListed, terminal: true, stdin: "3\nn\n", code: 0,
 			stdout: []string{"Which app is acme/shop? [1-3]"}, absent: []string{"✓ App"},
 			asked: []string{"POST /setup/repository?repo=acme%2Fshop\n"}},
-		{name: "with nobody to ask, the apps with no repository are named and nothing is picked",
-			states: []string{setupUnconnected}, files: rails, plugins: pluginListed, code: 0,
+		{name: "with nobody to ask and no name to match, setup stops at the App row and says how to answer",
+			states: []string{setupUnconnected}, files: namedOther, plugins: pluginListed, code: 1,
 			stdout: []string{"○ App             Packrat has apps with no repository: shop, blog.\n" +
-				"                  Run packrat setup in a terminal to pick one, or connect it on the app's Settings page."},
-			absent: []string{"Which app", "service="}},
-		{name: "an extra word is a usage error", args: []string{"now"}, states: []string{setupReadable}, code: 2, stderr: "the options are --yes, --no-browser and --no-claude"},
+				"                  None of them is storefront, the name config/application.rb gives this app.",
+				"Next: ask which of them this repository is, then run packrat setup --app <app>, or packrat setup --new if it is a new app."},
+			absent: []string{"Which app"}, unasked: []string{"/setup/repository"}},
+		{name: "an app named in config/application.rb is connected without asking",
+			states: []string{setupUnconnected}, connect: setupAdopted, files: namedShop, plugins: pluginListed, terminal: true, stdin: "n\n", code: 0,
+			stdout: []string{"✓ App             shop is connected to acme/shop (named in config/application.rb)"}, absent: []string{"Which app"},
+			asked: []string{"POST /setup/repository?repo=acme%2Fshop&service=shop"}},
+		{name: "--app connects the app it names, with nobody to ask",
+			args: []string{"--app", "blog"}, states: []string{setupUnconnected}, connect: setupAdopted, files: rails, plugins: pluginListed, code: 0,
+			stdout: []string{"✓ App             blog is connected to acme/shop\n"}, asked: []string{"POST /setup/repository?repo=acme%2Fshop&service=blog"}},
+		{name: "--app with an app that has a repository already is wrong and connects nothing",
+			args: []string{"--app", "docs"}, states: []string{setupUnconnected}, files: rails, plugins: pluginListed, code: 1,
+			stdout: []string{"✗ App             docs is not an app of this org with no repository.\n                  Those are: shop, blog.",
+				"Next: run packrat setup --app with one of them, or --new if this repository is a new app."}, unasked: []string{"/setup/repository"}},
+		{name: "--new connects the repository for the org's next app, even when a name matches",
+			args: []string{"--new"}, states: []string{setupUnconnected}, files: namedShop, plugins: pluginListed, code: 0,
+			absent: []string{"✓ App", "Which app"}, asked: []string{"POST /setup/repository?repo=acme%2Fshop\n"}},
+		{name: "--app and --new together are a usage error", args: []string{"--app", "shop", "--new"}, states: []string{setupReadable}, code: 2,
+			stderr: "the options are --app or --new"},
+		{name: "an extra word is a usage error", args: []string{"now"}, states: []string{setupReadable}, code: 2, stderr: "the options are --app or --new, --yes, --no-browser and --no-claude"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) { runSetupCase(t, tc) })

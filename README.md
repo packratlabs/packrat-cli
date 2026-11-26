@@ -417,6 +417,11 @@ Next: merge #1 and deploy to production. Its checks start when the deploy goes l
   OpenTelemetry as the [quickstart](https://packrat.sh/docs/quickstart) describes.
 - **GitHub:** it waits for Enter, then opens GitHub for you to approve Packrat for the repository.
   Packrat reads code and comments on pull requests.
+- **App:** when Packrat already receives data from apps that have no repository, setup connects the
+  repository to the one this checkout is. It's the app whose name matches the one `config/application.rb`
+  gives it (`module Shop` is `shop`), the one `--app` names, or the one you pick from a list. `--new`
+  says the repository is a new app. With nobody at the keyboard and no name to match, setup stops here
+  and names the apps.
 - **Plugin:** it asks, then installs the Packrat plugin in Claude Code.
 - **Pull request:** it offers to start Claude Code, which adds `packrat-rails` to the app and opens
   the setup pull request. `packrat pr checks setup` writes that pull request's three checks: after
@@ -429,6 +434,7 @@ Setup changes nothing outside the project unless you say yes. It waits for Enter
 your browser, and asks before it installs the plugin or starts Claude Code.
 
 - `--yes` (or `-y`) answers yes to every question.
+- `--app <app>` connects the repository to that app, and `--new` sets it up as a new app.
 - `--no-browser` prints the GitHub page instead of opening a browser.
 - `--no-claude` prints the Claude Code command instead of offering to start it.
 

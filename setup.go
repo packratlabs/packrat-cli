@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -274,8 +275,10 @@ func setupSteps(w world, log *setupLog, args []string, stdout, stderr io.Writer)
 	noClaude := fs.Bool("no-claude", false, "")
 	fs.BoolVar(&w.yes, "yes", false, "")
 	fs.BoolVar(&w.yes, "y", false, "")
-	if extra, err := parseInterleaved(fs, args); err != nil || len(extra) > 0 {
-		return say(stderr, "packrat setup: the options are --yes, --no-browser and --no-claude. Run packrat help setup for details.\n", exitUsage)
+	app := fs.String("app", "", "")
+	isNew := fs.Bool("new", false, "")
+	if extra, err := parseInterleaved(fs, args); err != nil || len(extra) > 0 || *app != "" && *isNew {
+		return say(stderr, "packrat setup: the options are --app or --new, --yes, --no-browser and --no-claude. Run packrat help setup for details.\n", exitUsage)
 	}
 	// One reader for every question, sign-in's included: bufio.NewReader hands back a reader it is given.
 	in := bufio.NewReader(w.stdin)
@@ -320,13 +323,18 @@ func setupSteps(w world, log *setupLog, args []string, stdout, stderr io.Writer)
 	} else if code != exitOK {
 		return code
 	}
-	service := setupExisting(out, client, state)
+	service, how, next := setupExisting(w, out, client, state, *app, *isNew)
+	if next != "" {
+		out.rest("GitHub")
+		out.printf("\n%s %s\n", out.bold("Next:"), next)
+		return exitFailed
+	}
 	// Asked on every run: it is also what gives the org the ingest key the generator needs.
 	if state, err = client.ConnectRepository(ctx, service); err != nil {
 		return say(stderr, fmt.Sprintf("\npackrat setup: connecting %s: %v\n", client.Repo, err), exitFailed)
 	}
 	if service != "" {
-		out.row(markDone, "App", service+" is connected to "+client.Repo)
+		out.row(markDone, "App", service+" is connected to "+client.Repo+how)
 	}
 	plugin := setupPlugin(w, out)
 	setupApp(out, state)
@@ -341,22 +349,44 @@ func setupSteps(w world, log *setupLog, args []string, stdout, stderr io.Writer)
 	return setupNext(w, out, state, lock, plugin && !*noClaude, stderr)
 }
 
-// setupExisting asks which of the org's apps with no repository this checkout is. An app that reported before setup
-// ran is found by no repository, so without an answer setup would wait for a new app that never comes. It answers ""
-// for a new app, and when nobody is there to ask.
-func setupExisting(out setupOut, client query.Client, state query.Setup) string {
+// setupExisting finds which of the org's apps with no repository this checkout is: the one --app names, the one
+// config/application.rb names, or the one the person picks. An app that reported before setup ran is found by no
+// repository, so without an answer setup would wait for a new app that never comes. service is "" for a new app; how
+// says why the app was chosen when nobody picked it. next is set when setup cannot tell and has nobody to ask.
+func setupExisting(w world, out setupOut, client query.Client, state query.Setup, app string, isNew bool) (service, how, next string) {
 	apps := state.Unconnected
-	if len(apps) == 0 {
-		return ""
+	names := make([]string, len(apps))
+	for i, each := range apps {
+		names[i] = each.Service
+	}
+	switch {
+	case isNew:
+		return "", "", ""
+	case app != "" && slices.Contains(names, app):
+		return app, "", ""
+	case app != "" && len(names) == 0:
+		out.row(markWrong, "App", "This org has no app without a repository, so there is no "+app+" to connect.")
+		return "", "", "run packrat setup again without --app."
+	case app != "":
+		out.row(markWrong, "App", app+" is not an app of this org with no repository.", "Those are: "+strings.Join(names, ", ")+".")
+		return "", "", "run packrat setup --app with one of them, or --new if this repository is a new app."
+	case len(apps) == 0:
+		return "", "", ""
+	}
+	named := ""
+	if data, err := w.readFile(rails.ApplicationFile); err == nil {
+		named = rails.AppName(data)
+	}
+	if slices.Contains(names, named) {
+		return named, " " + out.dim("(named in "+rails.ApplicationFile+")"), ""
 	}
 	if out.yes || !out.terminal {
-		names := make([]string, len(apps))
-		for i, app := range apps {
-			names[i] = app.Service
+		detail := rails.ApplicationFile + " does not name this app, so setup cannot tell which it is."
+		if named != "" {
+			detail = "None of them is " + named + ", the name " + rails.ApplicationFile + " gives this app."
 		}
-		out.row(markTodo, "App", "Packrat has apps with no repository: "+strings.Join(names, ", ")+".",
-			"Run packrat setup in a terminal to pick one, or connect it on the app's Settings page.")
-		return ""
+		out.row(markTodo, "App", "Packrat has apps with no repository: "+strings.Join(names, ", ")+".", detail)
+		return "", "", "ask which of them this repository is, then run packrat setup --app <app>, or packrat setup --new if it is a new app."
 	}
 	width := 0
 	for _, app := range apps {
@@ -376,14 +406,14 @@ func setupExisting(out setupOut, client query.Client, state query.Setup) string 
 		answer, given := out.answer()
 		if !given {
 			out.printf("\n")
-			return ""
+			return "", "", ""
 		}
 		if pick, err := strconv.Atoi(answer); err == nil && pick >= 1 && pick <= len(apps)+1 {
 			out.printf("\n")
 			if pick > len(apps) {
-				return ""
+				return "", "", ""
 			}
-			return apps[pick-1].Service
+			return apps[pick-1].Service, "", ""
 		}
 	}
 }
