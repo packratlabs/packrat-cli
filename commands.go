@@ -286,12 +286,15 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	if err == nil && len(words) >= 1 && words[0] == "seen" {
 		return markSeen(w, "issues", words[1:], *app, *all, *asJSON, stdout, stderr)
 	}
+	if err == nil && len(words) == 2 && words[0] == "show" {
+		return showIssue(w, words[1], *app, *asJSON, stdout, stderr)
+	}
 	if err == nil && len(words) == 2 && (words[0] == "resolve" || words[0] == "archive" || words[0] == "reopen") {
 		action.Do = words[0]
 		return actOnIssue(w, words[1], *app, action, *asJSON, stdout, stderr)
 	}
 	if err != nil || len(words) > 0 {
-		return say(stderr, "packrat issues: specify only flags to list issues, or resolve, archive, reopen or seen and an issue ID. Run packrat help issues for details.\n", exitUsage)
+		return say(stderr, "packrat issues: specify only flags to list issues, or show, resolve, archive, reopen or seen and an issue ID. Run packrat help issues for details.\n", exitUsage)
 	}
 	client, err := newClient(w)
 	if err != nil {
@@ -308,6 +311,26 @@ func runIssues(w world, args []string, stdout, stderr io.Writer) int {
 	}
 	if err != nil {
 		return say(stderr, fmt.Sprintf("packrat issues: %v\n", err), exitFailed)
+	}
+	return exitOK
+}
+
+func showIssue(w world, id, app string, asJSON bool, stdout, stderr io.Writer) int {
+	client, err := newClient(w)
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat issues show: %v\n", err), exitUsage)
+	}
+	issue, err := client.Issue(context.Background(), id, query.Where{App: app, Repo: originRepo(w)})
+	if err != nil {
+		return fail(stderr, "issues show", "issues show "+id+" --app %s", err)
+	}
+	if asJSON {
+		err = report.IssueDetailJSON(stdout, issue)
+	} else {
+		err = report.IssueShow(stdout, issue, width(w))
+	}
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat issues show: %v\n", err), exitFailed)
 	}
 	return exitOK
 }
