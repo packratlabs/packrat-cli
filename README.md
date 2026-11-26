@@ -407,6 +407,10 @@ Next: merge #1 and deploy to production. Its checks start when the deploy goes l
 ```
 
 - **Signed in:** it signs you in first if you aren't.
+- **Platform:** setup sets up Rails 7.1 and later. On an older Rails, or an app that is not Rails, it
+  stops here and connects nothing. `packrat-rails` uses OpenTelemetry's Rails instrumentation, which
+  needs Rails 7.1: upgrade the app, then run `packrat setup` again. For another stack, send
+  OpenTelemetry as the [quickstart](https://packrat.sh/docs/quickstart) describes.
 - **GitHub:** it waits for Enter, then opens GitHub for you to approve Packrat for the repository.
   Packrat reads code and comments on pull requests.
 - **Plugin:** it asks, then installs the Packrat plugin in Claude Code.
