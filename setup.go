@@ -72,7 +72,7 @@ func (l *setupLog) add(mark, name, text string, more []string) {
 		return
 	}
 	step := query.SetupStep{Step: name, Mark: markWords[mark]}
-	if !(mark == markDone && name == "Signed in") {
+	if mark != markDone || name != "Signed in" {
 		step.Text = colourCode.ReplaceAllString(strings.TrimSpace(text+" "+strings.Join(more, " ")), "")
 	}
 	l.steps = append(l.steps, step)
