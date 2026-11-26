@@ -66,13 +66,13 @@ type setupLog struct {
 	sent   int
 }
 
-// add keeps a row. A done row's text is left out: it says only what went right, and the first is the person's email.
+// add keeps a row. The signed-in row's text is left out, because it is the person's email.
 func (l *setupLog) add(mark, name, text string, more []string) {
 	if l == nil {
 		return
 	}
 	step := query.SetupStep{Step: name, Mark: markWords[mark]}
-	if mark != markDone {
+	if mark != markDone || name != "Signed in" {
 		step.Text = colourCode.ReplaceAllString(strings.TrimSpace(text+" "+strings.Join(more, " ")), "")
 	}
 	l.steps = append(l.steps, step)
