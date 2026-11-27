@@ -127,12 +127,13 @@ func commands() map[string]command {
 		},
 		"feedback": {
 			summary: "report to the Packrat team what Packrat got in your way",
-			usage:   "packrat feedback --task TASK --kind KIND --impact IMPACT [--about NAME] < DESCRIPTION",
+			usage:   "packrat feedback --task TASK --kind KIND --impact IMPACT [--about NAME] [--app APP] < DESCRIPTION",
 			flags: [][2]string{
 				{"--task=<value>", "a short phrase naming what you were asked to do"},
 				{"--kind=<value>", "missing, broken, confusing or idea"},
 				{"--impact=<value>", "blocked, worked_around (you finished another way) or friction"},
 				{"--about=<value>", "the command or page the report is about, such as \"packrat setup\""},
+				{"--app=<value>", "the app the report is about (default: the app connected to this checkout's repository, if any)"},
 			},
 			description: "Reads the description from stdin: what you ran, the error or answer you got, what you expected,\n" +
 				"and a fix if you have one. Packrat mails it to the Packrat team, who reply to the person signed in.\n" +

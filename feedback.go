@@ -24,6 +24,7 @@ func runFeedback(w world, args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&feedback.Kind, "kind", "", "")
 	fs.StringVar(&feedback.Impact, "impact", "", "")
 	fs.StringVar(&feedback.About, "about", "", "")
+	fs.StringVar(&feedback.App, "app", w.getenv("PACKRAT_APP"), "")
 	words, err := parseInterleaved(fs, args)
 	switch {
 	case err != nil || len(words) > 0:

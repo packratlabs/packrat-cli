@@ -250,6 +250,8 @@ func TestCommandsThatAskPackrat(t *testing.T) {
 		{name: "sql with no script", args: []string{"sql"}, login: true, code: 2, stderr: "the query is empty", none: true},
 		{name: "feedback sends the description from stdin", args: []string{"feedback", "--task", "connect the repository", "--kind", "broken", "--impact", "worked_around", "--about", "packrat status"}, login: true, origin: "git@github.com:acme/shop.git", stdin: "status --wait timed out\n", code: 0,
 			stdout: "Sent to the Packrat team as fbk_5k2m9x0qv7ha.\n", request: `POST /feedback?repo=acme%2Fshop {"task":"connect the repository","kind":"broken","impact":"worked_around","about":"packrat status","description":"status --wait timed out"}`},
+		{name: "feedback names the app it is given", args: []string{"feedback", "--task", "t", "--kind", "idea", "--impact", "friction", "--app", "shop/staging"}, login: true, stdin: "x", code: 0,
+			stdout: "Sent to the Packrat team as fbk_5k2m9x0qv7ha.\n", request: `POST /feedback {"task":"t","kind":"idea","impact":"friction","app":"shop/staging","description":"x"}`},
 		{name: "feedback says what the site refused", args: []string{"feedback", "--task", "open a pull request", "--kind", "idea", "--impact", "friction"}, login: true, stdin: "x", code: 1, stderr: "answered 429: too many reports from this key"},
 		{name: "feedback needs a description", args: []string{"feedback", "--task", "t", "--kind", "idea", "--impact", "friction"}, login: true, stdin: " \n", code: 2, stderr: "provide the description on stdin", none: true},
 		{name: "feedback needs a known kind", args: []string{"feedback", "--task", "t", "--kind", "praise", "--impact", "friction"}, login: true, stdin: "x", code: 2, stderr: "--kind is one of missing, broken, confusing, idea", none: true},
