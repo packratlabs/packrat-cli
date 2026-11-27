@@ -141,6 +141,7 @@ type Feedback struct {
 	Kind        string `json:"kind"`
 	Impact      string `json:"impact"`
 	About       string `json:"about,omitempty"`
+	App         string `json:"app,omitempty"`
 	Description string `json:"description"`
 }
 
