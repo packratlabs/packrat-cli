@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/packratlabs/packrat-cli/internal/auth"
+	"github.com/packratlabs/packrat-cli/internal/host"
 	"github.com/packratlabs/packrat-cli/internal/report"
 )
 
@@ -62,10 +63,18 @@ func TestRun(t *testing.T) {
 		{name: "path is a file", args: []string{"setup", "detect", file}, code: 2, stderr: "not a directory"},
 		{name: "path is missing", args: []string{"setup", "detect", filepath.Join("testdata", "absent")}, code: 2, stderr: "not a directory"},
 	}
+	w, err := newWorld()
+	if err != nil {
+		t.Fatalf("making the world: %v", err)
+	}
+	// internal/detect's TestNoNetwork listens on 8126 while this package runs and counts every dial.
+	prober := host.Default()
+	prober.Address = "127.0.0.1:1"
+	w.probe = prober.Probe
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			if code := run(tc.args, &stdout, &stderr); code != tc.code {
+			if code := runIn(w, tc.args, &stdout, &stderr); code != tc.code {
 				t.Errorf("exit %d, want %d (stderr: %s)", code, tc.code, stderr.String())
 			}
 			if !strings.Contains(stdout.String(), tc.stdout) {

@@ -70,7 +70,9 @@ type world struct {
 	// terminal says whether a person is at the keyboard, and colour whether stdout takes colour.
 	terminal bool
 	// width is the terminal's width in columns, 0 when it is not known.
-	width  func() int
+	width func() int
+	// probe is what setup detect --host runs.
+	probe  func() detect.Host
 	colour bool
 	// yes is setup's --yes: every question is answered yes without being asked.
 	yes bool
@@ -84,20 +86,30 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	w, err := newWorld()
+	if err != nil {
+		return say(stderr, fmt.Sprintf("packrat: %v\n", err), exitFailed)
+	}
+	return runIn(w, args, stdout, stderr)
+}
+
+// newWorld is the real machine.
+func newWorld() (world, error) {
 	w := world{getenv: os.Getenv, sleep: time.Sleep, stdin: os.Stdin, http: &http.Client{Timeout: httpLimit}, slow: &http.Client{Timeout: queryLimit},
 		hostname: os.Hostname, origin: gitOrigin, browse: browse, now: time.Now, heard: &query.Heard{},
 		releases:   query.Releases{API: query.ReleasesAPI, Download: query.ReleasesDownload, HTTP: &http.Client{Timeout: updateLimit}},
 		executable: os.Executable, program: runProgram, replace: becomeProgram, readFile: os.ReadFile,
-		terminal: isTerminal(os.Stdin) && isTerminal(os.Stdout), width: terminalWidth, colour: isTerminal(os.Stdout) && os.Getenv("NO_COLOR") == ""}
+		terminal: isTerminal(os.Stdin) && isTerminal(os.Stdout), width: terminalWidth, colour: isTerminal(os.Stdout) && os.Getenv("NO_COLOR") == "",
+		probe: host.Default().Probe}
 	dir, err := auth.Dir(os.Getenv)
 	if err != nil {
-		return say(stderr, fmt.Sprintf("packrat: %v\n", err), exitFailed)
+		return w, fmt.Errorf("finding where the sign-in is kept: %w", err)
 	}
 	w.store = auth.Store{Dir: dir}
 	if runtime.GOOS == "darwin" {
 		w.store.Secrets = auth.Keychain{}
 	}
-	return runIn(w, args, stdout, stderr)
+	return w, nil
 }
 
 func runIn(w world, args []string, stdout, stderr io.Writer) int {
@@ -474,7 +486,7 @@ func waiting(w world) (query.Client, error) {
 func runSetup(w world, args []string, stdout, stderr io.Writer) int {
 	switch {
 	case len(args) > 0 && args[0] == "detect":
-		return runDetect(args[1:], stdout, stderr)
+		return runDetect(w, args[1:], stdout, stderr)
 	case len(args) > 0 && args[0] == "plan":
 		return runPlan(w, args[1:], stdout, stderr)
 	default:
@@ -536,7 +548,7 @@ func runPlan(w world, args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-func runDetect(args []string, stdout, stderr io.Writer) int {
+func runDetect(w world, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("detect", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	asJSON := fs.Bool("json", false, "")
@@ -559,7 +571,7 @@ func runDetect(args []string, stdout, stderr io.Writer) int {
 	}
 	opts := rails.DetectOptions()
 	if *probe {
-		opts.Host = host.Default().Probe
+		opts.Host = w.probe
 	}
 	result, err := detect.Run(path, opts)
 	if errors.Is(err, detect.ErrNotDirectory) {
