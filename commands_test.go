@@ -348,7 +348,17 @@ func TestSlowAnswers(t *testing.T) {
 			proxy := httputil.NewSingleHostReverseProxy(target)
 			proxy.ErrorHandler = func(http.ResponseWriter, *http.Request, error) {}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				time.Sleep(200 * time.Millisecond)
+				// Read the body first: the server notices a client that hung up only once it has.
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					return
+				}
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				select {
+				case <-time.After(200 * time.Millisecond):
+				case <-r.Context().Done():
+					return
+				}
 				proxy.ServeHTTP(w, r)
 			}))
 			t.Cleanup(server.Close)

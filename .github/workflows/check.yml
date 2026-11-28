@@ -2,7 +2,12 @@ name: check
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -22,6 +27,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          # There is no go.sum, so setup-go needs another key. The Makefile pins the linters and
+          # GoReleaser, which are most of what the cache holds.
+          cache-dependency-path: |
+            go.mod
+            Makefile
       - run: make check
 
   release-targets:
@@ -31,6 +41,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          # There is no go.sum, so setup-go needs another key. The Makefile pins the linters and
+          # GoReleaser, which are most of what the cache holds.
+          cache-dependency-path: |
+            go.mod
+            Makefile
       - name: Build the five release targets, their archives and checksums
         env:
           # setup-go pins the toolchain. GoReleaser needs a newer Go than go.mod; the binaries
