@@ -46,6 +46,7 @@ jobs:
           cache-dependency-path: |
             go.mod
             Makefile
+            .goreleaser.yaml
       - name: Build the five release targets, their archives and checksums
         env:
           # setup-go pins the toolchain. GoReleaser needs a newer Go than go.mod; the binaries
