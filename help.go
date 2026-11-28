@@ -411,7 +411,7 @@ func commands() map[string]command {
 			usage:   "packrat status [--app SERVICE/ENV] [--wait] [--json]",
 			flags: [][2]string{
 				{"--app=<value>", "app to check, as packrat apps lists it. Without it, shows every app"},
-				{"--wait", "wait up to 5 minutes for new data to arrive. Without --app, waits for any app"},
+				{"--wait", "wait up to 5 minutes for new data to arrive, or end at once on data from the last 2 minutes. Without --app, waits for any app"},
 				{"--json", "output the API response as JSON; a list of them for several apps"},
 			},
 			description: "Shows each signal, the sources that send it, and whether Packrat keeps it.",
