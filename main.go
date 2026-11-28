@@ -34,7 +34,10 @@ const (
 	pollEvery   = 3 * time.Second
 	waitLimit   = 5 * time.Minute
 	settleLimit = 15 * time.Second
-	httpLimit   = 30 * time.Second
+	// recentFor is how old data may be on the first answer and still end a wait: setup starts the app and loads a
+	// page before it waits, and the API moves a source's last_seen_at at most once a minute.
+	recentFor = 2 * time.Minute
+	httpLimit = 30 * time.Second
 	// A query, or a draft whose every check's SQL runs before the answer, may take up to the query app's
 	// 100 seconds; giving up sooner leaves it running there and saved when it finishes.
 	queryLimit  = 2 * time.Minute
@@ -309,7 +312,7 @@ func appNames(client query.Client) ([]string, error) {
 }
 
 // awaitApp asks for the apps until one is new, or one of this checkout's has sent data since the first answer, and
-// names it. That is the app being set up, whichever name it reports under. A key from packrat login opens every
+// names it. On the first answer, data that arrived in the last recentFor counts as well. That is the app being set up, whichever name it reports under. A key from packrat login opens every
 // org its person belongs to, so another app that is merely busy is not the answer: in a checkout, an app that was
 // already there counts only when it is connected to the checkout's repository.
 func awaitApp(w world, client query.Client) (string, error) {
@@ -331,6 +334,13 @@ func awaitApp(w world, client query.Client) (string, error) {
 			for _, app := range apps.Apps {
 				known[app.Org+"/"+app.App] = true
 			}
+			for _, app := range apps.Apps {
+				here := client.Repo == "" || strings.EqualFold(app.Repository, client.Repo)
+				fresh := app.LastDataAt != nil && apps.Now.Sub(*app.LastDataAt) < recentFor
+				if fresh && (here || apps.Now.Sub(app.FirstSeenAt) < recentFor) {
+					return app.App, nil
+				}
+			}
 		} else {
 			for _, app := range apps.Apps {
 				here := client.Repo == "" || strings.EqualFold(app.Repository, client.Repo)
@@ -347,7 +357,7 @@ func awaitApp(w world, client query.Client) (string, error) {
 }
 
 // awaitData asks until the sources of the app differ from the first answer, which is the proof
-// that something arrived after the command started. An app that is not there yet is an empty answer.
+// that something arrived after the command started, unless the first answer shows data from the last recentFor. An app that is not there yet is an empty answer.
 func awaitData(w world, client query.Client, app string) (query.Status, error) {
 	var first []query.Signal
 	for waited := time.Duration(0); ; waited += pollEvery {
@@ -357,6 +367,8 @@ func awaitData(w world, client query.Client, app string) (query.Status, error) {
 			return query.Status{}, fmt.Errorf("asking for %s: %w", app, err)
 		}
 		switch {
+		case waited == 0 && err == nil && recent(status):
+			return status, nil
 		case waited == 0:
 			first = status.Signals
 		case err == nil && !reflect.DeepEqual(first, status.Signals):
@@ -366,6 +378,18 @@ func awaitData(w world, client query.Client, app string) (query.Status, error) {
 		}
 		w.sleep(pollEvery)
 	}
+}
+
+// recent is data that arrived within recentFor of the answer.
+func recent(status query.Status) bool {
+	for _, signal := range status.Signals {
+		for _, source := range signal.Sources {
+			if source.LastSeenAt != nil && status.Now.Sub(*source.LastSeenAt) < recentFor {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // settled gives the signals that follow the first a little time to arrive: a log line from the app's boot comes

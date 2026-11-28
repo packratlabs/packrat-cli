@@ -164,13 +164,14 @@ func appStatusBody(app, seen string) string {
 
 func TestStatusAndApps(t *testing.T) {
 	fresh, newer, old := statusBody("2026-10-13T14:59:00Z"), statusBody("2026-10-13T15:00:00Z"), statusBody("2026-10-12T10:00:00Z")
+	stale := statusBody("2026-10-13T14:57:00Z")
 	devFresh, devOld := appStatusBody("shop/development", "2026-10-13T14:59:00Z"), appStatusBody("shop/development", "2026-10-12T10:00:00Z")
 	both := strings.Replace(statusBody("2026-10-13T15:00:01Z"), `"signal":"logs","quiet":false,"sources":[]`,
 		`"signal":"logs","quiet":false,"sources":[{"source":"otel","name":"OpenTelemetry","kept":true,"last_seen_at":"2026-10-13T15:00:01Z"}]`, 1)
 	noApps := `{"now":"2026-10-13T15:00:00Z","apps":[]}`
 	devApp := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
-	twoApps := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-12T10:00:00Z"}]}`
-	twoAppsNewer := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:59:50Z"},{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
+	twoApps := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:50:00Z"},{"app":"shop/development","last_data_at":"2026-10-12T10:00:00Z"}]}`
+	twoAppsNewer := `{"now":"2026-10-13T15:00:00Z","apps":[{"app":"shop/production","last_data_at":"2026-10-13T14:50:00Z"},{"app":"shop/development","last_data_at":"2026-10-13T15:00:00Z"}]}`
 	tests := []struct {
 		name   string
 		args   []string
@@ -205,14 +206,16 @@ func TestStatusAndApps(t *testing.T) {
 		{name: "wait with no app ends when an app first sends", args: []string{"status", "--wait"}, key: statusKey, apps: []string{noApps, noApps, devApp}, bodies: []string{fresh}, code: 0, stdout: "Waiting for data from your app.", asked: 6, sleeps: 7},
 		{name: "wait with no app ends when a known app sends again", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps, twoAppsNewer}, bodies: []string{fresh}, code: 0, stdout: "OpenTelemetry", asked: 6, sleeps: 6},
 		{name: "wait with no app gives up", args: []string{"status", "--wait"}, key: statusKey, apps: []string{twoApps}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100},
+		{name: "wait with no app ends at once when an app sent data just before it", args: []string{"status", "--wait"}, key: statusKey, apps: []string{devApp}, bodies: []string{both}, code: 0, stdout: "2 of", asked: 1},
 		{name: "no key", args: []string{"status", "--app", "shop/production"}, code: 2, stderr: "Run packrat login, or set PACKRAT_API_KEY"},
 		{name: "a refused key", args: []string{"status", "--app", "shop/production"}, key: "wrong", bodies: []string{fresh}, code: 1, stderr: "your key was rejected (401)"},
 		{name: "an app that is not there", args: []string{"status", "--app", "shop/staging"}, key: statusKey, bodies: []string{""}, code: 1, stderr: "This key opens shop/production.", asked: 1},
-		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, fresh, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 8, sleeps: 7},
-		{name: "wait gives the logs that follow the first trace time to arrive, and ends when both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, newer, newer, both}, code: 0, stdout: "Logs        OpenTelemetry", asked: 4, sleeps: 3},
-		{name: "wait ends at once when traces and logs both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh, both}, code: 0, stdout: "2 of", asked: 2, sleeps: 1},
+		{name: "wait ends when a source changes", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{stale, stale, newer}, code: 0, stdout: "Waiting for data from shop/production.", asked: 8, sleeps: 7},
+		{name: "wait gives the logs that follow the first trace time to arrive, and ends when both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{stale, newer, newer, both}, code: 0, stdout: "Logs        OpenTelemetry", asked: 4, sleeps: 3},
+		{name: "wait ends at once when traces and logs both report", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{stale, both}, code: 0, stdout: "2 of", asked: 2, sleeps: 1},
 		{name: "wait ends when the app first appears", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{"", "", fresh}, code: 0, stdout: "OpenTelemetry", asked: 8, sleeps: 7},
-		{name: "wait gives up", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{fresh}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100, asked: 101},
+		{name: "wait gives up", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{stale}, code: 1, stderr: "no new data arrived within 5 minutes", sleeps: 100, asked: 101},
+		{name: "wait ends at once when data arrived just before it", args: []string{"status", "--wait", "--app", "shop/production"}, key: statusKey, bodies: []string{both}, code: 0, stdout: "2 of", asked: 1},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -366,9 +366,10 @@ packrat status  colorbook/production
   app already keeps that signal from another source. Logs, metrics and all browser data are kept
   from every source.
 - Times are accurate to the minute. Anything under two minutes is shown as "now".
-- `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup:
-  run the command, then start your app and load a page. Without `--app`, it waits for any app to
-  send data, including one Packrat hasn't seen before, and then shows that app. After the first
+- `--wait` checks every 3 seconds until new data arrives, for up to 5 minutes. Use it during setup,
+  before or after you start your app and load a page: data that arrived in the last 2 minutes ends
+  the wait at once. Without `--app`, it waits for any app to send data, including one Packrat hasn't
+  seen before, and then shows that app. After the first
   data arrives, it waits up to 15 more seconds for traces and logs to both report.
 - `--json` outputs the API response, described in the [API reference](https://packrat.sh/docs/api#get-status).
   Without `--app`, a key that opens several apps outputs a JSON array with one response for each app.
